@@ -289,7 +289,9 @@ Every push and pull request runs [`.github/workflows/ci.yml`](.github/workflows/
 
 > Passing CI proves the **contract package** is internally consistent. It proves nothing about an operating system, because no operating system exists here yet.
 
-Branch protection on `main` requires every one of these checks to pass, blocks force-pushes and branch deletion, and requires conversations to be resolved before merge.
+Branch protection on `main` requires the seven contract-pack checks to pass, blocks force-pushes and branch deletion, and requires conversations to be resolved before merge.
+
+**Known gap:** the three Rust-facing jobs — `rust`, `conformance-agreement` and `mutation-gate` — are enforced by CI but are **not yet listed as required contexts**, because the credential available to this repository's tooling cannot write the branch-protection rule. Until they are listed, a change that breaks the Rust workspace, the agreement between the two implementations, or the mutation gate can still reach `main` by direct push. Adding them is a one-line change in the branch-protection settings, and the check names are exactly the job names in the table above.
 
 ---
 

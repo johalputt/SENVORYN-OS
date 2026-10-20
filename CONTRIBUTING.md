@@ -200,6 +200,12 @@ pwsh -File scripts/verify-pack.ps1 # Windows
 
 **All nine must pass before a pull request can be merged.**
 
+> **Known gap.** Only the seven contract-pack checks are currently listed as
+> *required status checks* in the branch-protection rule. The three Rust-facing
+> jobs run on every push and fail the build, but they are not yet required
+> contexts, so a direct push to `main` is not blocked by them. The check names
+> to add are exactly the job names above.
+
 ---
 
 ## Repository conventions
