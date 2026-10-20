@@ -151,9 +151,9 @@ SENVORYN-OS/
 ├── conformance/vectors/         # shared conformance vectors — executed by BOTH implementations
 ├── conformance/capsule-vectors.json  # Change Capsule vectors — Rust implementation only
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
-├── reference/                   # Python reference decision model
-├── tests/                       # 57 executable contract tests
-├── decisions/                   # ADR-001 … ADR-013
+├── reference/                   # Python reference models: the SCP decision model and the capsule executor
+├── tests/                       # 84 executable contract tests
+├── decisions/                   # ADR-001 … ADR-014
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
 │
@@ -169,10 +169,10 @@ SENVORYN-OS/
 | `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 27 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
 | `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 31 cases + 11 attenuation cases |
-| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by the Rust implementation only | 30 cases |
+| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 30 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 40 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 13 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 60 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 14 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -193,10 +193,10 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (57 tests)
+# Run the contract test suite (84 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (98 tests)
+# Run the Rust workspace (105 tests)
 cargo test --workspace
 
 # Prove every control has a test that fails when it is broken
@@ -206,7 +206,7 @@ python scripts/mutation-gate.py
 Expected tail of output:
 
 ```
-Ran 57 tests in 0.285s
+Ran 84 tests in 0.285s
 
 OK
 ```
@@ -226,6 +226,7 @@ python -m unittest discover -s tests -v
 | `senvoryn-scp` | The SCP decision oracle: the sixteen validation gates, the capability model, the audit-event builder | **Not an SCP.** It verifies no signature, resolves no resource against a filesystem, and writes no audit record |
 | `senvoryn-capsule` | The Change Capsule executor simulator: the state machine, the idempotency ledger, the compensation and fault-injection model | **Not an executor.** It acts on a simulated environment, performs no effect, and decides no policy — it checks that the SCP's decision binds the capsule's own digest |
 | `senvoryn-cli` | A development tool that drives the oracle from files | **Not an SCP**, and not deployable as one |
+| `reference/capsule_reference.py` | The second implementation of the Change Capsule executor, in Python | **Not an executor**, and not a port of the Rust one. It is written from the contract, and it is what found two defects the Rust implementation had |
 
 ```bash
 # Evaluate one request against one policy context
@@ -241,11 +242,18 @@ decision or a different reason code for the same case. That is the mechanism tha
 stops a prototype and an implementation from becoming two authorities on the same
 question.
 
-The Change Capsule vectors in `conformance/capsule-vectors.json` are **not** held to
-one another, because there is only one implementation of the capsule executor. They
-are still a contract: a change in the executor that changes an outcome has to change
-the vector file too, which is what makes the change reviewable. The gap is recorded
-under *Known limits* below.
+The Change Capsule vectors in `conformance/capsule-vectors.json` are held to one
+another the same way. The capsule executor has two implementations — the Rust one
+and the Python reference model — and both read the same file and both must reach
+the state it names. The two are not a port of one another: the Python one raises
+where the Rust one returns an option, and parses timestamps with the standard
+library where the Rust one computes days from the civil calendar.
+
+That is worth more than it sounds. The registry's merge rule kept the **more**
+reversible of two conflicting rules instead of the less reversible one, and the
+sample registry holds one rule per operation, so no test ever ran the merge. The
+second implementation, written from the contract rather than from the first one,
+found it. See [ADR-014](decisions/ADR-014-capsule-two-implementations.md).
 
 ### The mutation gate
 
@@ -257,16 +265,23 @@ test to go red:
 python scripts/mutation-gate.py
 ```
 
-Forty controls are covered — every one of the sixteen validation gates that the
-oracle implements, three properties of the canonical JSON profile, and seventeen
-controls of the Change Capsule executor. A surviving mutation is a control that
-no test enforces, and the gate fails.
+Sixty controls are covered — every one of the sixteen validation gates that the
+oracle implements, three properties of the canonical JSON profile, seventeen
+controls of the Change Capsule executor in Rust, and twenty of them in the
+Python reference model. A surviving mutation is a control that no test enforces,
+and the gate fails.
 
 The gate has found four gaps the unit tests had missed: the "not yet valid" half
 of a capability's validity window had no shared vector; the decision record's
 `effect_performed` field was not asserted anywhere; the capsule's registry check
 was satisfied by a control it did not actually exercise; and the capsule's
 approval-requirement check had a vector that passed for the wrong reason.
+
+The gate now runs tests in two languages, and it removes the Python bytecode
+cache before each run. A cached `.pyc` can shadow a mutated source, and the gate
+would then report a control as untested when the control is fine — or credit a
+kill to a mutation that did nothing. That is not hypothetical: it produced one
+spurious survivor before the cache was removed.
 
 The rules that make the gate meaningful are in
 [`CONTRIBUTING.md`](CONTRIBUTING.md): a mutation must be caught by a *specific*
@@ -289,9 +304,9 @@ Every push and pull request runs [`.github/workflows/ci.yml`](.github/workflows/
 
 | Job | What it proves |
 |---|---|
-| `contract-tests` | All 57 contract/unit tests pass on both interpreters |
+| `contract-tests` | All 84 contract/unit tests pass on both interpreters |
 | `rust` | The Rust workspace is formatted, lint-clean under `clippy -D warnings`, fully tested, and builds in release mode |
-| `conformance-agreement` | The Rust and the Python implementation produce the same decision and the same reason code for every shared vector; the capsule vectors are executed and reported separately, because only one implementation exists |
+| `conformance-agreement` | The Rust and the Python implementations produce the same decision and the same reason for every shared vector — the SCP's and the capsule's alike |
 | `mutation-gate` | Every control is broken in turn and a **named** test is required to go red. A surviving mutation is a control no test enforces |
 | `schema-validation` | All 14 schemas are valid Draft 2020-12 and fixtures conform |
 | `pack-integrity` | SHA-256 checksums of the shipped contract artifacts match `SHA256SUMS.txt` |
@@ -407,7 +422,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 57/57 Python tests passing · 98/98 Rust tests passing · 31/31 shared vectors agreed · 30/30 capsule vectors agreed by the one implementation that exists · 40/40 mutations killed · 2/2 state machines structurally valid · 27/27 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 84/84 Python tests passing · 105/105 Rust tests passing · 31/31 shared vectors agreed · 30/30 capsule vectors agreed by two implementations · 60/60 mutations killed · 2/2 state machines structurally valid · 27/27 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 
@@ -419,7 +434,7 @@ Work is sequenced by dependency and evidence, not by launch pressure. **No gate 
 |---|---|---|
 | **0** | Contract freeze for prototype: identifiers, typed object model, schemas, threat model, state machine, error registry, reference evaluator, traceability matrix | 🟡 **In progress** — this repository is the Gate 0 deliverable |
 | **1** | SCP decision oracle: pure evaluator, capability model, deterministic reason codes, audit-event builder, property tests, fuzzable parser boundary | 🟡 **In progress** — the Rust oracle, the canonical profile, the shared vectors, and the fuzz harness are in this repository; the signed Operation Registry and the resolution boundary are not |
-| **2** | Change Capsule executor simulator: state machine, operation registry, idempotency ledger, stale-precondition detection, rollback/compensation simulation, fault injection | 🟡 **In progress** — the simulator, its fault model, its vectors and seventeen mutation-checked controls are in this repository; the executor performs no effect and the vectors have no second implementation to agree with |
+| **2** | Change Capsule executor simulator: state machine, operation registry, idempotency ledger, stale-precondition detection, rollback/compensation simulation, fault injection | 🟡 **In progress** — the simulator, its fault model, its vectors, and two implementations that agree on all thirty vectors are in this repository; the executor performs no effect, and the compensation is modelled rather than exercised against storage |
 | **3** | Capsule policy simulator: Origin Capsule manifest, bridge registry, budget checks, guest/host authority tests | ⬜ Not started |
 | **4** | Minimal bootable prototype: one declared hardware/emulator profile, trusted boot chain, minimal service supervisor, local policy enforcement, recovery path | ⬜ Not started |
 | **5** | Direct Installer prototype: one certified host profile, safe staging, cancellation, power-loss simulation, disk target confirmation, first-boot verification | ⬜ Not started |
@@ -523,9 +538,9 @@ We cannot honestly promise absolute security, absolute privacy, no backdoor unde
 6. **"Full control"** does not authorize violating another vendor's technical protections, licenses, or lawful access controls.
 7. **"Lightweight and superfast" must be measured.** Isolation, virtualization, translation, and local models all have costs. We publish profile-specific trade-offs instead of pretending overhead is zero.
 8. **"New from the foundation" does not mean inventing new cryptography.** Novelty belongs in architecture, control contracts, and user experience; core cryptographic constructions stay publicly scrutinized.
-9. **The mutation gate proves the controls it names and no others.** Forty controls are broken in turn today. The installer, update and AI-broker controls have no implementation to break yet, and a mutation that the project wrote is not an independent review.
-10. **The capsule vectors have one implementation, not two.** The Change Capsule executor is checked against its own vector file, which catches drift between the code and the contract, but it cannot catch drift between two implementations — the failure mode the shared SCP vectors exist to prevent. A second implementation is needed before the capsule can claim agreement.
-11. **The capsule executor performs no effect.** It drives the state machine against a simulated environment, so it proves the transaction's bookkeeping and its refusals, not that a real system can be rolled back. Compensation is modelled, not exercised against storage.
+9. **The mutation gate proves the controls it names and no others.** Sixty controls are broken in turn today. The installer, update and AI-broker controls have no implementation to break yet, and a mutation that the project wrote is not an independent review.
+10. **The capsule executor performs no effect.** It drives the state machine against a simulated environment, so it proves the transaction's bookkeeping and its refusals, not that a real system can be rolled back. Compensation is modelled, not exercised against storage.
+11. **Two implementations of one transaction still agree on one contract.** The Rust and Python capsule executors are held to the same vector file, but the vector file is the contract, and whoever writes it decides what "right" means. Agreement between two implementations of the same specification is a strong check and not a proof, and neither implementation is an independent reviewer.
 
 Complete list: [Constitution Article 44](docs/constitution/SENVORYN_OS_Constitution_v0.6.md).
 
@@ -543,7 +558,7 @@ Complete list: [Constitution Article 44](docs/constitution/SENVORYN_OS_Constitut
 | [Architecture overview](ARCHITECTURE.md) | — | Layers, trust boundaries, TCB inventory, dependency direction rules |
 | [Roadmap](ROADMAP.md) | — | Gates 0–8 with deliverables and exit criteria |
 | [Glossary](GLOSSARY.md) | — | Normative vocabulary across both documents |
-| [Architecture Decision Records](decisions/) | ADR-001…013 | Accepted decisions and explicitly open questions |
+| [Architecture Decision Records](decisions/) | ADR-001…014 | Accepted decisions and explicitly open questions |
 | [Changelog](CHANGELOG.md) | — | Versioned history of contract, schema, and model changes |
 
 ### Document hierarchy

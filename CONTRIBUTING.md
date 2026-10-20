@@ -132,7 +132,7 @@ $env:PYTHONPATH = "reference"
 python -m unittest discover -s tests -v
 ```
 
-Expected: `Ran 57 tests ... OK`.
+Expected: `Ran 84 tests ... OK`.
 
 Run a single module or test:
 
@@ -156,7 +156,7 @@ nothing. The mutation gate breaks each control in turn and requires a
 **named** test to go red:
 
 ```bash
-python scripts/mutation-gate.py                    # all 40 controls
+python scripts/mutation-gate.py                    # all 60 controls
 python scripts/mutation-gate.py M11-risk-downgrade # one control
 python scripts/mutation-gate.py --list
 ```
@@ -183,6 +183,20 @@ broken. The gate writes the original beside the file before it changes
 anything, and refuses to start if the tree is not in the state the manifest
 expects — but the repair is easier to avoid than to make.
 
+**A Python mutation needs the bytecode cache cleared.** CPython invalidates a
+cached `.pyc` by the source's size and its modification time in whole
+seconds, so a mutation that leaves the size unchanged within the same second
+is read from the cache and never runs. The gate would then report a control
+as untested when the control is fine — or credit a kill to a mutation that
+did nothing. The gate removes the caches and runs the interpreter with
+`-B`, and it does so for every Python mutation. If you add a Python control
+and the gate does not catch it, check this first.
+
+**A mutation in the gate must be in the language of the file it breaks.** The
+runner picks the test runner from the mutated file's extension, so a `.rs`
+file is checked by a Rust test and a `.py` file by a Python one. The
+manifest does not carry the language, and cannot carry it wrongly.
+
 ### Verify the shipped pack
 
 ```bash
@@ -196,7 +210,7 @@ pwsh -File scripts/verify-pack.ps1 # Windows
 |---|---|
 | `contract-tests` | All contract tests pass on Python 3.12 **and** 3.13 |
 | `rust` | The workspace is formatted, `clippy -D warnings` clean, tested, and builds in release mode |
-| `conformance-agreement` | The Rust and the Python implementation agree on every shared vector; the capsule vectors are executed and reported separately, because only one implementation of the capsule executor exists |
+| `conformance-agreement` | The Rust and the Python implementations agree on every shared vector — the SCP's and the capsule's alike |
 | `mutation-gate` | Every control is broken in turn and a named test is required to go red |
 | `schema-validation` | Every schema is valid Draft 2020-12; fixtures conform; unknown fields are rejected |
 | `pack-integrity` | SHA-256 checksums match `SHA256SUMS.txt` |

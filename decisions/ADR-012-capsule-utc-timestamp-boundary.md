@@ -39,9 +39,16 @@ We will parse a capsule's timestamps **once, at the parse boundary**, with a str
 UTC-only parser, and keep the original wire string alongside the parsed value.
 
 The accepted form is exactly `YYYY-MM-DDTHH:MM:SS[.fff]Z`: a `Z` suffix, no offset,
-no missing components, and at most three fractional digits. Anything else — a
-numeric offset, a missing `Z`, a leap second, a two-digit year — is a malformed
-capsule, and the capsule is refused before any check runs.
+no missing components, and at most three fractional digits. The `Z` is the **last**
+byte of the string, and a fractional part, if there is one, sits between the seconds
+and the `Z` — so the `Z` is not at a fixed offset in the string.
+
+The value has to be a **real instant**. A date that does not exist — the thirtieth
+of February, the twenty-ninth of February in a year that is not a leap year, the
+thirty-first of April — is refused rather than rolled over into the next month. A
+year of zero is refused for the same reason. A capsule that names a time which never
+happened is malformed, and silently moving it would mean the executor compared the
+capsule against an instant its issuer never stated.
 
 The parsed value is an epoch in milliseconds since the Unix epoch, computed with
 days-from-civil arithmetic rather than with a calendar library, so the conversion
@@ -51,6 +58,16 @@ The original string is retained in the parsed capsule. The evidence a capsule
 carries is the document that was actually received, not a re-serialisation of it,
 and a reader comparing two evidence records needs to see the bytes that were
 signed.
+
+> **Amended 2026-10-21, after the Python reference model was written.** The first
+> version of this decision did not say what "the strict UTC form" means about a
+> date that does not exist, and the Rust implementation rolled such a date over
+> into the next month while the Python one refused it. It also read the `Z` at a
+> fixed offset, which meant **every** timestamp carrying fractional seconds was
+> rejected and the fraction-handling code below it was unreachable. Both are
+> fixed, and both are now pinned by a test in each implementation. The
+> ambiguity was real: two readers of the same contract disagreed about a
+> security boundary. See [ADR-014](ADR-014-capsule-two-implementations.md).
 
 ## Rationale
 
@@ -87,6 +104,8 @@ knows the instant it means, and the executor does not have to guess.
 **What this costs:**
 - About forty lines of date arithmetic in the capsule crate, and a test that
   pins the conversion against known instants.
+- A capsule that carries a numeric offset, a date that does not exist, or a
+  year of zero is refused. Issuers have to state a real instant in UTC.
 
 ## Alternatives considered
 
@@ -94,6 +113,7 @@ knows the instant it means, and the executor does not have to guess.
 |---|---|
 | Accept full RFC 3339 and convert on use | The validity window then depends on each reader's arithmetic, and two conforming readers can disagree about whether a capsule is stale. That is a security boundary, not a formatting preference. |
 | Accept any offset and normalise to UTC at the boundary | Better than converting on use, but the capsule's issue time is still stated in a form the issuer and the executor may read differently, and the conversion becomes a place where a bug becomes a stale-capsule bug. |
+| Roll a date that does not exist into the next month | The first implementation did this, and the second refused it. A date that does not exist names no instant, and picking one for the capsule is exactly the kind of quiet adjustment a stale capsule needs. |
 | Use a date-time crate | The trusted core carries no third-party dependencies (ADR-009), and a date library is exactly the kind of dependency the decision was taken to avoid. |
 | Keep only the parsed value and discard the wire string | The evidence would then be a re-serialisation rather than the document that was received, and a reader comparing two records could not tell whether the strings differed. |
 

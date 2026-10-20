@@ -20,11 +20,11 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | Statement | Status |
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
-| 57 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
-| 98 Rust tests pass | ✅ Verified (Rust stable) |
+| 84 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 105 Rust tests pass | ✅ Verified (Rust stable) |
 | 31 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
-| 30 Change Capsule vectors are agreed by the one implementation that exists | ⚠️ Verified against one implementation — a second is needed before this is agreement |
-| Every control has a test that fails when the control is broken | ✅ Verified — 40 mutations, all killed |
+| 30 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
+| Every control has a test that fails when the control is broken | ✅ Verified — 60 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
 | 27 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
@@ -81,7 +81,7 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
 - [x] Deterministic reason codes covering all 27 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 40 controls in turn and requires a named test to go red for each
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 60 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
 - [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
 - [ ] An independent reviewer confirms the evaluator has no side effects
 
@@ -99,13 +99,14 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] Compensation planner for `COMPENSATABLE` vs `NON_REVERSIBLE` operations — a non-reversible operation escalates to a human rather than claiming a rollback
 - [x] Fault injection: crash, lost storage, stale time, full disk, power interruption, clock rollback, corrupted artifact — crash, I/O error, stale precondition, policy-epoch change, lost audit sink
 - [x] Transition tests for every illegal transition in the table — the table is checked for unreachable states as well as illegal ones
-- [x] 30 capsule conformance vectors, and 17 of the controls mutation-checked
+- [x] 30 capsule conformance vectors, and 37 of the controls mutation-checked (17 in Rust, 20 in Python)
+- [x] A second implementation of the capsule executor, so the capsule vectors are *agreed* rather than merely self-consistent — the Python reference model in `reference/capsule_reference.py`, written from the contract rather than from the Rust
 
 **Still open for Gate 2 exit:**
 
-- [ ] A second implementation of the capsule executor, so the capsule vectors are *agreed* rather than merely self-consistent
 - [ ] Faults the simulator does not yet model: full disk, clock rollback, corrupted artifact
 - [ ] The executor drives a simulated environment; nothing here proves that a real system can be rolled back
+- [ ] The vectors are read by two implementations of the same contract, and whoever writes the contract decides what "right" means. That is a strong check and not a proof
 
 ---
 

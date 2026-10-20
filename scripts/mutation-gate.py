@@ -73,24 +73,64 @@ def apply_mutation(path: Path, find: str, replace: str) -> int:
     return occurrences
 
 
-def run_test(package: str, test_file: str, test_name: str):
-    command = [
-        "cargo",
-        "test",
-        "-p",
-        package,
-        "--test",
-        test_file,
-        test_name,
-        "--",
-        "--exact",
-    ]
-    environment = dict(os.environ)
-    environment.setdefault("CARGO_TERM_COLOR", "never")
+def run_test(mutation):
+    """Runs the test that must catch this mutation.
+
+    The language follows the mutated file: a Rust file is checked by a Rust
+    test, a Python file by a Python one. The manifest does not have to say
+    which, and cannot say it wrongly.
+    """
+    if language_of(mutation) == "python":
+        # A cached bytecode file can shadow the mutated source. CPython
+        # invalidates a cache by the source's size and its modification time
+        # in whole seconds, so a mutation that leaves the size unchanged
+        # within the same second is read from the cache and never runs — the
+        # gate would report a control as untested when the control is fine,
+        # or credit a kill to a mutation that did nothing. The caches are
+        # removed and no new ones are written.
+        for directory in ("reference", "tests", "scripts"):
+            shutil.rmtree(ROOT / directory / "__pycache__", ignore_errors=True)
+        command = [sys.executable, "-B", "-m", "unittest", mutation["test"]]
+        environment = dict(os.environ)
+        environment["PYTHONPATH"] = str(ROOT / "reference")
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    else:
+        command = [
+            "cargo",
+            "test",
+            "-p",
+            mutation["package"],
+            "--test",
+            mutation["test_file"],
+            mutation["test"],
+            "--",
+            "--exact",
+        ]
+        environment = dict(os.environ)
+        environment.setdefault("CARGO_TERM_COLOR", "never")
     completed = subprocess.run(
         command, cwd=ROOT, env=environment, capture_output=True, text=True
     )
     return completed.returncode, completed.stdout + completed.stderr
+
+
+def language_of(mutation) -> str:
+    """The language a mutation is written in, which is the language of the
+    file it breaks."""
+    return "python" if mutation["file"].endswith(".py") else "rust"
+
+
+def is_invalid(mutation, output: str) -> bool:
+    """Whether the mutation failed to build rather than failed a test.
+
+    A mutation that does not compile proves nothing: the test never ran, so
+    nothing was shown about the control it was supposed to break.
+    """
+    if language_of(mutation) == "python":
+        markers = ("SyntaxError", "IndentationError", "ModuleNotFoundError", "ImportError")
+    else:
+        markers = ("error[", "could not compile")
+    return any(marker in output for marker in markers)
 
 
 def main() -> int:
@@ -115,7 +155,7 @@ def main() -> int:
             return 2
         mutations = selected
 
-    if shutil.which("cargo") is None:
+    if "rust" in {language_of(mutation) for mutation in mutations} and shutil.which("cargo") is None:
         print("cargo is not on PATH", file=sys.stderr)
         return 2
 
@@ -158,9 +198,7 @@ def main() -> int:
         try:
             occurrences = apply_mutation(path, mutation["find"], mutation["replace"])
             print(f"    mutated {mutation['file']} ({occurrences} occurrence(s))")
-            code, output = run_test(
-                mutation["package"], mutation["test_file"], mutation["test"]
-            )
+            code, output = run_test(mutation)
         finally:
             path.write_bytes(original)
             backup.unlink(missing_ok=True)
@@ -170,9 +208,9 @@ def main() -> int:
             survivors.append(identifier)
             print(f"    SURVIVED — {mutation['test']} stayed green. The control is not tested.")
             continue
-        if "error[" in output or "could not compile" in output:
+        if is_invalid(mutation, output):
             invalid.append(identifier)
-            print("    INVALID — the mutation does not compile. It proves nothing.")
+            print("    INVALID — the mutation does not build. It proves nothing.")
             print("    " + "\n    ".join(output.splitlines()[:12]))
             continue
         if mutation["test"] not in output:
@@ -184,6 +222,7 @@ def main() -> int:
             survivors.append(identifier)
             print(f"    SURVIVED — {mutation['test']} went red, but not about {expected!r}.")
             print("    A mutation caught by the wrong case proves nothing.")
+            print("    " + "\n    ".join(output.splitlines()[:24]))
             continue
         print(f"    killed by {mutation['test']} (mentions {expected!r})")
 

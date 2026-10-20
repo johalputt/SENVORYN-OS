@@ -257,8 +257,10 @@ impl OperationRegistry {
             merged.external_effects =
                 merged.external_effects.union(&entry.external_effects).cloned().collect();
             // The least reversible rule wins, because a caller must not be able
-            // to escape a strict rule by also matching a lax one.
-            merged.reversibility = merged.reversibility.min(entry.reversibility);
+            // to escape a strict rule by also matching a lax one. The ordering
+            // puts the least reversible last, so the stricter rule is the
+            // greater one.
+            merged.reversibility = merged.reversibility.max(entry.reversibility);
             // Only an operation that is idempotent under every matching rule
             // may be treated as idempotent.
             merged.idempotent = merged.idempotent && entry.idempotent;

@@ -94,11 +94,15 @@ jobs:
       - name: Run the Rust implementation against the shared SCP vectors
         run: cargo test -p senvoryn-scp --test conformance_vectors
 
-      - name: Run the capsule vectors
-        # These are checked by one implementation, not two. The SCP's vectors
-        # are agreed by the Rust and Python implementations; the capsule's are
-        # not, because there is no second implementation of the capsule
-        # executor to agree with. The gap is recorded in the README.
+      - name: Run the Python reference model against the shared capsule vectors
+        # The capsule vectors are agreed by two implementations, the same way
+        # the SCP vectors are: both read the same file and both must reach
+        # the state it names.
+        env:
+          PYTHONPATH: reference
+        run: python -m unittest tests.test_capsule_vectors -v
+
+      - name: Run the Rust implementation against the shared capsule vectors
         run: cargo test -p senvoryn-capsule --test conformance_vectors
 
   mutation-gate:

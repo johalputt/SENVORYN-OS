@@ -462,16 +462,24 @@ pub fn parse_utc_millis(text: &str) -> Result<i64, String> {
     {
         return Err(format!("{text:?} is not a UTC timestamp"));
     }
-    if bytes[19] != b'Z' {
+    // The `Z` is the last byte. A fractional part, if there is one, sits
+    // between the seconds and the `Z`, so the `Z` is not at a fixed offset.
+    // Reading it at a fixed offset rejects every timestamp that carries
+    // fractional seconds, and the fraction-handling code below would never
+    // be reached.
+    if bytes[bytes.len() - 1] != b'Z' {
         return Err(format!("{text:?} is not in UTC"));
     }
     let year = number(&bytes[0..4]).ok_or_else(|| format!("{text:?} has no year"))?;
+    if year < 1 {
+        return Err(format!("{text:?} is not a date"));
+    }
     let month = number(&bytes[5..7]).ok_or_else(|| format!("{text:?} has no month"))?;
     let day = number(&bytes[8..10]).ok_or_else(|| format!("{text:?} has no day"))?;
     let hour = number(&bytes[11..13]).ok_or_else(|| format!("{text:?} has no hour"))?;
     let minute = number(&bytes[14..16]).ok_or_else(|| format!("{text:?} has no minute"))?;
     let second = number(&bytes[17..19]).ok_or_else(|| format!("{text:?} has no second"))?;
-    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+    if !(1..=12).contains(&month) || day < 1 || day > days_in_month(year, month) {
         return Err(format!("{text:?} is not a date"));
     }
     if hour > 23 || minute > 59 || second > 59 {
@@ -496,6 +504,26 @@ pub fn parse_utc_millis(text: &str) -> Result<i64, String> {
     let days = days_from_civil(year, month, day);
     let seconds = days * 86_400 + hour * 3_600 + minute * 60 + second;
     Ok(seconds * 1_000 + millis)
+}
+
+/// How many days a month has, in the proleptic Gregorian calendar.
+///
+/// A date that does not exist — the thirtieth of February, or the
+/// twenty-ninth of February in a year that is not a leap year — is refused
+/// rather than rolled over into the next month. A capsule that names a time
+/// which never happened is malformed, and silently moving it would mean the
+/// executor compared the capsule against an instant its issuer never stated.
+fn days_in_month(year: i64, month: i64) -> i64 {
+    const LENGTHS: [i64; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if month == 2 && is_leap_year(year) {
+        return 29;
+    }
+    LENGTHS[(month - 1) as usize]
+}
+
+/// Whether a year has a twenty-ninth of February.
+fn is_leap_year(year: i64) -> bool {
+    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 /// The number of days since 1970-01-01 for a civil date.
