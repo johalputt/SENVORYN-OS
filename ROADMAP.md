@@ -21,8 +21,9 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
 | 55 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
-| 67 Rust tests pass | ✅ Verified (Rust stable) |
-| 30 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
+| 68 Rust tests pass | ✅ Verified (Rust stable) |
+| 31 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
+| Every control has a test that fails when the control is broken | ✅ Verified — 23 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
 | 27 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
@@ -79,6 +80,7 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
 - [x] Deterministic reason codes covering all 27 registry entries — cross-checked against the registry by both implementations
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 23 controls in turn and requires a named test to go red for each
 - [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
 - [ ] An independent reviewer confirms the evaluator has no side effects
 

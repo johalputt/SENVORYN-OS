@@ -133,6 +133,13 @@
       "expected": { "status": "DENY", "reason": "CAPABILITY_NOT_CURRENT" }
     },
     {
+      "id": "SCP-003-capability-not-yet-valid",
+      "requirement": "SCP-003",
+      "gate": 10,
+      "capability": { "not_before": 1100 },
+      "expected": { "status": "DENY", "reason": "CAPABILITY_NOT_CURRENT" }
+    },
+    {
       "id": "SCP-003-revoked-capability",
       "requirement": "SCP-003",
       "gate": 7,

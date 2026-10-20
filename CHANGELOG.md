@@ -25,12 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `senvoryn-canonical` — the Senvoryn Canonical JSON Profile `SCP-CJSON-0001`: a parser, an encoder, and limits that are checked before the allocation they bound.
   - `senvoryn-scp` — the SCP decision oracle: the sixteen validation gates, the capability model, the attenuation rule, the trusted Operation Registry merge, and the audit-event builder.
   - `senvoryn-cli` — a development tool that drives the oracle from files. It says in its own help that it is not an SCP.
-- 67 Rust tests, including a shared conformance-vector suite, seeded property tests, a deterministic fuzz harness over the canonical parser, and a registry-sync suite.
-- **Shared conformance vectors** (`conformance/vectors/vectors.json`) — 30 decision cases and 11 attenuation cases executed by *both* the Python model and the Rust implementation. CI fails if they produce a different decision or a different reason code.
+- 68 Rust tests, including a shared conformance-vector suite, seeded property tests, a deterministic fuzz harness over the canonical parser, and a registry-sync suite.
+- **Shared conformance vectors** (`conformance/vectors/vectors.json`) — 31 decision cases and 11 attenuation cases executed by *both* the Python model and the Rust implementation. CI fails if they produce a different decision or a different reason code.
+- **A mutation gate** (`scripts/mutation-gate.py`, `scripts/mutations.json`) — 23 controls are broken in turn and a *named* test is required to go red for each. A surviving mutation is a control no test enforces, and the gate fails. It found two real gaps the unit tests had missed: the "not yet valid" half of a capability's validity window had no shared vector, and the decision record's `effect_performed` field had no test.
 - Architecture Decision Records ADR-001 … ADR-011, adding the canonical JSON profile, the zero-dependency trusted core, the delegation-depth contradiction, and the object-resolution reason code.
 - Evidence ledger: requirement→test traceability matrix, local validation report, security claim ledger template, and a live claims ledger.
 - Threat model for the SCP decision path (first draft, not independently reviewed).
-- CI pipeline with eight jobs: contract tests on Python 3.12/3.13, a Rust format/lint/test/release job, a conformance-agreement job, schema validation, pack integrity (SHA-256), JSON lint, normative-language checks, dependency review, and YAML/link linting.
+- CI pipeline with ten jobs: contract tests on Python 3.12/3.13, a Rust format/lint/test/release job, a conformance-agreement job, a mutation-gate job, schema validation, pack integrity (SHA-256), JSON lint, normative-language checks, dependency review, and YAML/link linting.
 - Community health files: contributing guide, code of conduct, security policy, governance document, issue templates, pull request template, CODEOWNERS, and Dependabot configuration.
 - Repository verification scripts for POSIX shells and PowerShell.
 
@@ -47,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Rust oracle is a decision function. It is **not** an SCP: it resolves no resource against a filesystem, keeps no trust store, and writes no audit record.
 - The canonical parser is fuzzed; the envelope→request mapping is not.
 - No property-based test framework is used; the property tests are a seeded generator written for this repository.
+- The mutation gate covers 23 controls. It is not exhaustive: the capsule, installer, update and AI-broker gates have no implementation to mutate yet.
 - The delegation depth rule follows the specification's literal wording, which contradicts the capability schema's description of the field. The contradiction is recorded, not resolved ([ADR-010](decisions/ADR-010-delegation-depth-reading.md)).
 - The ADR numbering namespace collides between the Constitution's open-decisions register and the Core Contract Specification's ADRs — tracked as a Gate 0 blocker.
 - No artifact is signed, and no SBOM or release-signing ceremony exists yet.

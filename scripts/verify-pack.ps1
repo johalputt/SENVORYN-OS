@@ -7,6 +7,7 @@
       1. SHA-256 manifest integrity for the contract artifacts
       2. JSON Schema Draft 2020-12 validation
       3. The executable contract test suite
+      4. The internal link check
 
 .EXAMPLE
     pwsh -File scripts/verify-pack.ps1
@@ -31,11 +32,11 @@ function Write-Step {
     Write-Host ('-' * 60) -ForegroundColor DarkGray
 }
 
-Write-Step '1/3  Contract artifact integrity (SHA-256)'
+Write-Step '1/4  Contract artifact integrity (SHA-256)'
 & $python 'scripts/generate-checksums.py' --check
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Step '2/3  JSON Schema validation'
+Write-Step '2/4  JSON Schema validation'
 @'
 import json, sys
 from pathlib import Path
@@ -60,10 +61,16 @@ sys.exit(1 if failed else 0)
 '@ | & $python -
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Step '3/3  Contract test suite'
+Write-Step '3/4  Contract test suite'
 $env:PYTHONPATH = 'reference'
 & $python -m unittest discover -s tests -v
 $testExit = $LASTEXITCODE
+
+Write-Step '4/4  Internal link check'
+if ($testExit -eq 0) {
+    & $python 'scripts/check-links.py'
+    if ($LASTEXITCODE -ne 0) { $testExit = $LASTEXITCODE }
+}
 
 Write-Host ('-' * 60) -ForegroundColor DarkGray
 if ($testExit -eq 0) {
@@ -71,6 +78,10 @@ if ($testExit -eq 0) {
     Write-Host ''
     Write-Host 'Reminder: these checks validate the CONTRACT PACK only.'
     Write-Host 'They say nothing about an operating system, because none exists yet.'
+    Write-Host ''
+    Write-Host 'The mutation gate is not part of this suite: it needs a Rust toolchain'
+    Write-Host 'and several minutes. Run it separately with:'
+    Write-Host '    python scripts/mutation-gate.py'
 } else {
     Write-Host 'Verification FAILED.' -ForegroundColor Red
 }

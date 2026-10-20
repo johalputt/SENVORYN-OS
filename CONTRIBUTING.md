@@ -132,7 +132,7 @@ $env:PYTHONPATH = "reference"
 python -m unittest discover -s tests -v
 ```
 
-Expected: `Ran 29 tests ... OK`.
+Expected: `Ran 55 tests ... OK`.
 
 Run a single module or test:
 
@@ -140,6 +140,42 @@ Run a single module or test:
 PYTHONPATH=reference python -m unittest tests.test_scp_reference -v
 PYTHONPATH=reference python -m unittest tests.test_scp_reference.SCPReferenceTests.test_unknown_principal_denied -v
 ```
+
+### Run the Rust workspace
+
+```bash
+cargo test --workspace
+cargo fmt --all
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+### Break every control on purpose
+
+A control that has never been seen to fail on the thing it forbids has proved
+nothing. The mutation gate breaks each control in turn and requires a
+**named** test to go red:
+
+```bash
+python scripts/mutation-gate.py                    # all 23 controls
+python scripts/mutation-gate.py M11-risk-downgrade # one control
+python scripts/mutation-gate.py --list
+```
+
+A surviving mutation means a control no test enforces, and the gate fails.
+
+**If you add a gate, add its mutation in the same commit.** The rule that makes
+the gate meaningful is that a mutation must be caught by a *specific* test and
+a *specific* case — a mutation caught by the wrong one proves nothing. The three
+failure modes to avoid are:
+
+1. **A test that calls the function under test to judge its output** compares the
+   code with itself.
+2. **One seed tripping several rules** kills a mutation of none of them.
+3. **Two guards for one outcome** are individually unkillable by an outcome-only
+   assertion. Assert the specific reason code, not "it failed".
+
+The manifest lives in `scripts/mutations.json`. It is covered by the checksum
+manifest, so deleting a line from it is a visible change.
 
 ### Verify the shipped pack
 
@@ -153,12 +189,16 @@ pwsh -File scripts/verify-pack.ps1 # Windows
 | Job | Rule |
 |---|---|
 | `contract-tests` | All contract tests pass on Python 3.12 **and** 3.13 |
+| `rust` | The workspace is formatted, `clippy -D warnings` clean, tested, and builds in release mode |
+| `conformance-agreement` | The Rust and the Python implementation agree on every shared vector |
+| `mutation-gate` | Every control is broken in turn and a named test is required to go red |
 | `schema-validation` | Every schema is valid Draft 2020-12; fixtures conform; unknown fields are rejected |
 | `pack-integrity` | SHA-256 checksums match `SHA256SUMS.txt` |
 | `json-lint` | Every JSON document in the repo parses |
 | `normative-language` | Spec documents declare a status and contain no unmarked absolute security claims |
+| `link-check` | Every relative Markdown link resolves |
 
-**All five must pass before a pull request can be merged.**
+**All nine must pass before a pull request can be merged.**
 
 ---
 

@@ -11,7 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use senvoryn_canonical::{Value, parse};
 use senvoryn_scp::{
     AuditState, Budget, Capability, DecisionStatus, OperationEntry, OperationRegistry,
-    PolicyContext, Provenance, ReasonCode, Request, RiskTier, SystemMode, attenuate, evaluate,
+    PolicyContext, Provenance, ReasonCode, RecordDetails, Request, RiskTier, SystemMode, attenuate,
+    evaluate,
 };
 
 const VECTORS_JSON: &str = include_str!("../../../conformance/vectors/vectors.json");
@@ -314,6 +315,41 @@ fn every_case_names_the_requirement_it_covers() {
             "{id} expects a reason code that does not exist: {reason}"
         );
     }
+}
+
+#[test]
+fn a_decision_record_reports_that_no_effect_was_performed() {
+    // Effect separation is the sixteenth of the sixteen gates, and the
+    // decision record is where it is stated. The schema says `const: false`
+    // and the builder has no way to write anything else.
+    let document = vectors();
+    let base_request = document.get("request").expect("the vector file has a base request");
+    let base_capability =
+        document.get("capability").expect("the vector file has a base capability");
+    let base_context = document.get("context").expect("the vector file has a base context");
+    let base_registry =
+        document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
+    let registry = operation_registry(base_registry);
+    let request = request_from(base_request);
+    let capability = capability_from(base_capability);
+    let context = context_from(base_context, &registry);
+
+    let decision = evaluate(&request, Some(&capability), &context);
+    let record = decision.to_record(&RecordDetails {
+        decision_id: "decision:test:0001",
+        request_id: &request.request_id,
+        evaluated_at: "1970-01-01T00:00:00Z",
+        target_resource_id: &request.resource_id,
+        audit_ref: "audit:test:0001",
+        valid_until: None,
+        required_next_step: None,
+    });
+    assert_eq!(
+        record.get("effect_performed").and_then(Value::as_bool),
+        Some(false),
+        "the decision record reported an effect"
+    );
+    assert_eq!(record.get("status").and_then(Value::as_str), Some("PERMIT"));
 }
 
 #[test]

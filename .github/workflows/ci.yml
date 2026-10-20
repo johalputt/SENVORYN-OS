@@ -94,6 +94,22 @@ jobs:
       - name: Run the Rust implementation against the shared vectors
         run: cargo test -p senvoryn-scp --test conformance_vectors
 
+  mutation-gate:
+    name: Mutation gate (every control has a test that fails when it is broken)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Break each control and require a named test to go red
+        run: python scripts/mutation-gate.py
+
   schema-validation:
     name: JSON Schema validation
     runs-on: ubuntu-latest
@@ -205,37 +221,4 @@ jobs:
           python-version: "3.13"
 
       - name: Verify relative Markdown links resolve
-        run: |
-          python - <<'PY'
-          import re
-          import sys
-          from pathlib import Path
-
-          ROOT = Path(".")
-          LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
-          SKIP = ("http://", "https://", "mailto:", "#", "<")
-
-          failures = 0
-          checked = 0
-          for path in sorted(ROOT.rglob("*.md")):
-              if any(part in {".git", "node_modules"} for part in path.parts):
-                  continue
-              text = path.read_text(encoding="utf-8")
-              for target in LINK.findall(text):
-                  target = target.strip()
-                  if target.startswith(SKIP):
-                      continue
-                  target = target.split("#")[0].strip()
-                  if not target:
-                      continue
-                  checked += 1
-                  # Root-relative links (/FOO.md) resolve from the repo root;
-                  # everything else resolves relative to the containing file.
-                  resolved = (ROOT / target.lstrip("/")) if target.startswith("/") else (path.parent / target)
-                  if not resolved.exists():
-                      failures += 1
-                      print(f"FAIL  {path}: broken link -> {target}")
-
-          print(f"{checked - failures}/{checked} link(s) resolve")
-          sys.exit(1 if failures else 0)
-          PY
+        run: python scripts/check-links.py

@@ -27,3 +27,4 @@ UPD-001,Bad signature/downgrade rejected,UPD-001,artifact validation and downgra
 PRIV-002,Secrets absent from logs and crash bundle,PRIV-002,canary-secret scanning test required,PRIVACY,P0,Not implemented
 EVID-001,Every release claim has evidence,EVID-001,release-bundle audit required,RELEASE AUDIT,P0,Not implemented
 SCP-CJSON-0001,One byte encoding per signed value,ADR-008,crates/senvoryn-canonical/tests/profile.rs (37 clause tests); crates/senvoryn-canonical/tests/fuzz.rs (132000 mutated inputs); docs/canonical-json-profile.md,UNIT+FUZZ,P0,Prototype only — independent review outstanding
+SCP-MUT-001,Every control has a test that fails when the control is broken,EVID-001,scripts/mutation-gate.py with scripts/mutations.json (23 controls broken in turn; each requires a named test to go red),MUTATION,P0,Prototype only — the gate is not independent and does not cover the capsule installer update or AI-broker gates

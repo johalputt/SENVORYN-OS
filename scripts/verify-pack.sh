@@ -45,11 +45,11 @@ hr()  { printf '%s\n' "---------------------------------------------------------
 step() { hr; printf '>> %s\n' "$1"; hr; }
 
 # ---------------------------------------------------------------------------
-step "1/3  Contract artifact integrity (SHA-256)"
+step "1/4  Contract artifact integrity (SHA-256)"
 "$PYTHON" scripts/generate-checksums.py --check
 
 # ---------------------------------------------------------------------------
-step "2/3  JSON Schema validation"
+step "2/4  JSON Schema validation"
 "$PYTHON" - <<'PY'
 import json
 import sys
@@ -76,8 +76,12 @@ sys.exit(1 if failed else 0)
 PY
 
 # ---------------------------------------------------------------------------
-step "3/3  Contract test suite"
+step "3/4  Contract test suite"
 PYTHONPATH=reference "$PYTHON" -m unittest discover -s tests -v
+
+# ---------------------------------------------------------------------------
+step "4/4  Internal link check"
+"$PYTHON" scripts/check-links.py
 
 # ---------------------------------------------------------------------------
 hr
@@ -85,4 +89,8 @@ echo "Verification complete."
 echo
 echo "Reminder: these checks validate the CONTRACT PACK only."
 echo "They say nothing about an operating system, because none exists yet."
+echo
+echo "The mutation gate is not part of this suite: it needs a Rust toolchain"
+echo "and several minutes. Run it separately with:"
+echo "    python scripts/mutation-gate.py"
 hr

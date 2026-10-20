@@ -167,8 +167,9 @@ SENVORYN-OS/
 | `state-machines/` | Change Capsule lifecycle + system-mode transition tables | 2 |
 | `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 27 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; CLI fixtures | 5 |
-| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 30 cases + 11 attenuation cases |
+| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 31 cases + 11 attenuation cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, development CLI | 3 crates, 0 third-party dependencies |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 23 mutations |
 | `decisions/` | Architecture Decision Records with open questions | 11 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
@@ -193,8 +194,11 @@ pip install -r requirements-dev.txt
 # Run the contract test suite (55 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (67 tests)
+# Run the Rust workspace (68 tests)
 cargo test --workspace
+
+# Prove every control has a test that fails when it is broken
+python scripts/mutation-gate.py
 ```
 
 Expected tail of output:
@@ -234,6 +238,28 @@ decision or a different reason code for the same case. That is the mechanism tha
 stops a prototype and an implementation from becoming two authorities on the same
 question.
 
+### The mutation gate
+
+A control that has never been seen to fail on the thing it forbids has proved
+nothing. The mutation gate breaks each control in turn and requires a **named**
+test to go red:
+
+```bash
+python scripts/mutation-gate.py
+```
+
+Twenty-three controls are covered — every one of the sixteen validation gates
+that the oracle implements, plus three properties of the canonical JSON profile.
+A surviving mutation is a control that no test enforces, and the gate fails. It
+found two gaps the unit tests had missed: the "not yet valid" half of a
+capability's validity window had no shared vector, and the decision record's
+`effect_performed` field was not asserted anywhere.
+
+The rules that make the gate meaningful are in
+[`CONTRIBUTING.md`](CONTRIBUTING.md): a mutation must be caught by a *specific*
+test and a *specific* case, and a mutation that does not compile is reported as
+invalid rather than counted as a kill.
+
 ### Verify the shipped pack
 
 ```bash
@@ -253,6 +279,7 @@ Every push and pull request runs [`.github/workflows/ci.yml`](.github/workflows/
 | `contract-tests` | All 55 contract/unit tests pass on both interpreters |
 | `rust` | The Rust workspace is formatted, lint-clean under `clippy -D warnings`, fully tested, and builds in release mode |
 | `conformance-agreement` | The Rust and the Python implementation produce the same decision and the same reason code for every shared vector |
+| `mutation-gate` | Every control is broken in turn and a **named** test is required to go red. A surviving mutation is a control no test enforces |
 | `schema-validation` | All 14 schemas are valid Draft 2020-12 and fixtures conform |
 | `pack-integrity` | SHA-256 checksums of the shipped contract artifacts match `SHA256SUMS.txt` |
 | `json-lint` | Every JSON document in the repository parses |
@@ -365,7 +392,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 55/55 Python tests passing · 67/67 Rust tests passing · 30/30 shared vectors agreed · 2/2 state machines structurally valid · 27/27 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 55/55 Python tests passing · 68/68 Rust tests passing · 31/31 shared vectors agreed · 23/23 mutations killed · 2/2 state machines structurally valid · 27/27 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 
@@ -481,6 +508,7 @@ We cannot honestly promise absolute security, absolute privacy, no backdoor unde
 6. **"Full control"** does not authorize violating another vendor's technical protections, licenses, or lawful access controls.
 7. **"Lightweight and superfast" must be measured.** Isolation, virtualization, translation, and local models all have costs. We publish profile-specific trade-offs instead of pretending overhead is zero.
 8. **"New from the foundation" does not mean inventing new cryptography.** Novelty belongs in architecture, control contracts, and user experience; core cryptographic constructions stay publicly scrutinized.
+9. **The mutation gate proves the controls it names and no others.** Twenty-three controls are broken in turn today. The capsule, installer, update and AI-broker controls have no implementation to break yet, and a mutation that the project wrote is not an independent review.
 
 Complete list: [Constitution Article 44](docs/constitution/SENVORYN_OS_Constitution_v0.6.md).
 
@@ -493,6 +521,7 @@ Complete list: [Constitution Article 44](docs/constitution/SENVORYN_OS_Constitut
 | [Core Contract Specification](docs/specs/SENVORYN_Core_Contract_Spec_v0.1.md) | `SENVORYN-CORE-SPEC-0001` v0.1.0 | Normative engineering contract: data contracts, state machines, validation order, failure behavior, testable obligations |
 | [Founding Constitution](docs/constitution/SENVORYN_OS_Constitution_v0.6.md) | v0.6.0 | Top-level design authority: 30 constitutional invariants, architecture, governance, acceptance criteria |
 | [Canonical JSON Profile](docs/canonical-json-profile.md) | `SCP-CJSON-0001` v1 | The one byte encoding for every signed, hashed, or compared protocol object |
+| [Mutation set](scripts/mutations.json) | `senvoryn.mutation-set.v1` | One break per control, and the named test that must catch it |
 | [Architecture overview](ARCHITECTURE.md) | — | Layers, trust boundaries, TCB inventory, dependency direction rules |
 | [Roadmap](ROADMAP.md) | — | Gates 0–8 with deliverables and exit criteria |
 | [Glossary](GLOSSARY.md) | — | Normative vocabulary across both documents |

@@ -37,6 +37,7 @@ INCLUDE_DIRS = (
     "reference",
     "tests",
     "evidence",
+    "conformance",
     "docs/specs",
     "docs/constitution",
 )
@@ -53,10 +54,22 @@ INCLUDE_DIRS = (
 #   README.md, ROADMAP.md, CONTRIBUTING.md, … — living documents that change
 #       often and are protected by review rather than by a checksum.
 #
+#   scripts/*.py — the verification tools themselves. They are covered by
+#       review, not by a checksum: a checksum of a tool that computes the
+#       checksums would only prove the file has not changed since it was
+#       last hashed, which review already covers. The one script file that
+#       *is* a contract artifact is listed below.
+#
 # The manifest protects the artifacts whose *meaning* must not drift silently:
 # the schemas, the state machines, the denial registry, the reference model,
-# the tests, the decision records, the evidence, and the normative specs.
-INCLUDE_FILES = ()
+# the tests, the decision records, the evidence, the shared conformance
+# vectors, and the normative specs.
+INCLUDE_FILES = (
+    # The mutation set names every control the mutation gate breaks and the
+    # test that must catch each one. Removing a line from it would silently
+    # reduce the number of controls the project believes it has proved.
+    "scripts/mutations.json",
+)
 
 # Never hashed: build noise, caches, editor droppings.
 EXCLUDE_DIR_NAMES = {"__pycache__", ".git", ".mypy_cache", ".pytest_cache", ".ruff_cache"}
