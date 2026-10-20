@@ -25,8 +25,17 @@ const CAPSULE_JSON: &str = include_str!("../../../../examples/capsule.sample.jso
 /// would pass for the wrong reason, which is the failure mode the mutation
 /// gate exists to catch.
 pub fn capsule_text_with(anchor: &str, replacement: &str) -> String {
-    assert!(CAPSULE_JSON.contains(anchor), "the sample capsule no longer contains {anchor:?}");
-    CAPSULE_JSON.replacen(anchor, replacement, 1)
+    capsule_text_with_all(&[(anchor, replacement)])
+}
+
+/// The sample capsule's JSON text with several fields replaced.
+pub fn capsule_text_with_all(replacements: &[(&str, &str)]) -> String {
+    let mut text = CAPSULE_JSON.to_owned();
+    for (anchor, replacement) in replacements {
+        assert!(text.contains(anchor), "the sample capsule no longer contains {anchor:?}");
+        text = text.replacen(anchor, replacement, 1);
+    }
+    text
 }
 
 /// The idempotency key of the capsule's first step.

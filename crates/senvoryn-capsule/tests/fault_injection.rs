@@ -305,14 +305,12 @@ fn a_capsule_whose_window_closes_during_the_plan_does_not_land_the_next_effect()
     // The window is checked before every step, not only at the boundaries. A
     // step that lands an effect after the window closed is the case the
     // window exists to prevent.
-    let text = common::capsule_text_with(
-        "\"expires_at\": \"2026-01-01T01:00:00Z\"",
-        "\"expires_at\": \"2026-01-01T00:00:30Z\"",
-    );
-    let document = senvoryn_canonical::parse(&text).expect("the capsule is canonical");
-    let capsule =
-        senvoryn_capsule::ChangeCapsule::from_value(&document).expect("the capsule parses");
-    let mut executor = senvoryn_capsule::Executor::new(capsule, registry(), environment())
+    // The capsule is entitled to an hour, and the plan starts thirty seconds
+    // before that hour is over. A capsule that waited in a queue looks exactly
+    // like this.
+    let mut environment = environment();
+    environment.now_ms = 1_767_225_600_000 + 3_570_000;
+    let mut executor = senvoryn_capsule::Executor::new(capsule(), registry(), environment)
         .expect("the executor builds");
     let outcome = executor.run(&authorization());
     assert!(

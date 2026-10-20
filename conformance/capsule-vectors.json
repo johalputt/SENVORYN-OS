@@ -378,12 +378,21 @@
     },
     {
       "id": "CC-035-expired-under-the-transaction",
-      "control": "A capsule whose validity window closes while the plan is running does not get to land the next effect.",
-      "capsule_overrides": {
-        "expires_at": "2026-01-01T00:00:30Z"
-      },
+      "control": "A capsule whose validity window closes while the plan is running does not get to land the next effect. The plan starts late inside a window the capsule is entitled to, which is what a capsule that waited in a queue looks like.",
       "expected_state": "ROLLED_BACK",
-      "expected_reason_contains": "validity window closed while the plan was running"
+      "expected_reason_contains": "validity window closed while the plan was running",
+      "environment_overrides": {
+        "now_ms": 1767229170000
+      }
+    },
+    {
+      "id": "CC-036-budget-outlives-the-window",
+      "control": "A capsule whose own budget outlasts its own validity window contradicts itself, and a capsule that contradicts itself is refused before anything is staged.",
+      "capsule_overrides": {
+        "budget.duration_ms": 7200000
+      },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not fit inside its validity window"
     }
   ]
 }

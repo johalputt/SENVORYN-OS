@@ -39,6 +39,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | [ADR-013](ADR-013-capsule-pre-effect-failure-transitions.md) | The pre-effect failure transitions the capsule state table was missing | Proposed | 2 |
 | [ADR-014](ADR-014-capsule-two-implementations.md) | The Change Capsule executor has two implementations | Proposed | 3 |
 | [ADR-015](ADR-015-capsule-validity-window-and-a-moving-world.md) | The capsule's validity window is a boundary, and the world moves | Proposed | 3 |
+| [ADR-016](ADR-016-operation-registry-limits-epoch-and-freshness.md) | The Operation Registry's limits, its epoch, and its freshness | Proposed | 3 |
 
 ---
 
@@ -60,13 +61,15 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | **012** | A capsule's timestamps are parsed once, at the boundary, by a strict UTC-only parser, and the wire string is kept for the evidence. |
 | **013** | The Change Capsule state table gains the pre-effect failure transitions the specification requires, so `FAILED` is reachable. |
 | **014** | The Change Capsule executor is implemented twice — in Rust and in Python — and held to one shared vector file, so the vectors are an agreement rather than a transcript. |
+| **015** | The capsule's validity window is a boundary, not a one-time check: the clock is read before every step, a clock that moves backwards ends the transaction, and a capsule cannot be executed before it was issued. |
+| **016** | The registry's limits are per operation and the capsule's budget is a total for the plan; the registry must be the registry for the epoch in force, and it must carry a validity window. |
 
 ---
 
 ## Writing a new ADR
 
 ```bash
-cp decisions/ADR-XXX-template.md decisions/ADR-016-<slug>.md
+cp decisions/ADR-XXX-template.md decisions/ADR-017-<slug>.md
 ```
 
 Fill in every section. The **Context** section is the one that matters most — it must explain what constraint makes the obvious solution wrong. An ADR without a real constraint is a design note.

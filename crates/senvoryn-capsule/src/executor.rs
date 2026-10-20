@@ -286,6 +286,22 @@ impl Executor {
         if self.capsule.expires_at_ms <= now {
             return Some(self.expire("the capsule's validity window has closed"));
         }
+        // The capsule's own claims have to agree with one another. It says
+        // the plan takes at most `budget.duration_ms`, and it says it is only
+        // valid until `expires_at`. A plan whose own bound outlasts its own
+        // window cannot finish inside the authority it was issued under, so
+        // the capsule contradicts itself. This is a consistency check, not a
+        // policy one: it needs no clock, and it is checked at validation so
+        // the operator learns before anything is staged.
+        if self.capsule.issued_at_ms + self.capsule.budget.duration_ms as i64
+            > self.capsule.expires_at_ms
+        {
+            return Some(self.reject(&format!(
+                "the capsule's budget of {}ms does not fit inside its validity window of {}ms",
+                self.capsule.budget.duration_ms,
+                self.capsule.expires_at_ms - self.capsule.issued_at_ms
+            )));
+        }
         for step in &self.capsule.steps {
             let Some(entry) = self.registry.effective(&step.operation) else {
                 return Some(self.reject(&format!(

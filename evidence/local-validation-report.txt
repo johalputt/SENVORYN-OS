@@ -11,13 +11,13 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 91 passed, 0 failed.
-- Rust workspace tests: 111 passed, 0 failed.
+- Python contract tests: 95 passed, 0 failed.
+- Rust workspace tests: 117 passed, 0 failed.
 - Shared conformance vectors: 31 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
   prototype and the implementation from becoming two authorities on the same question.
-- Change Capsule vectors: 35 cases executed by the Rust implementation AND by the Python
+- Change Capsule vectors: 36 cases executed by the Rust implementation AND by the Python
   reference model, covering the registry's authority over risk and approval
   requirements, the digest binding of the decision and its approvals, the version and
   epoch checks, the preconditions, the budget, the mandatory postconditions, the
@@ -62,8 +62,8 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 80 controls broken in turn, each requiring a named test to go red
-  because of that break. 80 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 93 controls broken in turn, each requiring a named test to go red
+  because of that break. 93 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
 

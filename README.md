@@ -152,8 +152,8 @@ SENVORYN-OS/
 ├── conformance/capsule-vectors.json  # Change Capsule vectors — Rust implementation only
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
-├── tests/                       # 91 executable contract tests
-├── decisions/                   # ADR-001 … ADR-015
+├── tests/                       # 97 executable contract tests
+├── decisions/                   # ADR-001 … ADR-016
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
 │
@@ -169,10 +169,10 @@ SENVORYN-OS/
 | `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 27 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
 | `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 31 cases + 11 attenuation cases |
-| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 35 cases |
+| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 36 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 80 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 15 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 93 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 16 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -193,10 +193,10 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (91 tests)
+# Run the contract test suite (97 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (111 tests)
+# Run the Rust workspace (117 tests)
 cargo test --workspace
 
 # Prove every control has a test that fails when it is broken
@@ -263,6 +263,13 @@ failed write was recorded as a write that landed, and the compensation never
 looked at the material it was about to use. See
 [ADR-015](decisions/ADR-015-capsule-validity-window-and-a-moving-world.md).
 
+The gate has also found controls that were **pointed at the wrong test**. Three
+of the budget and registry controls were named after a test that exercised only
+two of them, so the third survived the gate — correctly. A control that a test
+does not reach is a control the test does not enforce, however carefully the
+test is written. Each of them now has a test of its own. See
+[ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md).
+
 ### The mutation gate
 
 A control that has never been seen to fail on the thing it forbids has proved
@@ -273,9 +280,9 @@ test to go red:
 python scripts/mutation-gate.py
 ```
 
-Eighty controls are covered — every one of the sixteen validation gates that the
-oracle implements, three properties of the canonical JSON profile, twenty-seven
-controls of the Change Capsule executor in Rust, and twenty-nine of them in the
+Ninety-three controls are covered — every one of the sixteen validation gates that the
+oracle implements, three properties of the canonical JSON profile, thirty-four
+controls of the Change Capsule executor in Rust, and thirty-six of them in the
 Python reference model. A surviving mutation is a control that no test enforces,
 and the gate fails.
 

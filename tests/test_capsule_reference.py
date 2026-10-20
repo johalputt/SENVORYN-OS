@@ -52,6 +52,19 @@ def _load(path):
         return json.load(handle)
 
 
+def _set_path(document, path, value):
+    """Sets a value at a dotted path, where a numeric part is an index."""
+    parts = path.split(".")
+    current = document
+    for part in parts[:-1]:
+        current = current[int(part)] if isinstance(current, list) else current[part]
+    last = parts[-1]
+    if isinstance(current, list):
+        current[int(last)] = value
+    else:
+        current[last] = value
+
+
 def _base_capsule():
     return load_capsule(_load(BASE_CAPSULE_PATH))
 
@@ -383,6 +396,123 @@ class ExecutorTests(unittest.TestCase):
         self.assertIn("does not permit the capsule", outcome.reason)
 
 
+class ValidationTests(unittest.TestCase):
+    """The controls a capsule must satisfy before anything is staged.
+
+    The shared vectors say what the outcome is. These say which rule produced
+    it, so a change to one rule cannot be absorbed by a different one.
+    """
+
+    def _run(self, replacements):
+        document = _load(BASE_CAPSULE_PATH)
+        for path, value in replacements:
+            _set_path(document, path, value)
+        executor = Executor(
+            load_capsule(document), load_registry(), _base_environment(), machine=load_state_machine()
+        )
+        return executor.run(_authorization())
+
+    def test_a_capsule_whose_budget_outlasts_its_window_is_refused(self):
+        # The capsule's own claims have to agree with one another. It says the
+        # plan takes at most `budget.duration_ms`, and it says it is only valid
+        # until `expires_at`. A plan whose own bound outlasts its own window
+        # cannot finish inside the authority it was issued under, so the
+        # capsule contradicts itself -- and a capsule that contradicts itself
+        # is refused before anything is staged.
+        outcome = self._run([("budget.duration_ms", 7_200_000)])
+        self.assertIn(
+            "does not fit inside its validity window",
+            outcome.reason,
+            "a capsule whose budget outlasts its window must be refused, and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+
+    def test_a_capsule_whose_budget_exactly_fills_its_window_is_admitted(self):
+        # The boundary of the check above: a budget that exactly fills the
+        # window is not a budget that outlasts it. A capsule that asks for
+        # every millisecond it was granted has not asked for too much.
+        #
+        # The window is shortened to match the registry's combined allowance,
+        # so that the budget is limited by the window rather than by the
+        # registry.
+        outcome = self._run(
+            [
+                ("expires_at", "2026-01-01T00:01:30Z"),
+                ("budget.duration_ms", 90_000),
+            ]
+        )
+        self.assertEqual(
+            outcome.final_state,
+            State.COMMITTED,
+            "a capsule whose budget exactly fills its window is admitted, "
+            "and the reason must not refuse it",
+        )
+
+    def test_a_capsule_whose_budget_does_not_cover_its_steps_is_refused(self):
+        # The budget is the plan's own bound. A plan that asks for more time
+        # than its budget allows is a plan that does not fit inside the
+        # authority it asked for.
+        outcome = self._run([("budget.duration_ms", 20_000)])
+        self.assertIn(
+            "does not cover its steps",
+            outcome.reason,
+            "a capsule whose budget does not cover its steps must be refused, "
+            "and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+
+    def test_a_capsule_whose_budget_exceeds_the_registry_allowance_is_refused(self):
+        # The registry bounds how long the operations a plan performs may
+        # run, and the plan's budget cannot outlast that. The allowance is the
+        # sum of the per-operation bounds the plan actually uses.
+        outcome = self._run([("budget.duration_ms", 100_000)])
+        self.assertIn(
+            "exceeds the 90000ms its operations are allowed",
+            outcome.reason,
+            "a capsule whose budget exceeds the registry's allowance must be refused, "
+            "and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+
+    def test_a_step_may_not_run_longer_than_the_registry_allows(self):
+        # The registry's `max_duration_ms` bounds one invocation of one
+        # operation. It is not the capsule's budget, and it is not the plan's
+        # total.
+        outcome = self._run([("steps.0.timeout_ms", 90_000)])
+        self.assertIn(
+            "but the registry allows 60000ms",
+            outcome.reason,
+            "a step longer than the registry allows must be refused, and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+
+    def test_the_registry_counts_each_operation_and_the_capsule_counts_the_plan(self):
+        # The registry's `max_operation_count` says how many times *one*
+        # operation may be performed. The capsule's `budget.operation_count`
+        # says how many operations the *plan* may perform. Neither number
+        # means the other one's thing, so the two are not compared to each
+        # other.
+        outcome = self._run(
+            [("steps.1.operation", "write"), ("steps.1.risk_tier", "R2")]
+        )
+        self.assertIn(
+            "but the registry allows 1",
+            outcome.reason,
+            "an operation performed more often than the registry allows must be refused, "
+            "and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+
+        outcome = self._run([("budget.operation_count", 1)])
+        self.assertIn(
+            "the capsule's budget covers 1 operation(s) but the plan has 2 step(s)",
+            outcome.reason,
+            "a plan with more steps than the capsule's budget covers must be refused, "
+            "and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+
+
 class WorldChangeTests(unittest.TestCase):
     """The controls that have to notice the world moving under the transaction.
 
@@ -487,12 +617,15 @@ class WorldChangeTests(unittest.TestCase):
 
     def test_a_capsule_whose_window_closes_during_the_plan_does_not_land_the_next_effect(self):
         # The window is checked before every step, not only at the boundaries.
-        document = _load(BASE_CAPSULE_PATH)
-        document["expires_at"] = "2026-01-01T00:00:30Z"
+        # The capsule is entitled to an hour, and the plan starts thirty
+        # seconds before that hour is over. A capsule that waited in a queue
+        # looks exactly like this.
+        environment = _base_environment()
+        environment.now_ms = 1_767_225_600_000 + 3_570_000
         executor = Executor(
-            load_capsule(document),
+            _base_capsule(),
             load_registry(),
-            _base_environment(),
+            environment,
             machine=load_state_machine(),
         )
         outcome = executor.run(_authorization())

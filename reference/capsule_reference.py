@@ -922,6 +922,22 @@ class Executor:
             raise self._reject("the capsule has not been issued yet")
         if self._capsule.expires_at_ms <= now:
             raise self._expire("the capsule's validity window has closed")
+        # The capsule's own claims have to agree with one another. It says the
+        # plan takes at most `budget.duration_ms`, and it says it is only valid
+        # until `expires_at`. A plan whose own bound outlasts its own window
+        # cannot finish inside the authority it was issued under, so the
+        # capsule contradicts itself. This is a consistency check, not a policy
+        # one: it needs no clock, and it is checked at validation so the
+        # operator learns before anything is staged.
+        if (
+            self._capsule.issued_at_ms + self._capsule.budget_duration_ms
+            > self._capsule.expires_at_ms
+        ):
+            raise self._reject(
+                f"the capsule's budget of {self._capsule.budget_duration_ms}ms does not fit "
+                f"inside its validity window of "
+                f"{self._capsule.expires_at_ms - self._capsule.issued_at_ms}ms"
+            )
 
         for step in self._capsule.steps:
             entry = self._registry.effective(step.operation)

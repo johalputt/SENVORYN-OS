@@ -907,6 +907,150 @@
       "replace": "            pass",
       "test": "tests.test_capsule_reference.WorldChangeTests.test_recovery_material_that_becomes_corrupt_cannot_undo_the_effect",
       "expect_output_contains": "a compensation needs intact recovery material"
+    },
+    {
+      "id": "CC-executor-budget-fits-the-window",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "crates/senvoryn-capsule/src/executor.rs",
+      "find": "        if self.capsule.issued_at_ms + self.capsule.budget.duration_ms as i64\n            > self.capsule.expires_at_ms\n        {",
+      "replace": "        if false {",
+      "test": "a_capsule_whose_budget_outlasts_its_window_is_refused",
+      "expect_output_contains": "a capsule whose budget outlasts its window must be refused",
+      "package": "senvoryn-capsule",
+      "test_file": "validation"
+    },
+    {
+      "id": "CC-executor-budget-boundary",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "crates/senvoryn-capsule/src/executor.rs",
+      "find": "            > self.capsule.expires_at_ms\n",
+      "replace": "            >= self.capsule.expires_at_ms\n",
+      "test": "a_capsule_whose_budget_exactly_fills_its_window_is_admitted",
+      "expect_output_contains": "a capsule whose budget exactly fills its window is admitted",
+      "package": "senvoryn-capsule",
+      "test_file": "validation"
+    },
+    {
+      "id": "CC-executor-registry-max-duration",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "crates/senvoryn-capsule/src/executor.rs",
+      "find": "                if step.timeout_ms > maximum {",
+      "replace": "                if false {",
+      "test": "a_step_may_not_run_longer_than_the_registry_allows",
+      "expect_output_contains": "a step longer than the registry allows must be refused",
+      "package": "senvoryn-capsule",
+      "test_file": "validation"
+    },
+    {
+      "id": "CC-executor-registry-max-operation-count",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "crates/senvoryn-capsule/src/executor.rs",
+      "find": "                if uses > maximum {",
+      "replace": "                if false {",
+      "test": "the_registry_counts_each_operation_and_the_capsule_counts_the_plan",
+      "expect_output_contains": "an operation performed more often than the registry allows must be refused",
+      "package": "senvoryn-capsule",
+      "test_file": "validation"
+    },
+    {
+      "id": "CC-executor-capsule-operation-count",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "crates/senvoryn-capsule/src/executor.rs",
+      "find": "        if self.capsule.budget.operation_count < self.capsule.steps.len() as u64 {",
+      "replace": "        if false {",
+      "test": "the_registry_counts_each_operation_and_the_capsule_counts_the_plan",
+      "expect_output_contains": "a plan with more steps than the capsule's budget covers must be refused",
+      "package": "senvoryn-capsule",
+      "test_file": "validation"
+    },
+    {
+      "id": "CC-executor-budget-duration",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "crates/senvoryn-capsule/src/executor.rs",
+      "find": "        if self.capsule.budget.duration_ms < planned {",
+      "replace": "        if false {",
+      "test": "a_capsule_whose_budget_does_not_cover_its_steps_is_refused",
+      "expect_output_contains": "a capsule whose budget does not cover its steps must be refused",
+      "package": "senvoryn-capsule",
+      "test_file": "validation"
+    },
+    {
+      "id": "CC-executor-registry-allowance",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "crates/senvoryn-capsule/src/executor.rs",
+      "find": "        if self.capsule.budget.duration_ms > allowance {",
+      "replace": "        if false {",
+      "test": "a_capsule_whose_budget_exceeds_the_registry_allowance_is_refused",
+      "expect_output_contains": "a capsule whose budget exceeds the registry's allowance must be refused",
+      "package": "senvoryn-capsule",
+      "test_file": "validation"
+    },
+    {
+      "id": "CC-py-budget-fits-the-window",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "reference/capsule_reference.py",
+      "find": "        if (\n            self._capsule.issued_at_ms + self._capsule.budget_duration_ms\n            > self._capsule.expires_at_ms\n        ):",
+      "replace": "        if False:",
+      "test": "tests.test_capsule_reference.ValidationTests.test_a_capsule_whose_budget_outlasts_its_window_is_refused",
+      "expect_output_contains": "a capsule whose budget outlasts its window must be refused"
+    },
+    {
+      "id": "CC-py-registry-max-duration",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "reference/capsule_reference.py",
+      "find": "if entry.max_duration_ms is not None and step.timeout_ms > entry.max_duration_ms:",
+      "replace": "if entry.max_duration_ms is not None and False:",
+      "test": "tests.test_capsule_reference.ValidationTests.test_a_step_may_not_run_longer_than_the_registry_allows",
+      "expect_output_contains": "a step longer than the registry allows must be refused"
+    },
+    {
+      "id": "CC-py-registry-max-operation-count",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "reference/capsule_reference.py",
+      "find": "if uses > entry.max_operation_count:",
+      "replace": "if False:",
+      "test": "tests.test_capsule_reference.ValidationTests.test_the_registry_counts_each_operation_and_the_capsule_counts_the_plan",
+      "expect_output_contains": "an operation performed more often than the registry allows must be refused"
+    },
+    {
+      "id": "CC-py-capsule-operation-count",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "reference/capsule_reference.py",
+      "find": "if self._capsule.budget_operation_count < len(self._capsule.steps):",
+      "replace": "if False:",
+      "test": "tests.test_capsule_reference.ValidationTests.test_the_registry_counts_each_operation_and_the_capsule_counts_the_plan",
+      "expect_output_contains": "a plan with more steps than the capsule's budget covers must be refused"
+    },
+    {
+      "id": "CC-py-budget-duration",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "reference/capsule_reference.py",
+      "find": "if self._capsule.budget_duration_ms < planned:",
+      "replace": "if False:",
+      "test": "tests.test_capsule_reference.ValidationTests.test_a_capsule_whose_budget_does_not_cover_its_steps_is_refused",
+      "expect_output_contains": "a capsule whose budget does not cover its steps must be refused"
+    },
+    {
+      "id": "CC-py-registry-allowance",
+      "gate": 2,
+      "control": "The capsule's budget and the operation registry's limits are reconciled: the registry bounds one operation, the capsule's budget bounds the plan, and the two are not the same number.",
+      "file": "reference/capsule_reference.py",
+      "find": "if self._capsule.budget_duration_ms > allowance:",
+      "replace": "if False:",
+      "test": "tests.test_capsule_reference.ValidationTests.test_a_capsule_whose_budget_exceeds_the_registry_allowance_is_refused",
+      "expect_output_contains": "a capsule whose budget exceeds the registry's allowance must be refused"
     }
   ]
 }
