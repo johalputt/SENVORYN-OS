@@ -40,7 +40,23 @@ INCLUDE_DIRS = (
     "docs/specs",
     "docs/constitution",
 )
-INCLUDE_FILES = ("requirements-dev.txt",)
+
+# Deliberately NOT covered by the manifest:
+#
+#   requirements-dev.txt — this is a dependency manifest, not a contract
+#       artifact. It changes whenever a dependency is updated (including
+#       automatically, by Dependabot), so including it would make routine
+#       dependency bumps look like tampering. Dependency integrity is handled
+#       by the dependency-review CI job and the release SBOM / license
+#       inventory instead.
+#
+#   README.md, ROADMAP.md, CONTRIBUTING.md, … — living documents that change
+#       often and are protected by review rather than by a checksum.
+#
+# The manifest protects the artifacts whose *meaning* must not drift silently:
+# the schemas, the state machines, the denial registry, the reference model,
+# the tests, the decision records, the evidence, and the normative specs.
+INCLUDE_FILES = ()
 
 # Never hashed: build noise, caches, editor droppings.
 EXCLUDE_DIR_NAMES = {"__pycache__", ".git", ".mypy_cache", ".pytest_cache", ".ruff_cache"}
