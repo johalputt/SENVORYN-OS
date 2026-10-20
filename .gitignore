@@ -1,0 +1,163 @@
+# ---------------------------------------------------------------------------
+# Senvoryn OS — .gitignore
+# ---------------------------------------------------------------------------
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Test / coverage / type-check caches
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.hypothesis/
+*.cover
+nosetests.xml
+
+# Type-checkers / linters
+.mypy_cache/
+pyrightconfig.json
+
+# Editors and IDEs
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.fleet/
+.zed/
+
+# OS noise
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Build artifacts — never commit a built artifact without provenance
+/build/
+/out/
+/dist/
+/target/
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+*.iso
+*.img
+
+# Keys, secrets and credentials — NEVER commit these
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.asc
+*.gpg
+*.kdbx
+id_rsa*
+id_ed25519*
+.env
+.env.*
+!.env.example
+secrets/
+!secrets/.gitkeep
+credentials.json
+*_rsa
+*_rsa.pub
+
+# Signing material
+*.sig
+*.asc.sig
+release-keys/
+
+# Local scratch and analysis output
+scratch/
+tmp/
+*.local
+*.log
+!evidence/*.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-level dumps
+*.dmp
+*.core
+core
+crash.dmp
+
+# ---------------------------------------------------------------------------
+# Senvoryn-specific
+# ---------------------------------------------------------------------------
+
+# Reference model and generated model artifacts
+reference/__pycache__/
+reference/*.pyc
+
+# Local policy caches (never commit a policy cache — it is security state)
+policy-cache/
+*.policy-cache
+
+# Generated certificates and machine profiles (may leak host identity)
+machine-profiles/local-*
+certs/local-*
+
+# Compatibility guest images (large, separately licensed, not redistributable here)
+guests/
+*.qcow2
+*.img.vhdx
+
+# Reproducibility and build attestations are PUBLISHED, not ignored.
+# Keep them tracked:
+#   release/reproducibility-report.json
+#   release/attestations/
+#   release/sbom.json
+
+# Benchmark raw data is published where safe; large raw dumps go here.
+benchmarks/raw/
+benchmarks/*.pcap

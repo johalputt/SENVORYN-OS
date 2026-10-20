@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/johalputt/SENVORYN-OS/security/advisories/new
+    about: Report privately and confidentially. Do not open a public issue for a vulnerability — see SECURITY.md for triage criteria and response targets.
+  - name: Governance questions
+    url: https://github.com/johalputt/SENVORYN-OS/discussions
+    about: Ask about process, roles, voting, and how decisions get made.
+  - name: Question or discussion
+    url: https://github.com/johalputt/SENVORYN-OS/discussions
+    about: Ask a question about the specification, the model, or the roadmap.
+  - name: Contributing guide
+    url: https://github.com/johalputt/SENVORYN-OS/blob/main/CONTRIBUTING.md
+    about: Read before opening a pull request — the scope-control template is required.

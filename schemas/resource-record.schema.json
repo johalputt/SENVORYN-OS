@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:resource-record:1.0",
+  "title": "Senvoryn Resource Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "resource_id",
+    "resource_type",
+    "owner_id",
+    "sensitivity",
+    "lifecycle_state",
+    "supported_operations",
+    "policy_domain",
+    "version"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.resource-record.v1"
+    },
+    "resource_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "resource_type": {
+      "type": "string",
+      "minLength": 2
+    },
+    "owner_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": [
+        "PUBLIC",
+        "INTERNAL",
+        "PERSONAL",
+        "SENSITIVE",
+        "SECRET",
+        "SECURITY_EVIDENCE"
+      ]
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "revoked",
+        "deleting",
+        "deleted",
+        "unknown"
+      ]
+    },
+    "supported_operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_.-]{1,95}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "policy_domain": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "metadata_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

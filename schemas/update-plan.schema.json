@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:update-plan:1.0",
+  "title": "Senvoryn Update Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "update_id",
+    "target_profile",
+    "from_generation",
+    "to_artifact_manifest_ref",
+    "policy_epoch",
+    "anti_rollback_epoch",
+    "staging_requirements",
+    "health_checks",
+    "failure_action",
+    "expiry"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.update-plan.v1"
+    },
+    "update_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "target_profile": {
+      "type": "string"
+    },
+    "from_generation": {
+      "type": "string"
+    },
+    "to_artifact_manifest_ref": {
+      "type": "string"
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "anti_rollback_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "staging_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_free_bytes",
+        "requires_reboot"
+      ],
+      "properties": {
+        "minimum_free_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requires_reboot": {
+          "type": "boolean"
+        },
+        "minimum_power_percent": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "network_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "health_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "failure_action": {
+      "type": "string",
+      "enum": [
+        "ROLLBACK_GENERATION",
+        "ENTER_RECOVERY",
+        "HUMAN_RECOVERY"
+      ]
+    },
+    "expiry": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approval_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "signature_ref": {
+      "type": "string"
+    }
+  }
+}

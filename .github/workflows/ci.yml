@@ -1,0 +1,183 @@
+name: CI
+
+# Senvoryn OS — continuous integration.
+#
+# These jobs validate the CONTRACT PACK only. They say nothing about an
+# operating system, because no operating system exists in this repository.
+# Any job that would imply a security claim about a running system is out of
+# scope here by design.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+
+jobs:
+  contract-tests:
+    name: Contract tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install development requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run contract test suite
+        env:
+          PYTHONPATH: reference
+        run: python -m unittest discover -s tests -v
+
+  schema-validation:
+    name: JSON Schema validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install development requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Validate schemas and fixtures
+        env:
+          PYTHONPATH: reference
+        run: python -m unittest tests.test_schema_contracts -v
+
+      - name: Lint every JSON document in the repository
+        run: python scripts/check-json.py
+
+  pack-integrity:
+    name: Contract artifact integrity (SHA-256)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify the checksum manifest
+        run: python scripts/generate-checksums.py --check
+
+  normative-language:
+    name: Claim discipline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check status declarations and absence of absolute claims
+        run: python scripts/check-normative-language.py
+
+  yaml-lint:
+    name: Workflow and configuration lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse every YAML document in the repository
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+
+          try:
+              import yaml
+          except ImportError:
+              print("SKIP: PyYAML not installed")
+              sys.exit(0)
+
+          failures = 0
+          checked = 0
+          for path in sorted(Path(".").rglob("*.yml")) + sorted(Path(".").rglob("*.yaml")):
+              if any(part in {".git", "node_modules"} for part in path.parts):
+                  continue
+              checked += 1
+              try:
+                  list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
+              except Exception as exc:
+                  failures += 1
+                  print(f"FAIL  {path}: {exc}")
+          print(f"{checked - failures}/{checked} YAML document(s) parse cleanly")
+          sys.exit(1 if failures else 0)
+          PY
+
+  link-check:
+    name: Internal link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Verify relative Markdown links resolve
+        run: |
+          python - <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          ROOT = Path(".")
+          LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+          SKIP = ("http://", "https://", "mailto:", "#", "<")
+
+          failures = 0
+          checked = 0
+          for path in sorted(ROOT.rglob("*.md")):
+              if any(part in {".git", "node_modules"} for part in path.parts):
+                  continue
+              text = path.read_text(encoding="utf-8")
+              for target in LINK.findall(text):
+                  target = target.strip()
+                  if target.startswith(SKIP):
+                      continue
+                  target = target.split("#")[0].strip()
+                  if not target:
+                      continue
+                  checked += 1
+                  # Root-relative links (/FOO.md) resolve from the repo root;
+                  # everything else resolves relative to the containing file.
+                  resolved = (ROOT / target.lstrip("/")) if target.startswith("/") else (path.parent / target)
+                  if not resolved.exists():
+                      failures += 1
+                      print(f"FAIL  {path}: broken link -> {target}")
+
+          print(f"{checked - failures}/{checked} link(s) resolve")
+          sys.exit(1 if failures else 0)
+          PY

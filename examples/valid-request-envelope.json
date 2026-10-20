@@ -1,0 +1,27 @@
+{
+  "schema": "senvoryn.request-envelope.v1",
+  "request_id": "req:example:00000001",
+  "principal_id": "user:alice",
+  "recipient_id": "node:local",
+  "target_node_id": "node:local",
+  "resource_id": "file:report-1",
+  "resource_type": "file_object",
+  "operation": "read",
+  "purpose": "user-requested-view",
+  "capability_ids": ["cap:example:0001"],
+  "policy_epoch": 7,
+  "nonce": "nonce-example-000000000001",
+  "issued_at": "2026-10-15T10:00:00Z",
+  "expires_at": "2026-10-15T10:01:00Z",
+  "risk_claim": "R0",
+  "data_classification_claim": "INTERNAL",
+  "external_effects_claim": [],
+  "budget": {
+    "duration_ms": 1000,
+    "operation_count": 1
+  },
+  "approval_refs": [],
+  "payload_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "replay_key": "replay-example-000000000001",
+  "correlation_id": "corr:example:0001"
+}

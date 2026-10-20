@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:request-envelope:1.0",
+  "title": "Senvoryn SCP Request Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "request_id",
+    "principal_id",
+    "recipient_id",
+    "target_node_id",
+    "resource_id",
+    "resource_type",
+    "operation",
+    "purpose",
+    "policy_epoch",
+    "nonce",
+    "issued_at",
+    "expires_at",
+    "risk_claim",
+    "replay_key"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.request-envelope.v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "principal_id": {
+      "$ref": "#/$defs/id"
+    },
+    "recipient_id": {
+      "$ref": "#/$defs/id"
+    },
+    "target_node_id": {
+      "$ref": "#/$defs/id"
+    },
+    "resource_id": {
+      "$ref": "#/$defs/id"
+    },
+    "resource_type": {
+      "type": "string",
+      "enum": [
+        "file_object",
+        "device",
+        "service",
+        "network_destination",
+        "system_setting",
+        "capability",
+        "package",
+        "capsule",
+        "key_handle",
+        "model_memory",
+        "node",
+        "storage_volume"
+      ]
+    },
+    "operation": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{1,95}$"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "capability_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true,
+      "maxItems": 64
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 256
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "risk_claim": {
+      "type": "string",
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3"
+      ]
+    },
+    "data_classification_claim": {
+      "type": "string",
+      "enum": [
+        "PUBLIC",
+        "INTERNAL",
+        "PERSONAL",
+        "SENSITIVE",
+        "SECRET",
+        "SECURITY_EVIDENCE"
+      ]
+    },
+    "external_effects_claim": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "network_send",
+          "persistent_write",
+          "device_io",
+          "permission_change",
+          "credential_use",
+          "remote_mutation",
+          "irreversible_effect"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "budget": {
+      "$ref": "#/$defs/budget"
+    },
+    "approval_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true,
+      "maxItems": 16
+    },
+    "payload_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "replay_key": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 256
+    },
+    "correlation_id": {
+      "$ref": "#/$defs/id"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "memory_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "io_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "network_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800000
+        },
+        "operation_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        }
+      }
+    }
+  }
+}

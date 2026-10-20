@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:principal-record:1.0",
+  "title": "Senvoryn Principal Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "principal_id",
+    "principal_type",
+    "lifecycle_state",
+    "authority_domain",
+    "authn_assurance",
+    "credential_refs",
+    "policy_epoch",
+    "created_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.principal-record.v1"
+    },
+    "principal_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "principal_type": {
+      "type": "string",
+      "enum": [
+        "user",
+        "service",
+        "application",
+        "driver_service",
+        "ai_agent",
+        "device",
+        "recovery_actor",
+        "remote_controller",
+        "build_identity"
+      ]
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "revoked",
+        "expired",
+        "unknown"
+      ]
+    },
+    "authority_domain": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "authn_assurance": {
+      "type": "string",
+      "enum": [
+        "UNAUTHENTICATED",
+        "BASIC",
+        "STRONG",
+        "HARDWARE_BACKED",
+        "ATTESTED"
+      ]
+    },
+    "credential_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+      },
+      "uniqueItems": true
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "owner_principal_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "audit_class": {
+      "type": "string",
+      "enum": [
+        "PUBLIC",
+        "INTERNAL",
+        "PERSONAL",
+        "SENSITIVE",
+        "SECRET",
+        "SECURITY_EVIDENCE"
+      ]
+    }
+  }
+}

@@ -1,0 +1,46 @@
+# Senvoryn OS — CODEOWNERS
+#
+# Ownership expresses *who must review*, not *who decides*. Per GOVERNANCE.md
+# §6.5, security-critical changes require at least two qualified reviewers,
+# one of whom did not author the change. A single owner can never satisfy that
+# requirement on their own — the second reviewer must come from outside the
+# change's authorship.
+#
+# When the project grows past one steward, replace @johalputt with a team
+# handle (for example @senvoryn/security) so that no individual becomes a
+# single point of failure for release approval.
+
+# Default reviewers
+*                               @johalputt
+
+# --- Security-critical paths: two qualified reviewers, one non-author -------
+# Match the "security-critical" definition in CONTRIBUTING.md:
+# capability enforcement, SCP gates, update verifier, installer, key handling,
+# audit, privilege boundaries.
+/reference/                    @johalputt
+/schemas/                      @johalputt
+/state-machines/               @johalputt
+/errors/                       @johalputt
+/tests/                        @johalputt
+/SECURITY.md                   @johalputt
+/docs/threat-model.md          @johalputt
+
+# --- Normative and governance -----------------------------------------------
+/docs/specs/                   @johalputt
+/docs/constitution/            @johalputt
+/decisions/                    @johalputt
+/GOVERNANCE.md                 @johalputt
+/evidence/                     @johalputt
+
+# --- Release and CI ---------------------------------------------------------
+/.github/workflows/            @johalputt
+/.github/dependabot.yml        @johalputt
+/RELEASE_PROCESS.md            @johalputt
+
+# --- Documentation -----------------------------------------------------------
+/README.md                     @johalputt
+/ARCHITECTURE.md               @johalputt
+/ROADMAP.md                    @johalputt
+/GLOSSARY.md                   @johalputt
+/CONTRIBUTING.md               @johalputt
+/CODE_OF_CONDUCT.md            @johalputt

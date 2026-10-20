@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:system-state:1.0",
+  "title": "Senvoryn System State Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "node_id",
+    "mode",
+    "state_epoch",
+    "policy_epoch",
+    "entered_at",
+    "reason_code",
+    "permitted_operation_classes",
+    "required_exit_checks"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.system-state.v1"
+    },
+    "node_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "NORMAL",
+        "DEGRADED",
+        "READ_ONLY",
+        "RECOVERY",
+        "QUARANTINED",
+        "MAINTENANCE",
+        "OFFLINE"
+      ]
+    },
+    "state_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "entered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reason_code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+    },
+    "initiator_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "permitted_operation_classes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "required_exit_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "expiry_or_review_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  }
+}

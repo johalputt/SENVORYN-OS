@@ -1,0 +1,47 @@
+# Senvoryn OS — EditorConfig
+# https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+[*.{md,markdown}]
+# Two trailing spaces are a hard line break in Markdown — do not trim them.
+trim_trailing_whitespace = false
+indent_size = 2
+
+[*.{json,jsonc}]
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{toml,cfg,ini}]
+indent_size = 4
+
+[*.{c,h,cc,cpp,hpp}]
+indent_size = 4
+
+[*.{rs}]
+indent_size = 4
+
+[*.sh]
+indent_size = 2
+
+[*.{bat,cmd,ps1}]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+
+[*.txt]
+trim_trailing_whitespace = false

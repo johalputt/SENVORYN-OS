@@ -1,0 +1,80 @@
+# Senvoryn OS — .gitattributes
+# Normalize line endings in the repository; check out platform-native endings.
+
+* text=auto eol=lf
+
+# ---------------------------------------------------------------------------
+# Documentation — text
+# ---------------------------------------------------------------------------
+*.md      text diff=markdown
+*.txt     text
+*.csv     text
+*.cff     text
+*.adoc    text
+*.rst     text
+
+# ---------------------------------------------------------------------------
+# Machine-readable contracts — must stay byte-exact
+# ---------------------------------------------------------------------------
+*.json        text
+*.schema.json text
+*.yaml        text
+*.yml         text
+
+# ---------------------------------------------------------------------------
+# Source
+# ---------------------------------------------------------------------------
+*.py     text diff=python
+*.c      text diff=cpp
+*.h      text diff=cpp
+*.cc     text diff=cpp
+*.cpp    text diff=cpp
+*.hpp    text diff=cpp
+*.rs     text diff=rust
+*.go     text diff=go
+*.sh     text eol=lf
+*.ps1    text eol=lf
+*.bat    text eol=lf
+
+# ---------------------------------------------------------------------------
+# Binary — never line-ending converted, never diffed
+# ---------------------------------------------------------------------------
+*.docx   binary
+*.pdf    binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.zip    binary
+*.gz     binary
+*.bz2    binary
+*.xz     binary
+*.7z     binary
+*.tar    binary
+*.exe    binary
+*.dll    binary
+*.so     binary
+*.dylib  binary
+*.o      binary
+*.obj    binary
+*.bin    binary
+*.iso    binary
+*.img    binary
+*.pyc    binary
+*.pdb    binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.jar    binary
+
+# ---------------------------------------------------------------------------
+# Linguist / GitHub language statistics
+# ---------------------------------------------------------------------------
+docs/specs/*     linguist-documentation
+docs/constitution/* linguist-documentation
+*.md             linguist-documentation
+
+# Generated or vendored — excluded from language statistics
+reference/__pycache__/ linguist-generated
+*.min.js         linguist-generated

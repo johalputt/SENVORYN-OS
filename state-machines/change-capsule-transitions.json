@@ -1,0 +1,36 @@
+{
+  "schema": "senvoryn.state-machine.v1",
+  "machine_id": "change-capsule",
+  "initial_state": "DRAFT",
+  "terminal_states": ["COMMITTED", "REJECTED", "EXPIRED", "CANCELLED", "ROLLED_BACK", "NEEDS_HUMAN_RECOVERY"],
+  "states": ["DRAFT", "VALIDATED", "AUTHORIZED", "STAGED", "PRECHECKED", "APPLYING", "VERIFYING", "COMMITTED", "REJECTED", "EXPIRED", "CANCELLED", "FAILED", "COMPENSATING", "ROLLED_BACK", "PARTIAL", "NEEDS_HUMAN_RECOVERY"],
+  "transitions": [
+    {"from":"DRAFT","to":"VALIDATED","guard":"schema_signature_registry_preconditions_and_budgets_valid"},
+    {"from":"DRAFT","to":"REJECTED","guard":"invalid_or_unsupported_capsule"},
+    {"from":"DRAFT","to":"EXPIRED","guard":"expiry_reached"},
+    {"from":"VALIDATED","to":"AUTHORIZED","guard":"scp_permits_exact_digest_and_required_approvals_valid"},
+    {"from":"VALIDATED","to":"REJECTED","guard":"scp_denies_or_required_approval_invalid"},
+    {"from":"AUTHORIZED","to":"STAGED","guard":"artifacts_staged_and_hashes_rechecked"},
+    {"from":"STAGED","to":"PRECHECKED","guard":"target_version_policy_epoch_resources_and_recovery_rechecked"},
+    {"from":"PRECHECKED","to":"APPLYING","guard":"temporary_step_capabilities_issued"},
+    {"from":"APPLYING","to":"VERIFYING","guard":"all_declared_steps_have_outcomes"},
+    {"from":"VERIFYING","to":"COMMITTED","guard":"all_mandatory_postconditions_pass_and_evidence_durable"},
+    {"from":"VERIFYING","to":"COMPENSATING","guard":"postcondition_failed_and_compensation_available"},
+    {"from":"APPLYING","to":"COMPENSATING","guard":"failure_after_effect_and_compensation_available"},
+    {"from":"COMPENSATING","to":"ROLLED_BACK","guard":"compensation_postconditions_verified"},
+    {"from":"COMPENSATING","to":"PARTIAL","guard":"some_effects_remain_or_compensation_incomplete"},
+    {"from":"COMPENSATING","to":"NEEDS_HUMAN_RECOVERY","guard":"automatic_recovery_cannot_safely_complete"},
+    {"from":"AUTHORIZED","to":"CANCELLED","guard":"cancel_before_mutation"},
+    {"from":"STAGED","to":"CANCELLED","guard":"cancel_before_mutation"},
+    {"from":"PRECHECKED","to":"CANCELLED","guard":"cancel_before_mutation"},
+    {"from":"APPLYING","to":"CANCELLED","guard":"only_if_no_effect_occurred_and_executor_confirms_safe_stop"}
+  ],
+  "global_invariants": [
+    "No transition skips VALIDATED and AUTHORIZED.",
+    "COMMITTED requires verified postconditions.",
+    "A missing verifier result is failure, not success.",
+    "After any external effect, cancellation must reconcile partial state.",
+    "Every transition appends an audit event; audit is not deleted by rollback.",
+    "The executor rechecks policy epoch and target version before each privileged step."
+  ]
+}

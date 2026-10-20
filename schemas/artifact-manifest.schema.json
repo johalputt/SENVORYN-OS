@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:artifact-manifest:1.0",
+  "title": "Senvoryn Artifact Provenance Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "artifact_id",
+    "version",
+    "artifact_digest",
+    "source_revision",
+    "build_profile",
+    "dependency_manifest_digest",
+    "sbom_ref",
+    "license_report_ref",
+    "build_provenance_ref",
+    "signer_key_id",
+    "anti_rollback_epoch",
+    "hardware_profiles"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.artifact-manifest.v1"
+    },
+    "artifact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "artifact_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "source_revision": {
+      "type": "string",
+      "minLength": 7
+    },
+    "build_profile": {
+      "type": "string"
+    },
+    "dependency_manifest_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "sbom_ref": {
+      "type": "string"
+    },
+    "license_report_ref": {
+      "type": "string"
+    },
+    "build_provenance_ref": {
+      "type": "string"
+    },
+    "signer_key_id": {
+      "type": "string"
+    },
+    "anti_rollback_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hardware_profiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "minimum_policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expires_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "signature_ref": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:decision-record:1.0",
+  "title": "Senvoryn SCP Decision Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "decision_id",
+    "request_id",
+    "status",
+    "reason_codes",
+    "policy_epoch",
+    "evaluated_at",
+    "target_resource_id",
+    "effect_performed",
+    "audit_ref"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.decision-record.v1"
+    },
+    "decision_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PERMIT",
+        "DENY",
+        "CHALLENGE",
+        "DEFER",
+        "QUARANTINE"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target_resource_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "capability_scope_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "valid_until": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "required_next_step": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "effect_performed": {
+      "const": false
+    },
+    "audit_ref": {
+      "type": "string",
+      "minLength": 8
+    }
+  }
+}

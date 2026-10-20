@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:origin-capsule:1.0",
+  "title": "Senvoryn Origin Capsule Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "capsule_id",
+    "application_id",
+    "artifact_digest",
+    "runtime_profile",
+    "trust_state",
+    "filesystem",
+    "network",
+    "devices",
+    "ipc",
+    "resource_budget",
+    "data_labels",
+    "lifecycle_policy",
+    "compatibility_record_ref"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.origin-capsule.v1"
+    },
+    "capsule_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "application_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "artifact_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "runtime_profile": {
+      "type": "string",
+      "minLength": 2
+    },
+    "trust_state": {
+      "type": "string",
+      "enum": [
+        "UNASSESSED",
+        "VERIFIED_ORIGIN",
+        "REVOKED",
+        "QUARANTINED"
+      ]
+    },
+    "filesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default_access",
+        "mounts"
+      ],
+      "properties": {
+        "default_access": {
+          "const": "NONE"
+        },
+        "mounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "object_id",
+              "access",
+              "purpose"
+            ],
+            "properties": {
+              "object_id": {
+                "type": "string"
+              },
+              "access": {
+                "type": "string",
+                "enum": [
+                  "READ",
+                  "WRITE",
+                  "READ_WRITE"
+                ]
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "lease_seconds": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default_access",
+        "rules"
+      ],
+      "properties": {
+        "default_access": {
+          "const": "DENY"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "direction",
+              "destination",
+              "protocol",
+              "purpose"
+            ],
+            "properties": {
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "EGRESS",
+                  "INGRESS"
+                ]
+              },
+              "destination": {
+                "type": "string"
+              },
+              "protocol": {
+                "type": "string"
+              },
+              "port": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "max_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "device_id",
+          "operations",
+          "purpose"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "user_indicator": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "ipc": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "peer_id",
+          "operations"
+        ],
+        "properties": {
+          "peer_id": {
+            "type": "string"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "resource_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "memory_bytes",
+        "process_count",
+        "storage_bytes",
+        "duration_ms"
+      ],
+      "properties": {
+        "cpu_quota_millis": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "memory_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "process_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "storage_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "io_bytes_per_second": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "network_bytes_per_second": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "data_labels": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "PUBLIC",
+          "INTERNAL",
+          "PERSONAL",
+          "SENSITIVE",
+          "SECRET",
+          "SECURITY_EVIDENCE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "lifecycle_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "restart_policy",
+        "crash_policy",
+        "removal_policy"
+      ],
+      "properties": {
+        "restart_policy": {
+          "type": "string",
+          "enum": [
+            "NEVER",
+            "ON_FAILURE_BOUNDED",
+            "ALWAYS_BOUNDED"
+          ]
+        },
+        "max_restart_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "crash_policy": {
+          "type": "string",
+          "enum": [
+            "STOP",
+            "QUARANTINE",
+            "RESTRICTED_RECOVERY"
+          ]
+        },
+        "removal_policy": {
+          "type": "string",
+          "enum": [
+            "DELETE_APP_DATA",
+            "KEEP_DATA_WITH_CONSENT",
+            "EXPORT_THEN_REMOVE"
+          ]
+        }
+      }
+    },
+    "compatibility_record_ref": {
+      "type": "string",
+      "minLength": 3
+    },
+    "signature_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

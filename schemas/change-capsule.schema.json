@@ -1,0 +1,314 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:change-capsule:1.0",
+  "title": "Senvoryn Change Capsule",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "capsule_id",
+    "originator_id",
+    "target",
+    "intent_id",
+    "policy_epoch",
+    "risk_tier",
+    "reversibility",
+    "preconditions",
+    "steps",
+    "budget",
+    "postconditions",
+    "recovery_plan",
+    "issued_at",
+    "expires_at",
+    "approval_requirements",
+    "payload_digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.change-capsule.v1"
+    },
+    "capsule_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "originator_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_id",
+        "target_type",
+        "expected_version"
+      ],
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "target_type": {
+          "type": "string"
+        },
+        "expected_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "intent_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "risk_tier": {
+      "type": "string",
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3"
+      ]
+    },
+    "reversibility": {
+      "type": "string",
+      "enum": [
+        "REVERSIBLE",
+        "COMPENSATABLE",
+        "NON_REVERSIBLE",
+        "UNKNOWN"
+      ]
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "predicate_id",
+          "expected"
+        ],
+        "properties": {
+          "predicate_id": {
+            "type": "string"
+          },
+          "expected": {},
+          "observed_version": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step_id",
+          "operation",
+          "idempotency_key",
+          "parameters_digest",
+          "risk_tier",
+          "timeout_ms",
+          "success_predicates"
+        ],
+        "properties": {
+          "step_id": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.-]{1,95}$"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 8
+          },
+          "parameters_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64,128}$"
+          },
+          "risk_tier": {
+            "type": "string",
+            "enum": [
+              "R0",
+              "R1",
+              "R2",
+              "R3"
+            ]
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 86400000
+          },
+          "success_predicates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "recovery_action_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duration_ms",
+        "operation_count"
+      ],
+      "properties": {
+        "cpu_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "memory_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "io_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "network_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800000
+        },
+        "operation_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        }
+      }
+    },
+    "postconditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "predicate_id",
+          "mandatory"
+        ],
+        "properties": {
+          "predicate_id": {
+            "type": "string"
+          },
+          "mandatory": {
+            "type": "boolean"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "recovery_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan_id",
+        "strategy",
+        "recovery_artifact_ref"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "ROLLBACK",
+            "COMPENSATE",
+            "RESTORE_SNAPSHOT",
+            "HUMAN_RECOVERY",
+            "NO_AUTOMATIC_RECOVERY"
+          ]
+        },
+        "recovery_artifact_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "irreversible_effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "human_instructions_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approval_requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "approval_type",
+          "count"
+        ],
+        "properties": {
+          "approval_type": {
+            "type": "string",
+            "enum": [
+              "USER_CONFIRMATION",
+              "STRONG_AUTH",
+              "TWO_PERSON",
+              "POLICY_ATTESTATION"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        }
+      }
+    },
+    "payload_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "signature_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}

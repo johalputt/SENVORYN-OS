@@ -1,0 +1,19 @@
+SENVORYN CORE CONTRACT SPECIFICATION — LOCAL VALIDATION REPORT
+Date: 2026-10-15
+Specification: SENVORYN Core Contract Specification v0.1.0
+Baseline constitution: v0.6.0
+
+Validation environment
+- Python: 3.13.5
+- jsonschema: 4.26.0
+- Host architecture: x86_64
+
+Checks performed
+- Unit and package contract tests: 29 passed, 0 failed.
+- JSON Schema Draft 2020-12 structural checks: 14 schemas passed.
+- JSON syntax checks: 19 JSON documents parsed.
+- Operation registry sample: validated against its schema; sample is explicitly unsigned and is not production policy.
+- Word rendering: 17 pages rendered to PNG for visual review.
+
+Limitations
+This report validates a documentation/specification package and a pure reference policy model only. It does not validate an OS kernel, hardware isolation, cryptographic implementation, production policy enforcement, secure boot, real installation/recovery, or application compatibility. The reference SCP model uses simplified test primitives and MUST NOT be deployed as a security boundary.

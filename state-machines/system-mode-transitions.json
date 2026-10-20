@@ -1,0 +1,25 @@
+{
+  "schema": "senvoryn.state-machine.v1",
+  "machine_id": "system-mode",
+  "initial_state": "NORMAL",
+  "states": ["NORMAL", "DEGRADED", "READ_ONLY", "RECOVERY", "QUARANTINED", "MAINTENANCE", "OFFLINE"],
+  "transition_policy": "Every edge requires a named guard, initiating principal/detector, evidence reference, allowed operations, and an exit check. Modes are enforced on every privileged request and are not just UI labels.",
+  "default_transition_rules": [
+    {"from":"NORMAL","to":"DEGRADED","guard":"resource_pressure_or_noncritical_service_fault"},
+    {"from":"NORMAL","to":"READ_ONLY","guard":"storage_integrity_uncertain_or_maintenance_requires_write_freeze"},
+    {"from":"NORMAL","to":"QUARANTINED","guard":"verified_security_trigger_for_specific_component_or_node"},
+    {"from":"DEGRADED","to":"NORMAL","guard":"health_checks_pass_and_resource_pressure_cleared_for_stability_window"},
+    {"from":"READ_ONLY","to":"RECOVERY","guard":"authorized_recovery_request_and_verified_recovery_artifacts"},
+    {"from":"RECOVERY","to":"NORMAL","guard":"all_required_integrity_boot_policy_and_service_checks_pass"},
+    {"from":"QUARANTINED","to":"RECOVERY","guard":"authorized_incident_response_and_component_isolation_confirmed"},
+    {"from":"MAINTENANCE","to":"NORMAL","guard":"maintenance_changes_verified_and_temporary_grants_revoked"},
+    {"from":"NORMAL","to":"OFFLINE","guard":"network_unavailable_or_network_policy_disables_external_connectivity"},
+    {"from":"OFFLINE","to":"NORMAL","guard":"network_reestablished_and_peer_identity_revalidated"}
+  ],
+  "prohibited": [
+    "A component cannot clear its own quarantine without an independent verifier.",
+    "Remote disconnection does not grant additional local authority.",
+    "Recovery mode cannot disable signature verification for production artifacts.",
+    "A mode transition never erases audit history or resets a revocation epoch."
+  ]
+}

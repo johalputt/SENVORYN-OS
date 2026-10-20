@@ -1,0 +1,109 @@
+# Senvoryn OS — Release drafter configuration
+#
+# Release notes are drafted from merged pull requests. The drafter assembles
+# the notes; it does NOT decide what may be claimed. See RELEASE_PROCESS.md
+# and evidence/claims-ledger.md — a release note may never exceed the claims
+# ledger.
+
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+categories:
+  - title: "⚠️ Breaking changes"
+    labels:
+      - "breaking-change"
+      - "contract-breaking"
+    collapse: false
+
+  - title: "📜 Specification and contracts"
+    labels:
+      - "spec-change"
+      - "contract"
+      - "schemas"
+      - "state-machine"
+    collapse: false
+
+  - title: "🔐 Security and threat model"
+    labels:
+      - "security"
+      - "threat-model"
+      - "vulnerability"
+    collapse: false
+
+  - title: "⚖️ Governance and decisions"
+    labels:
+      - "governance"
+      - "adr"
+      - "decision"
+    collapse: false
+
+  - title: "✅ Tests and evidence"
+    labels:
+      - "test"
+      - "tests"
+      - "evidence"
+      - "traceability"
+    collapse: false
+
+  - title: "🛠️ Tooling and CI"
+    labels:
+      - "ci"
+      - "tooling"
+      - "dependencies"
+    collapse: false
+
+  - title: "📚 Documentation"
+    labels:
+      - "documentation"
+      - "docs"
+    collapse: true
+
+  - title: "🧹 Maintenance"
+    labels:
+      - "maintenance"
+      - "chore"
+    collapse: true
+
+change-template: "- $NUMBER $TITLE @$AUTHOR (#$NUMBER)"
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels:
+      - "major"
+  minor:
+    labels:
+      - "minor"
+  patch:
+    labels:
+      - "patch"
+  default: patch
+
+template: |
+  ## Senvoryn OS $RESOLVED_VERSION
+
+  > **Status:** $CHANGES. Release channel: **Research**.
+  > This is a contract/model release, not an operating-system release. No artifact
+  > in this release may be installed as a trusted operating system.
+
+  $CHANGES
+
+  ---
+
+  ### Conformance and claims
+
+  - Conformance label: see [`evidence/claims-ledger.md`](https://github.com/johalputt/SENVORYN-OS/blob/main/evidence/claims-ledger.md).
+  - Independently reviewed components: **none** unless explicitly listed above.
+  - Known limitations are published in the repository README and are not repeated here.
+
+  ### Verify this release
+
+  ```bash
+  git clone https://github.com/johalputt/SENVORYN-OS.git
+  cd SENVORYN-OS
+  pip install -r requirements-dev.txt
+  PYTHONPATH=reference python -m unittest discover -s tests -v
+  python scripts/generate-checksums.py --check
+  ```
+
+  Report a vulnerability privately: <https://github.com/johalputt/SENVORYN-OS/security/advisories/new>

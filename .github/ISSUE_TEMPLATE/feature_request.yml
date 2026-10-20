@@ -1,0 +1,125 @@
+name: Feature or contract proposal
+description: Propose a new contract, component, invariant, or capability
+title: "[proposal] "
+labels: ["proposal", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Senvoryn is at the specification stage. Before proposing, please check
+        [`ROADMAP.md`](https://github.com/johalputt/SENVORYN-OS/blob/main/ROADMAP.md)
+        to see which gate is active — proposals are sequenced by dependency and
+        evidence, not by enthusiasm.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What cannot a user, implementer, or reviewer do today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: threat
+    attributes:
+      label: Threat model
+      description: |
+        What goes wrong if this is implemented incorrectly? Which abuse cases in
+        [`docs/threat-model.md`](https://github.com/johalputt/SENVORYN-OS/blob/main/docs/threat-model.md)
+        does it touch?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Minimum viable scope
+      description: What is the smallest version that solves the problem?
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: New dependencies
+      description: |
+        What new external code, tool, or protocol does this add? Each needs
+        provenance, license, version, review, and justification. Empty is a
+        perfectly good answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: privilege
+    attributes:
+      label: Privilege required
+      description: What authority does this need, and why is it needed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefit
+    attributes:
+      label: Measurable benefit
+      description: How will we know it worked?
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: Complexity cost
+      description: What does this make harder to build, review, or maintain?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Test plan
+      description: Which conformance test IDs does this add or satisfy?
+    validations:
+      required: true
+
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure behavior
+      description: What happens when this fails, is attacked, or is interrupted?
+    validations:
+      required: true
+
+  - type: textarea
+    id: deferred
+    attributes:
+      label: Deferred
+      description: What will be postponed to make room for this?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: gate
+    attributes:
+      label: Which gate does this advance?
+      options:
+        - Gate 0 — Contract freeze for prototype
+        - Gate 1 — SCP decision oracle
+        - Gate 2 — Change Capsule executor simulator
+        - Gate 3 — Capsule policy simulator
+        - Gate 4 — Minimal bootable prototype
+        - Gate 5 — Direct Installer prototype
+        - Gate 6 — UEF proof of concept
+        - Gate 7 — AI-native transaction layer
+        - Gate 8 — Security review and public alpha
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: This does not weaken any constitutional invariant.
+        - label: If it does, I understand this needs a constitutional amendment, not a normal PR.
+        - label: I checked the open decisions register in ROADMAP.md — this does not silently settle an open ADR.

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:audit-event:1.0",
+  "title": "Senvoryn Audit Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "event_id",
+    "sequence",
+    "event_type",
+    "actor_id",
+    "policy_epoch",
+    "outcome",
+    "reason_code",
+    "trusted_time_status",
+    "data_classification",
+    "previous_event_digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.audit-event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 2
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "resource_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "request_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "capability_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "PERMIT",
+        "DENY",
+        "CHALLENGE",
+        "DEFER",
+        "QUARANTINE",
+        "SUCCESS",
+        "FAILURE",
+        "CANCELLED",
+        "PARTIAL"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+    },
+    "trusted_time_status": {
+      "type": "string",
+      "enum": [
+        "TRUSTED_WALL_AND_MONOTONIC",
+        "MONOTONIC_ONLY",
+        "UNTRUSTED",
+        "UNAVAILABLE"
+      ]
+    },
+    "data_classification": {
+      "type": "string",
+      "enum": [
+        "PUBLIC",
+        "INTERNAL",
+        "PERSONAL",
+        "SENSITIVE",
+        "SECRET",
+        "SECURITY_EVIDENCE"
+      ]
+    },
+    "previous_event_digest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "event_payload_digest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "sensitive_payload_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "integrity_proof_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

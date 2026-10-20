@@ -1,0 +1,18 @@
+requirement_id,requirement,test_ids,test_reference_or_required_evidence,evidence_type,priority,status
+INV-01,Default deny,SCP-001; SCP-002,tests/test_scp_reference.py::test_unknown_principal_denied; test_missing_capability_denied,UNIT+INTEGRATION,P0,Prototype only
+INV-02,Authority explicit and scoped,SCP-004,subject/resource/operation/purpose tests,UNIT+INTEGRATION,P0,Prototype only
+INV-03,No self-escalation; attenuation only narrows,CAP-001,attenuation tests; property-based extension required,UNIT+PROPERTY,P0,Prototype coverage partial
+INV-04,AI is not root of trust,AI-001; AI-004,architecture/static checks plus adversarial runtime suite required,STATIC+ADVERSARIAL,P0,Not implemented
+INV-05,No silent destructive action,SCP-006; INS-002,"approval digest, UI automation and audit tests required",INTEGRATION+UI,P0,Not implemented
+INV-06,No hidden telemetry,PRIV-001,fresh-install network egress capture required,NETWORK EGRESS,P0,Not implemented
+INV-07,Local authority survives disconnection,SCP-005; FED-001,offline policy and multi-node tests required,INTEGRATION+FAULT,P0,Not implemented
+INV-08,Isolation by construction,OC-001; OC-002; OC-003,host/guest boundary and network default-deny tests required,ADVERSARIAL,P0,Not implemented
+CC-001,Illegal Change Capsule transitions rejected,CC-001,state-machine transition table tests required,UNIT+PROPERTY,P0,Not implemented
+CC-002,Replay must not repeat effects,CC-002,idempotency and crash-replay integration tests required,INTEGRATION+FAULT,P0,Not implemented
+CC-003,Unverified postcondition cannot commit,CC-003,fault injection for failed verifier required,FAULT,P0,Not implemented
+AI-002,Changed action invalidates approval,AI-002,digest binding and replay tests required,INTEGRATION,P0,Not implemented
+INS-001,Invalid installer signature rejected pre-elevation,INS-001,installer trust-chain test required,INTEGRATION,P0,Not implemented
+INS-003,Power loss leaves old boot or recovery path,INS-003,named hardware profile power-cut test required,FAULT,P0,Not implemented
+UPD-001,Bad signature/downgrade rejected,UPD-001,artifact validation and downgrade tests required,INTEGRATION,P0,Not implemented
+PRIV-002,Secrets absent from logs and crash bundle,PRIV-002,canary-secret scanning test required,PRIVACY,P0,Not implemented
+EVID-001,Every release claim has evidence,EVID-001,release-bundle audit required,RELEASE AUDIT,P0,Not implemented

@@ -1,0 +1,113 @@
+name: Bug report
+description: Report a defect in a contract, schema, state machine, reference model, or document
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. If you found a **security vulnerability**, do
+        **not** file a public issue — follow [`SECURITY.md`](https://github.com/johalputt/SENVORYN-OS/blob/main/SECURITY.md)
+        for the private reporting channel instead.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Which artifact is affected?
+      options:
+        - Core Contract Specification (docs/specs/)
+        - Founding Constitution (docs/constitution/)
+        - JSON Schema (schemas/)
+        - State machine (state-machines/)
+        - Denial-code registry (errors/)
+        - Example fixture (examples/)
+        - Reference SCP model (reference/)
+        - Test suite (tests/)
+        - Architecture Decision Record (decisions/)
+        - Evidence / traceability (evidence/)
+        - Documentation (README, ARCHITECTURE, ROADMAP, GLOSSARY…)
+        - Tooling / CI (scripts/, .github/)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: |
+        Severity reflects impact and exploitability, not effort to fix.
+      options:
+        - Critical — bypasses a constitutional invariant; yields host or authority compromise
+        - High — violates a required contract behavior with a realistic path
+        - Medium — weakens defense in depth; contract ambiguity with an unsafe reading
+        - Low — hardening or documentation with no direct security consequence
+        - Informational — a suggestion
+    validations:
+      required: true
+
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Which invariant or contract requirement does this violate?
+      description: |
+        If none, write "none — this is a documentation/ergonomics issue".
+        Naming the requirement makes the report actionable.
+      placeholder: "INV-03 — Core Contract Spec §4.2 (attenuation must not broaden scope)"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What is wrong?
+      description: |
+        What did you expect, and what happened instead?
+      placeholder: "Expected the capability gate to reject a child whose operations set is not a subset of the parent's."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: |
+        For a schema finding, paste the offending JSON. For a model finding, paste
+        the request/capability/context triple. For a documentation finding, quote
+        the sentence.
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: File and line
+      placeholder: "schemas/capability.schema.json:42"
+    validations:
+      required: false
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: |
+        What could an attacker, a misconfigured host, or an AI agent achieve?
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested fix
+      description: |
+        Optional, but very welcome. A patch is even better.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+        - label: I reproduced this on the current `main` branch.
+        - label: This is not a security vulnerability (those go to SECURITY.md).

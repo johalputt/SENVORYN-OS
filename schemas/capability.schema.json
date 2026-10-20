@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:capability:1.0",
+  "title": "Senvoryn Capability Grant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "capability_id",
+    "subject_id",
+    "resource",
+    "operations",
+    "purpose",
+    "constraints",
+    "issued_at",
+    "not_before",
+    "expires_at",
+    "policy_epoch",
+    "issuer_id",
+    "delegation_depth",
+    "revocation_id",
+    "provenance_ref",
+    "integrity_proof"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.capability.v1"
+    },
+    "capability_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 160
+    },
+    "subject_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_id",
+        "resource_type"
+      ],
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "resource_type": {
+          "type": "string",
+          "minLength": 2
+        },
+        "scope": {
+          "type": "object"
+        }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_.-]{1,95}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_uses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_duration_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "allowed_destinations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "allowed_data_classes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "INTERNAL",
+              "PERSONAL",
+              "SENSITIVE",
+              "SECRET",
+              "SECURITY_EVIDENCE"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "capsule_id": {
+          "type": "string"
+        },
+        "approval_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64,128}$"
+        }
+      }
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "not_before": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "policy_epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "issuer_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "delegation_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16
+    },
+    "parent_capability_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "revocation_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "provenance_ref": {
+      "type": "string",
+      "minLength": 8
+    },
+    "integrity_proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suite_id",
+        "key_id",
+        "signature"
+      ],
+      "properties": {
+        "suite_id": {
+          "type": "string"
+        },
+        "key_id": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 16
+        }
+      }
+    }
+  }
+}

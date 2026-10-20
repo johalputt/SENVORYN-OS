@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:intent-record:1.0",
+  "title": "Senvoryn Intent Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "intent_id",
+    "requester_id",
+    "goal",
+    "targets",
+    "constraints",
+    "allowed_data_classes",
+    "ambiguity_flags",
+    "expiry",
+    "status"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.intent-record.v1"
+    },
+    "intent_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "requester_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "normalized_goal": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 4096
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+      },
+      "uniqueItems": true,
+      "maxItems": 256
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "constraint_id",
+          "kind",
+          "value"
+        ],
+        "properties": {
+          "constraint_id": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "must",
+              "must_not",
+              "budget",
+              "destination_allowlist",
+              "deadline",
+              "data_scope",
+              "reversibility",
+              "offline_only"
+            ]
+          },
+          "value": {},
+          "source": {
+            "type": "string",
+            "enum": [
+              "user",
+              "policy",
+              "device",
+              "operator"
+            ]
+          }
+        }
+      }
+    },
+    "allowed_data_classes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "PUBLIC",
+          "INTERNAL",
+          "PERSONAL",
+          "SENSITIVE",
+          "SECRET",
+          "SECURITY_EVIDENCE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "ambiguity_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "risk_tier": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        null
+      ]
+    },
+    "expiry": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "CLARIFICATION_REQUIRED",
+        "PLANNED",
+        "AUTHORIZED",
+        "EXPIRED",
+        "CANCELLED"
+      ]
+    },
+    "consent_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_context_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 160,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+      },
+      "uniqueItems": true
+    }
+  }
+}

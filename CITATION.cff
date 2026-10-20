@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use the Senvoryn OS Core Contract Specification or reference model in academic or industrial work, please cite it as below."
+title: "Senvoryn OS — Core Contract Specification v0.1.0"
+abstract: >-
+  Senvoryn OS is a proposed clean-sheet operating-system platform built around
+  capability-governed authority. This citation covers the Core Contract
+  Specification v0.1.0 (document ID SENVORYN-CORE-SPEC-0001), its
+  machine-readable schemas and state machines, and the deterministic reference
+  SCP decision model. It is a design contract and prototype model, not a
+  production operating system, a kernel, a cryptographic implementation, or a
+  security certification. The reference model uses simplified trusted primitives
+  and must not be deployed as a security boundary.
+type: software
+version: 0.1.0
+date-released: "2026-10-15"
+license: Apache-2.0
+repository-code: "https://github.com/johalputt/SENVORYN-OS"
+url: "https://github.com/johalputt/SENVORYN-OS/blob/main/docs/specs/SENVORYN_Core_Contract_Spec_v0.1.md"
+keywords:
+  - operating-system
+  - capability-based-security
+  - least-privilege
+  - origin-capsules
+  - ai-safety
+  - formal-specification
+  - reproducibility
+  - verifiable-systems
+authors:
+  - name: "The Senvoryn OS contributors"
+    website: "https://github.com/johalputt/SENVORYN-OS"

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:senvoryn:schema:approval-record:1.0",
+  "title": "Senvoryn Action-Bound Approval Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "approval_id",
+    "approver_principal_id",
+    "action_digest",
+    "target_id",
+    "risk_tier",
+    "authentication_assurance",
+    "approved_at",
+    "expires_at",
+    "single_use",
+    "consumed"
+  ],
+  "properties": {
+    "schema": {
+      "const": "senvoryn.approval-record.v1"
+    },
+    "approval_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "approver_principal_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "action_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64,128}$"
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "risk_tier": {
+      "type": "string",
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3"
+      ]
+    },
+    "authentication_assurance": {
+      "type": "string",
+      "enum": [
+        "BASIC",
+        "STRONG",
+        "HARDWARE_BACKED"
+      ]
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "single_use": {
+      "type": "boolean"
+    },
+    "consumed": {
+      "type": "boolean"
+    },
+    "second_approver_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "signature_ref": {
+      "type": "string",
+      "minLength": 3
+    }
+  }
+}

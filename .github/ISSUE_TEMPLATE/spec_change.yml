@@ -1,0 +1,96 @@
+name: Specification or ADR change
+description: Propose a change to a specification, schema, state machine, or Architecture Decision Record
+title: "[spec] "
+labels: ["spec-change", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for changes to normative artifacts. For ordinary bugs
+        in those artifacts, use the **bug report** template instead.
+
+  - type: dropdown
+    id: artifact
+    attributes:
+      label: Which artifact?
+      options:
+        - Core Contract Specification (docs/specs/)
+        - Founding Constitution (docs/constitution/)
+        - JSON Schema (schemas/)
+        - State machine (state-machines/)
+        - Denial-code registry (errors/)
+        - Architecture Decision Record (decisions/)
+        - Evidence / traceability (evidence/)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: Type of change
+      options:
+        - Clarification — resolves an ambiguity without changing behavior
+        - Addition — new requirement, new field, new test ID
+        - Correction — fixes an error in an existing requirement
+        - Restriction — narrows a capability or adds a check
+        - Relaxation — narrows nothing and broadens something (requires amendment)
+        - New ADR / superseding ADR
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current text
+      description: Quote the section or field as it stands today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed text
+      description: What should it say instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: |
+        Why is the current text wrong, ambiguous, or insufficient? If this
+        resolves a Gate 0 ambiguity, say which one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: |
+        Which schemas, state machines, denial codes, test IDs, ADRs, and
+        documents must change together? Note any identifier that would need to
+        be renamed — published IDs are a contract and should not be renamed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: |
+        What test or analysis demonstrates the problem? If none exists yet, say
+        so — that is a legitimate and useful answer.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: This change does not broaden authority or weaken a higher-level rule.
+        - label: If it does, this requires a constitutional amendment (see GOVERNANCE.md §5).
+        - label: Any new or changed test IDs are recorded in `evidence/traceability.csv`.
+        - label: Any changed claim is recorded in `evidence/claims-ledger.md`.
