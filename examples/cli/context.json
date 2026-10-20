@@ -1,0 +1,29 @@
+{
+  "local_node_id": "node:local",
+  "current_policy_epoch": 7,
+  "now_monotonic": 500,
+  "mode": "NORMAL",
+  "known_principals": ["user:alice"],
+  "resolved_resources": {
+    "file:report": "v1"
+  },
+  "audit_state": "READY",
+  "action_digest": null,
+  "revoked_nonces": [],
+  "revoked_capabilities": [],
+  "strong_approval_granted": false,
+  "satisfied_preconditions": [],
+  "operations": [
+    {
+      "operation_id": "read",
+      "risk_tier": "R0",
+      "approval_requirements": ["NONE"],
+      "allowed_modes": ["NORMAL", "DEGRADED", "READ_ONLY", "RECOVERY"],
+      "resource_types": ["file_object"],
+      "max_duration_ms": 30000,
+      "max_operation_count": 1,
+      "required_preconditions": [],
+      "audit_class": "STANDARD"
+    }
+  ]
+}

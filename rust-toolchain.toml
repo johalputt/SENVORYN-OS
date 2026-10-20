@@ -1,0 +1,9 @@
+# The workspace pins the toolchain that CI installs, so a local build and a CI
+# build agree. `stable` is used rather than a dated version: the project
+# deliberately has no third-party dependencies, so there is no lockfile-driven
+# reproducibility argument for freezing the compiler, and a pinned date would
+# rot without anyone noticing.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

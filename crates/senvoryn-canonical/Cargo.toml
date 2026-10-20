@@ -1,0 +1,12 @@
+[package]
+name = "senvoryn-canonical"
+description = "Senvoryn Canonical JSON Profile v1 — deterministic parse and encode for security-significant documents"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true

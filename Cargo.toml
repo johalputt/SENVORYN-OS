@@ -1,0 +1,50 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/senvoryn-canonical",
+    "crates/senvoryn-scp",
+    "crates/senvoryn-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+repository = "https://github.com/johalputt/SENVORYN-OS"
+authors = ["The Senvoryn OS contributors"]
+
+[workspace.dependencies]
+senvoryn-canonical = { path = "crates/senvoryn-canonical", version = "0.1.0" }
+senvoryn-scp = { path = "crates/senvoryn-scp", version = "0.1.0" }
+
+# No third-party dependencies anywhere in this workspace.
+#
+# The decision path is the trusted core: every crate it pulls in is code that
+# can influence an authorization decision. A hand-rolled canonical JSON parser
+# is already part of that surface, so the surface is kept to code this project
+# writes, reads, and tests. It also makes CI hermetic — no registry fetch, no
+# version drift between a local run and a CI run.
+#
+# The one thing deliberately NOT implemented here is a cryptographic digest.
+# ADR-002 requires publicly reviewed primitives, and a hand-written hash in the
+# trusted core would contradict it. Canonical bytes are produced here; the
+# digest over them is the caller's, using a reviewed implementation.
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+# The decision path reasons about exact byte strings and integer boundaries on
+# purpose; `as` casts there would be a truncation bug waiting to happen.
+cast_possible_truncation = "allow"
+cast_lossless = "allow"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

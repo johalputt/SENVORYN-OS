@@ -1,19 +1,47 @@
 SENVORYN CORE CONTRACT SPECIFICATION — LOCAL VALIDATION REPORT
-Date: 2026-10-15
+Date: 2026-10-20
 Specification: SENVORYN Core Contract Specification v0.1.0
 Baseline constitution: v0.6.0
 
 Validation environment
-- Python: 3.13.5
+- Python: 3.12.10
 - jsonschema: 4.26.0
+- Rust: 1.98.0 (stable), rustc and cargo
 - Host architecture: x86_64
+- Third-party Rust dependencies: 0
 
 Checks performed
-- Unit and package contract tests: 29 passed, 0 failed.
+- Python contract tests: 55 passed, 0 failed.
+- Rust workspace tests: 67 passed, 0 failed.
+- Shared conformance vectors: 30 decision cases and 11 attenuation cases executed by the
+  Python reference model and by the Rust implementation. Both suites agree on every
+  decision status and every reason code. The two suites are the mechanism that keeps the
+  prototype and the implementation from becoming two authorities on the same question.
+- Denial-code registry: 27 codes, unique, each with a class and a default status. Every
+  code is produced by at least one implementation and every code an implementation can
+  produce is in the registry; both directions are checked by tests on both sides.
 - JSON Schema Draft 2020-12 structural checks: 14 schemas passed.
-- JSON syntax checks: 19 JSON documents parsed.
-- Operation registry sample: validated against its schema; sample is explicitly unsigned and is not production policy.
-- Word rendering: 17 pages rendered to PNG for visual review.
+- JSON syntax checks: 48 JSON documents parsed.
+- Canonical JSON profile SCP-CJSON-0001: 37 conformance tests over the profile's clauses,
+  plus a deterministic fuzz harness over a seed corpus (132000 mutated inputs, no panic,
+  no encoding disagreement).
+- Property tests over a seeded generator: attenuation never broadens a capability, the
+  evaluator is deterministic, the evaluator mutates nothing it is given, and a decision
+  that does not permit grants no authority.
+- Operation registry sample: validated against its schema; sample is explicitly unsigned
+  and is not production policy.
 
 Limitations
-This report validates a documentation/specification package and a pure reference policy model only. It does not validate an OS kernel, hardware isolation, cryptographic implementation, production policy enforcement, secure boot, real installation/recovery, or application compatibility. The reference SCP model uses simplified test primitives and MUST NOT be deployed as a security boundary.
+This report validates a documentation/specification package, a pure reference policy model,
+and a pure decision function. It does not validate an OS kernel, hardware isolation,
+cryptographic implementation, production policy enforcement, secure boot, real
+installation/recovery, or application compatibility.
+
+The Rust crate `senvoryn-scp` is a decision function, not an SCP. It verifies no
+signature, resolves no resource against a filesystem, keeps no trust store, and writes no
+audit record. The development tool `senvoryn-cli` is a driver for that function and says
+so in its own help. Neither may be deployed as a security boundary.
+
+The Operation Registry used by the tests is the unsigned sample. Capability provenance is
+stated by the caller and checked for consistency, not proven: there is no signature
+verification in either implementation. No artifact in this repository is signed.

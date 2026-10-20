@@ -52,6 +52,48 @@ jobs:
           PYTHONPATH: reference
         run: python -m unittest discover -s tests -v
 
+  rust:
+    name: Rust workspace (format, lint, test, release build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Build the release artefacts
+        run: cargo build --workspace --release
+
+  conformance-agreement:
+    name: Conformance agreement (Python and Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Run the Python reference model against the shared vectors
+        env:
+          PYTHONPATH: reference
+        run: python -m unittest tests.test_conformance_vectors -v
+
+      - name: Run the Rust implementation against the shared vectors
+        run: cargo test -p senvoryn-scp --test conformance_vectors
+
   schema-validation:
     name: JSON Schema validation
     runs-on: ubuntu-latest

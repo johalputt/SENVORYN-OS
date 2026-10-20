@@ -1,0 +1,14 @@
+{
+  "capability_id": "cap:example:0001",
+  "subject_id": "user:alice",
+  "resource_id": "file:report",
+  "resource_type": "file_object",
+  "operations": ["read", "write"],
+  "purposes": ["user-request"],
+  "not_before": 0,
+  "expires_at": 1000,
+  "policy_epoch": 7,
+  "provenance": "VERIFIED",
+  "delegation_depth": 1,
+  "max_uses": null
+}

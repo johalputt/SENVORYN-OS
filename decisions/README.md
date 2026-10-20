@@ -26,11 +26,15 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 |---|---|---|---|
 | [ADR-001](ADR-001-separation-core.md) | Clean-sheet separation core | Proposed for prototype only | 7 |
 | [ADR-002](ADR-002-crypto-boundary.md) | Cryptographic boundary | Proposed | 6 |
-| [ADR-003](ADR-003-protocol-encoding.md) | Canonical protocol encoding | Prototype may use deterministic JSON; production pending review | 4 |
+| [ADR-003](ADR-003-protocol-encoding.md) | Canonical protocol encoding | Revised by ADR-008 | 4 |
 | [ADR-004](ADR-004-ai-authority.md) | AI is a proposal producer, not an authority | Proposed | 5 |
 | [ADR-005](ADR-005-universal-execution.md) | Universal execution fabric | Proposed | 5 |
 | [ADR-006](ADR-006-direct-install.md) | Direct installation | Proposed | 6 |
 | [ADR-007](ADR-007-local-first-authority.md) | Local-first authority | Proposed | 5 |
+| [ADR-008](ADR-008-canonical-json-profile.md) | Canonical JSON Profile `SCP-CJSON-0001` | Proposed | 3 |
+| [ADR-009](ADR-009-zero-dependency-trusted-core.md) | No third-party dependencies in the trusted core | Proposed | 2 |
+| [ADR-010](ADR-010-delegation-depth-reading.md) | Delegation depth: the literal reading, and the contradiction | Proposed | 3 |
+| [ADR-011](ADR-011-resolution-reason-code.md) | A reason code for the object-resolution gate | Proposed | 2 |
 
 ---
 
@@ -45,13 +49,17 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | **005** | Use a layered execution fabric — native formats, managed runtimes, translation, isolated guests — selecting the simplest mode that delivers tested semantics. |
 | **006** | Support application-like installation without user-created boot media on certified hosts, preserving a documented recovery route. |
 | **007** | Every node retains local policy enforcement; federation cannot bypass local capability, mode, expiry, or risk checks. |
+| **008** | The canonical encoding is named, specified, and tested: profile `SCP-CJSON-0001`. |
+| **009** | The trusted Rust core carries no third-party dependencies. |
+| **010** | A child's delegation depth must decrease, following the specification's literal wording, and the contradiction with the schema is recorded rather than resolved here. |
+| **011** | The denial-code registry carries a code for the specification's object-resolution gate. |
 
 ---
 
 ## Writing a new ADR
 
 ```bash
-cp decisions/ADR-XXX-template.md decisions/ADR-008-<slug>.md
+cp decisions/ADR-XXX-template.md decisions/ADR-012-<slug>.md
 ```
 
 Fill in every section. The **Context** section is the one that matters most — it must explain what constraint makes the obvious solution wrong. An ADR without a real constraint is a design note.

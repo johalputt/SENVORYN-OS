@@ -6,6 +6,7 @@
     {"code":"UNKNOWN_PRINCIPAL","class":"identity","default":"DENY"},
     {"code":"REQUEST_NOT_FRESH","class":"freshness","default":"DENY"},
     {"code":"REPLAY_OR_REVOKED_NONCE","class":"replay","default":"DENY"},
+    {"code":"RESOURCE_UNRESOLVABLE","class":"resolution","default":"DENY"},
     {"code":"UNKNOWN_OPERATION_RISK","class":"policy","default":"DENY"},
     {"code":"RISK_CLAIM_MISMATCH","class":"policy","default":"DENY"},
     {"code":"POLICY_EPOCH_MISMATCH","class":"policy","default":"DENY"},

@@ -1,0 +1,20 @@
+[package]
+name = "senvoryn-cli"
+description = "Development tool for exercising the Senvoryn SCP decision oracle. Not an SCP, and not deployable as one."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+senvoryn-canonical = { workspace = true }
+senvoryn-scp = { workspace = true }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "senvoryn-scp"
+path = "src/main.rs"

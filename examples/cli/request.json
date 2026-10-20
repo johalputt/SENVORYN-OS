@@ -1,0 +1,15 @@
+{
+  "schema": "senvoryn.request-envelope.v1",
+  "request_id": "req:example:0001",
+  "principal_id": "user:alice",
+  "recipient_id": "node:local",
+  "resource_id": "file:report",
+  "resource_type": "file_object",
+  "operation": "read",
+  "purpose": "user-request",
+  "policy_epoch": 7,
+  "issued_at": 100,
+  "expires_at": 900,
+  "nonce": "nonce-example-0001",
+  "risk_claim": "R0"
+}

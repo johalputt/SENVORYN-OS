@@ -94,6 +94,7 @@ Every release MUST publish a TCB inventory identifying all components whose comp
 | Separation core (L1) | Total system compromise | Memory safety strategy, minimal surface, independent review |
 | Capability enforcement (L2) | Forged or widened authority | Unforgeable handles, attenuation enforced at issue time |
 | Policy evaluator (L3) | Wrong decisions on every request | Pure function, no side effects, deterministic reason codes |
+| Canonical JSON parser | Two byte sequences for one value, or an unbounded allocation | Strict grammar, limits checked before allocation, no third-party code ([ADR-009](decisions/ADR-009-zero-dependency-trusted-core.md)) |
 | Key-handling boundaries | Forged signatures, forged identity | Role-separated keys, rotation, revocation, ceremony |
 | Update verifier | Persistent malicious code | Authenticated metadata, content addressing, anti-rollback |
 | Capsule isolation mechanisms | Host compromise from a guest | Explicit, typed, revocable bridges; no implicit host paths |
@@ -157,9 +158,11 @@ How a request becomes an effect:
 
 Three properties hold at every step:
 
-1. **The evaluator performs no effects.** A reviewer can confirm this by reading `reference/scp_reference.py` — it is a pure function with no I/O.
+1. **The evaluator performs no effects.** A reviewer can confirm this by reading `crates/senvoryn-scp/src/evaluator.rs` or `reference/scp_reference.py` — each is a pure function with no I/O. The Rust implementation's decision type has no field in which an effect could be recorded.
 2. **The executor re-checks.** Authority is validated again immediately before the effect, closing the time-of-check/time-of-use gap.
 3. **Effect and authorization are separated.** A decision authorizes; it does not execute.
+
+> The decision functions in this repository are **decision functions, not an SCP**. They hold no trust store, verify no signature, resolve no resource against a filesystem, and write no audit record. The boundary between a decision function and an SCP is a cryptographic and storage boundary that does not exist here yet.
 
 ---
 
@@ -250,7 +253,7 @@ What *is* implemented and tested today:
 
 - 14 JSON Schemas (Draft 2020-12) that validate structurally
 - 2 machine-readable state machines
-- 26 stable denial codes with `DENY`/`CHALLENGE` defaults
+- 27 stable denial codes with `DENY`/`CHALLENGE` defaults
 - 1 unsigned sample operation registry
 - 1 pure reference evaluator + 29 passing contract tests
 - A traceability matrix mapping 30 conformance test IDs to evidence and status

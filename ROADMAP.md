@@ -20,14 +20,17 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | Statement | Status |
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
-| 29 contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 55 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 67 Rust tests pass | ✅ Verified (Rust stable) |
+| 30 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
-| 26 denial codes are unique with defined defaults | ✅ Verified |
-| The reference evaluator is pure (no side effects) | ✅ Verified by test + code review |
-| A threat model for the SCP decision path exists | ❌ **Missing — Gate 0 blocker** |
+| 27 denial codes are unique with defined defaults | ✅ Verified |
+| Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
+| The decision evaluator is pure (no side effects) | ✅ Verified by test + code review |
+| A threat model for the SCP decision path exists | 🟡 First draft exists — **not independently reviewed** (Gate 0 blocker) |
 | The Operation Registry is reviewed, versioned, and signed | ❌ Missing — sample is unsigned |
-| Property-based attenuation tests exist | ❌ Partial — hand-written subset check only |
-| A canonicalization profile is named and tested | ❌ Missing — ADR-003 open |
+| Property-based attenuation tests exist | ✅ Seeded property tests — not externally reviewed |
+| A canonicalization profile is named and tested | ✅ Named and specified as `SCP-CJSON-0001` — independent review outstanding |
 | Any gate beyond Gate 0 is met | ❌ No |
 | Any profile is certified | ❌ No |
 | Any independent security review has occurred | ❌ No |
@@ -54,27 +57,30 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | 0.8 | Ambiguity review sign-off | ❌ | Requires 2 independent reviewers |
 
 **Remaining Gate 0 work:**
-1. Write `docs/threat-model.md` covering the SCP decision path, capability forgery, replay, clock manipulation, audit tampering, and oracle leakage.
-2. Name and specify the **canonicalization profile** (ADR-003) — the exact byte encoding to be used before any object is signed.
+1. Get `docs/threat-model.md` independently reviewed. The draft exists; the review does not, and the draft does not support any security claim.
+2. Get the canonicalization profile (`SCP-CJSON-0001`, [ADR-008](decisions/ADR-008-canonical-json-profile.md)) independently reviewed before it is used to verify anything.
 3. Promote `examples/operation-registry.sample.json` to a reviewed, versioned registry (still unsigned until Gate 1 tooling exists).
-4. Add property-based tests for attenuation (`CAP-001`).
-5. Obtain two independent ambiguity reviews.
+4. Reconcile the delegation-depth contradiction between Core Contract Specification §4.2 and the capability schema ([ADR-010](decisions/ADR-010-delegation-depth-reading.md)).
+5. Reconcile the two ADR namespaces — Constitution `ADR-001`…`ADR-016` against Core Contract `ADR-001`…`ADR-007`.
+6. Obtain two independent ambiguity reviews.
 
 ---
 
-### Gate 1 — SCP decision oracle ⬜ NOT STARTED
+### Gate 1 — SCP decision oracle 🟡 IN PROGRESS
 
 **Deliver:** pure evaluator, capability model, deterministic reason codes, audit-event builder, property tests, fuzzable parser boundary.
 
 **Exit:** all required negative cases pass **and** a reviewer confirms the evaluator has no side effects.
 
 - [ ] Real cryptographic capability verification (not a trusted boolean) behind a reviewed crypto boundary
-- [ ] Canonical parser rejecting duplicate keys, invalid UTF-8, ambiguous numbers, unknown critical fields
-- [ ] Canonicalization profile implemented and tested
-- [ ] Property-based test suite: attenuation never broadens authority; denied requests create no effects; schema version change never silently grants new fields
-- [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested)
-- [ ] Audit-event builder emitting `schemas/audit-event.schema.json` records
-- [ ] Deterministic reason codes covering all 26 registry entries
+- [x] Canonical parser rejecting duplicate keys, invalid UTF-8, ambiguous numbers, unknown critical fields — `crates/senvoryn-canonical`
+- [x] Canonicalization profile implemented and tested — `SCP-CJSON-0001`, [ADR-008](decisions/ADR-008-canonical-json-profile.md)
+- [x] Property-based test suite: attenuation never broadens authority; denied requests create no effects; schema version change never silently grants new fields — seeded property tests in `crates/senvoryn-scp/tests/properties.rs`
+- [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
+- [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
+- [x] Deterministic reason codes covering all 27 registry entries — cross-checked against the registry by both implementations
+- [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
+- [ ] An independent reviewer confirms the evaluator has no side effects
 
 ---
 

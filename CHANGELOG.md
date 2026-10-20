@@ -17,22 +17,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Founding Constitution v0.6.0 — baseline top-level design authority with 30 constitutional invariants, layered architecture, governance, and acceptance criteria.
 - 14 JSON Schemas (Draft 2020-12) for principals, resources, request envelopes, capabilities, decision records, approval records, intent records, the operation registry, Change Capsules, Origin Capsules, audit events, artifact manifests, update plans, and system states.
 - 2 machine-readable state machines: Change Capsule lifecycle transitions and system-mode transitions, each with global invariants and prohibited transitions.
-- Stable denial-code registry with 26 codes, each carrying a class and a default decision.
-- Example fixtures: a valid request envelope and an **unsigned** sample operation registry.
-- Deterministic reference SCP decision model implementing the 16-gate validation order with a pure, side-effect-free evaluator.
-- 29 executable contract tests covering denials, freshness, epoch binding, approval digests, risk-claim mismatch, mode enforcement, evaluator purity, and capability attenuation.
-- Architecture Decision Records ADR-001 … ADR-007 covering the separation core, cryptographic boundary, canonical encoding, AI authority, universal execution, direct installation, and local-first authority.
+- Stable denial-code registry with 27 codes, each carrying a class and a default decision.
+- Example fixtures: a valid request envelope, an **unsigned** sample operation registry, and a set of development-tool fixtures.
+- Deterministic reference SCP decision model implementing the 16-gate validation order with a pure, side-effect-free evaluator, in Python.
+- 55 executable Python contract tests covering denials, freshness, epoch binding, approval digests, risk-claim mismatch, mode enforcement, evaluator purity, capability attenuation, and the denial-code registry.
+- **Rust workspace with no third-party dependencies**:
+  - `senvoryn-canonical` — the Senvoryn Canonical JSON Profile `SCP-CJSON-0001`: a parser, an encoder, and limits that are checked before the allocation they bound.
+  - `senvoryn-scp` — the SCP decision oracle: the sixteen validation gates, the capability model, the attenuation rule, the trusted Operation Registry merge, and the audit-event builder.
+  - `senvoryn-cli` — a development tool that drives the oracle from files. It says in its own help that it is not an SCP.
+- 67 Rust tests, including a shared conformance-vector suite, seeded property tests, a deterministic fuzz harness over the canonical parser, and a registry-sync suite.
+- **Shared conformance vectors** (`conformance/vectors/vectors.json`) — 30 decision cases and 11 attenuation cases executed by *both* the Python model and the Rust implementation. CI fails if they produce a different decision or a different reason code.
+- Architecture Decision Records ADR-001 … ADR-011, adding the canonical JSON profile, the zero-dependency trusted core, the delegation-depth contradiction, and the object-resolution reason code.
 - Evidence ledger: requirement→test traceability matrix, local validation report, security claim ledger template, and a live claims ledger.
-- Threat model for the SCP decision path.
-- CI pipeline with five jobs: contract tests on Python 3.12/3.13, schema validation, pack integrity (SHA-256), JSON lint, and normative-language checks.
+- Threat model for the SCP decision path (first draft, not independently reviewed).
+- CI pipeline with eight jobs: contract tests on Python 3.12/3.13, a Rust format/lint/test/release job, a conformance-agreement job, schema validation, pack integrity (SHA-256), JSON lint, normative-language checks, dependency review, and YAML/link linting.
 - Community health files: contributing guide, code of conduct, security policy, governance document, issue templates, pull request template, CODEOWNERS, and Dependabot configuration.
 - Repository verification scripts for POSIX shells and PowerShell.
+
+### Changed
+- The Python reference model was rewritten to the specification's 16-gate order. Its previous order transposed the recipient/identity and nonce/freshness gates, and it emitted a reason code that was not in the registry.
+- `RESOURCE_UNRESOLVABLE` was added to the denial-code registry (class `resolution`, default `DENY`). The specification defines an object-resolution gate and the registry had no code for it.
+- `Provenance` and `AuditState` are now enums rather than booleans, a capability cannot be constructed without stating its provenance, `PolicyContext.audit_state` has no default, and `Decision.effect_performed` is a read-only property rather than a settable field.
+- The sample operation registry's `read` operation now lists `RECOVERY` among its allowed modes.
 
 ### Known gaps
 - The SCP threat model is a first draft and has not been independently reviewed.
 - The Operation Registry is an unsigned sample and is **not** production policy.
-- The reference model's capability verification uses a trusted boolean; there is no signature verification, canonical parsing, or real clock handling.
-- No property-based test framework is wired in; attenuation is checked by hand-written assertions.
+- Neither implementation verifies a cryptographic signature: capability provenance is stated, not proven. The verified-provenance boundary remains open under ADR-002.
+- The Rust oracle is a decision function. It is **not** an SCP: it resolves no resource against a filesystem, keeps no trust store, and writes no audit record.
+- The canonical parser is fuzzed; the envelope→request mapping is not.
+- No property-based test framework is used; the property tests are a seeded generator written for this repository.
+- The delegation depth rule follows the specification's literal wording, which contradicts the capability schema's description of the field. The contradiction is recorded, not resolved ([ADR-010](decisions/ADR-010-delegation-depth-reading.md)).
 - The ADR numbering namespace collides between the Constitution's open-decisions register and the Core Contract Specification's ADRs — tracked as a Gate 0 blocker.
 - No artifact is signed, and no SBOM or release-signing ceremony exists yet.
 

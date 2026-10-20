@@ -1,12 +1,22 @@
 requirement_id,requirement,test_ids,test_reference_or_required_evidence,evidence_type,priority,status
-INV-01,Default deny,SCP-001; SCP-002,tests/test_scp_reference.py::test_unknown_principal_denied; test_missing_capability_denied,UNIT+INTEGRATION,P0,Prototype only
-INV-02,Authority explicit and scoped,SCP-004,subject/resource/operation/purpose tests,UNIT+INTEGRATION,P0,Prototype only
-INV-03,No self-escalation; attenuation only narrows,CAP-001,attenuation tests; property-based extension required,UNIT+PROPERTY,P0,Prototype coverage partial
+INV-01,Default deny,SCP-001; SCP-002,tests/test_scp_reference.py::test_unknown_principal_denied; test_missing_capability_denied; crates/senvoryn-scp/tests/conformance_vectors.rs::every_case_matches_the_expected_decision,UNIT+INTEGRATION,P0,Prototype only
+INV-02,Authority explicit and scoped,SCP-004,subject/resource/operation/purpose tests in tests/test_scp_reference.py and crates/senvoryn-scp/tests/conformance_vectors.rs,UNIT+INTEGRATION,P0,Prototype only
+INV-03,No self-escalation; attenuation only narrows,CAP-001,crates/senvoryn-scp/tests/properties.rs::attenuation_never_broadens_a_capability; conformance/vectors/vectors.json attenuation_cases; tests/test_conformance_vectors.py::test_every_attenuation_case_matches,UNIT+PROPERTY,P0,Prototype coverage — property tests exist and are not externally reviewed
 INV-04,AI is not root of trust,AI-001; AI-004,architecture/static checks plus adversarial runtime suite required,STATIC+ADVERSARIAL,P0,Not implemented
 INV-05,No silent destructive action,SCP-006; INS-002,"approval digest, UI automation and audit tests required",INTEGRATION+UI,P0,Not implemented
 INV-06,No hidden telemetry,PRIV-001,fresh-install network egress capture required,NETWORK EGRESS,P0,Not implemented
 INV-07,Local authority survives disconnection,SCP-005; FED-001,offline policy and multi-node tests required,INTEGRATION+FAULT,P0,Not implemented
 INV-08,Isolation by construction,OC-001; OC-002; OC-003,host/guest boundary and network default-deny tests required,ADVERSARIAL,P0,Not implemented
+SCP-001,Unknown principal denied,SCP-001,tests/test_scp_reference.py::test_unknown_principal_denied; conformance vector SCP-001-unknown-principal,UNIT+INTEGRATION,P0,Prototype only
+SCP-002,Missing capability denied,SCP-002,tests/test_scp_reference.py::test_missing_capability_denied; conformance vector SCP-002-missing-capability,UNIT,P0,Prototype only
+SCP-003,Expired or revoked capability denied,SCP-003,tests/test_scp_reference.py::test_expired_capability_denied; test_revoked_capability_denied; conformance vectors SCP-003-expired-capability and SCP-003-revoked-capability,UNIT+REVOCATION INTEGRATION,P0,Prototype only — revocation integration with a live store not built
+SCP-004,Subject resource operation and purpose must match,SCP-004,tests/test_scp_reference.py::test_wrong_subject_denied; test_wrong_resource_denied; test_wrong_operation_denied; test_wrong_purpose_denied; conformance vectors SCP-004-*,PARAMETERIZED UNIT,P0,Prototype only
+SCP-005,Policy epoch mismatch cannot silently permit,SCP-005,tests/test_scp_reference.py::test_policy_epoch_mismatch_denied; conformance vectors SCP-005-policy-epoch-mismatch and SCP-005-capability-epoch-mismatch,UNIT,P0,Prototype only — offline behaviour not built
+SCP-006,High-risk action needs a fresh approval bound to the exact digest,SCP-006,tests/test_scp_reference.py::test_r3_requires_action_bound_approval; test_r3_requires_strong_approval; conformance vector SCP-006-approval-not-bound-to-action and gate-11-strong-approval-required,INTEGRATION,P0,Prototype only — replay test not built
+SCP-007,Evaluator performs no side effects,SCP-007,crates/senvoryn-scp/tests/properties.rs::the_evaluator_does_not_mutate_its_inputs; the_evaluator_is_deterministic; crates/senvoryn-scp/src/decision.rs has no effect field,UNIT+STATIC,P0,Prototype only — independent reviewer confirmation outstanding
+SCP-008,Audit unavailable blocks a high-risk action,SCP-008,tests/test_scp_reference.py::test_sensitive_action_denied_if_audit_unavailable; conformance vector SCP-008-audit-unavailable-blocks-sensitive-action,UNIT+FAULT INJECTION,P0,Prototype only — fault injection not built
+CAP-001,Child capability is a subset of parent,CAP-001,crates/senvoryn-scp/tests/properties.rs::attenuation_never_broadens_a_capability; conformance/vectors/vectors.json attenuation_cases,PROPERTY,P0,Prototype only — delegation-depth direction unresolved (ADR-010)
+CAP-002,Revocation blocks the next privileged step,CAP-002,tests/test_scp_reference.py::test_revoked_capability_denied,INTEGRATION,P0,Not implemented — no live capability store yet
 CC-001,Illegal Change Capsule transitions rejected,CC-001,state-machine transition table tests required,UNIT+PROPERTY,P0,Not implemented
 CC-002,Replay must not repeat effects,CC-002,idempotency and crash-replay integration tests required,INTEGRATION+FAULT,P0,Not implemented
 CC-003,Unverified postcondition cannot commit,CC-003,fault injection for failed verifier required,FAULT,P0,Not implemented
@@ -16,3 +26,4 @@ INS-003,Power loss leaves old boot or recovery path,INS-003,named hardware profi
 UPD-001,Bad signature/downgrade rejected,UPD-001,artifact validation and downgrade tests required,INTEGRATION,P0,Not implemented
 PRIV-002,Secrets absent from logs and crash bundle,PRIV-002,canary-secret scanning test required,PRIVACY,P0,Not implemented
 EVID-001,Every release claim has evidence,EVID-001,release-bundle audit required,RELEASE AUDIT,P0,Not implemented
+SCP-CJSON-0001,One byte encoding per signed value,ADR-008,crates/senvoryn-canonical/tests/profile.rs (37 clause tests); crates/senvoryn-canonical/tests/fuzz.rs (132000 mutated inputs); docs/canonical-json-profile.md,UNIT+FUZZ,P0,Prototype only — independent review outstanding

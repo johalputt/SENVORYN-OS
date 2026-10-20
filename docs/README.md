@@ -9,7 +9,9 @@ This directory holds the normative documents of the Senvoryn OS project.
 | Path | Document | Status | Authority |
 |---|---|---|---|
 | [`specs/`](specs/) | **Core Contract Specification v0.1.0** (`SENVORYN-CORE-SPEC-0001`) | Proposed | 2 — implementation contract |
-| [`constitution/`](constitution/) | **Founding Constitution v0.6.0** | Proposed for review, not ratified | 1 — highest || [`threat-model.md`](threat-model.md) | SCP decision-path threat model | 🔶 First draft, unreviewed | Supporting |
+| [`constitution/`](constitution/) | **Founding Constitution v0.6.0** | Proposed for review, not ratified | 1 — highest |
+| [`threat-model.md`](threat-model.md) | SCP decision-path threat model | 🔶 First draft, unreviewed | Supporting |
+| [`canonical-json-profile.md`](canonical-json-profile.md) | Canonical JSON Profile `SCP-CJSON-0001` | Prototype — named and specified, not independently reviewed | Supporting |
 
 ---
 
@@ -41,6 +43,7 @@ Lower-level artifacts may **narrow** a capability or add checks. They must **not
 | Understand the vocabulary | [`GLOSSARY.md`](../GLOSSARY.md) |
 | Understand the plan | [`ROADMAP.md`](../ROADMAP.md) |
 | Attack the design | [`threat-model.md`](threat-model.md) → [`SECURITY.md`](../SECURITY.md) |
+| Understand the byte encoding | [`canonical-json-profile.md`](canonical-json-profile.md) → [`ADR-008`](../decisions/ADR-008-canonical-json-profile.md) |
 | Understand the rules of change | [`GOVERNANCE.md`](../GOVERNANCE.md) → [`CONTRIBUTING.md`](../CONTRIBUTING.md) |
 
 ---
@@ -66,7 +69,7 @@ Every document declares a status. Any statement not yet demonstrated by implemen
 
 ## Machine-readable companions
 
-The prose specifications are backed by machine-readable contracts at the repository root — [`schemas/`](../schemas/), [`state-machines/`](../state-machines/), [`errors/`](../errors/), and [`examples/`](../examples/). Where the prose and the machine-readable form disagree, that is a defect: please report it.
+The prose specifications are backed by machine-readable contracts at the repository root — [`schemas/`](../schemas/), [`state-machines/`](../state-machines/), [`errors/`](../errors/), [`examples/`](../examples/), and [`conformance/vectors/`](../conformance/vectors/). Where the prose and the machine-readable form disagree, that is a defect: please report it.
 
 ---
 

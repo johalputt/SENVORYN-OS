@@ -10,7 +10,7 @@
       "reversibility": "REVERSIBLE",
       "approval_requirements": ["NONE"],
       "external_effects": [],
-      "allowed_modes": ["NORMAL", "DEGRADED", "READ_ONLY", "MAINTENANCE", "OFFLINE"],
+      "allowed_modes": ["NORMAL", "DEGRADED", "READ_ONLY", "RECOVERY", "MAINTENANCE", "OFFLINE"],
       "idempotent": true,
       "max_duration_ms": 30000,
       "max_operation_count": 1,

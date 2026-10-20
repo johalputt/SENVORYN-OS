@@ -18,8 +18,8 @@
 | This repository **is** | This repository **is not** |
 |---|---|
 | A constitutional + contractual specification for an OS that does not exist yet | A kernel, bootloader, installer, or bootable image |
-| 14 machine-readable JSON Schemas, 2 state machines, a 26-code denial registry | A cryptographic implementation, key store, or signature verifier |
-| A deterministic *toy* policy evaluator with 29 passing tests | A security boundary — **never deploy it as an SCP** |
+| 14 machine-readable JSON Schemas, 2 state machines, a 27-code denial registry | A cryptographic implementation, key store, or signature verifier |
+| A deterministic policy evaluator in **Rust** and a reference model in **Python**, held to one shared vector set | A security boundary — **never deploy it as an SCP** |
 | A traceability matrix mapping requirements to evidence | An audit, certification, penetration test, or compliance claim |
 | A public record of decisions, open questions, and honest limits | A production release, or evidence of a vulnerability-free system |
 
@@ -147,10 +147,12 @@ SENVORYN-OS/
 ├── schemas/                     # 14 JSON Schemas (Draft 2020-12)
 ├── state-machines/              # change-capsule + system-mode transition tables
 ├── errors/                      # stable denial-code registry
-├── examples/                    # valid request fixture, unsigned registry sample
-├── reference/                   # deterministic toy SCP decision model
-├── tests/                       # 29 executable contract tests
-├── decisions/                   # ADR-001 … ADR-007
+├── examples/                    # request fixture, unsigned registry sample, CLI fixtures
+├── conformance/vectors/         # shared conformance vectors — executed by BOTH implementations
+├── crates/                      # Rust workspace: canonical profile, SCP oracle, dev CLI
+├── reference/                   # Python reference decision model
+├── tests/                       # 55 executable contract tests
+├── decisions/                   # ADR-001 … ADR-011
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
 │
@@ -163,16 +165,20 @@ SENVORYN-OS/
 |---|---|---|
 | `schemas/` | JSON Schema Draft 2020-12 for principals, resources, requests, capabilities, decisions, approvals, intents, operations, Change Capsules, Origin Capsules, audit events, artifacts, updates, system states | 14 |
 | `state-machines/` | Change Capsule lifecycle + system-mode transition tables | 2 |
-| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 26 codes |
-| `examples/` | Valid request envelope fixture; **unsigned** sample operation registry | 2 |
-| `decisions/` | Architecture Decision Records with open questions | 7 ADRs |
+| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 27 codes |
+| `examples/` | Request envelope fixture; **unsigned** sample operation registry; CLI fixtures | 5 |
+| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 30 cases + 11 attenuation cases |
+| `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, development CLI | 3 crates, 0 third-party dependencies |
+| `decisions/` | Architecture Decision Records with open questions | 11 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
 
 ## Quick start
 
-Requirements: **Python 3.11+** (3.12/3.13 verified). No other runtime dependencies for the contract layer.
+Requirements: **Python 3.11+** (3.12/3.13 verified) for the contract layer and the
+reference model; **Rust 1.85+** (stable) for the workspace. The Rust workspace has
+**no third-party dependencies**.
 
 ```bash
 git clone https://github.com/johalputt/SENVORYN-OS.git
@@ -184,14 +190,17 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the full contract test suite (29 tests)
+# Run the contract test suite (55 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
+
+# Run the Rust workspace (67 tests)
+cargo test --workspace
 ```
 
 Expected tail of output:
 
 ```
-Ran 29 tests in 0.285s
+Ran 55 tests in 0.285s
 
 OK
 ```
@@ -202,6 +211,28 @@ On Windows PowerShell, set the path inline:
 $env:PYTHONPATH = "reference"
 python -m unittest discover -s tests -v
 ```
+
+### The Rust workspace
+
+| Crate | What it is | What it is not |
+|---|---|---|
+| `senvoryn-canonical` | The Senvoryn Canonical JSON Profile `SCP-CJSON-0001`: parser, encoder, limits | Not a general JSON library — it rejects what the profile rejects |
+| `senvoryn-scp` | The SCP decision oracle: the sixteen validation gates, the capability model, the audit-event builder | **Not an SCP.** It verifies no signature, resolves no resource against a filesystem, and writes no audit record |
+| `senvoryn-cli` | A development tool that drives the oracle from files | **Not an SCP**, and not deployable as one |
+
+```bash
+# Evaluate one request against one policy context
+cargo run -p senvoryn-cli -- \
+  --request examples/cli/request.json \
+  --context examples/cli/context.json \
+  --capability examples/cli/capability.json
+```
+
+The two implementations are held to one another by a shared vector set. Both suites
+execute `conformance/vectors/vectors.json`, and CI fails if they produce a different
+decision or a different reason code for the same case. That is the mechanism that
+stops a prototype and an implementation from becoming two authorities on the same
+question.
 
 ### Verify the shipped pack
 
@@ -215,13 +246,15 @@ pwsh -File scripts/verify-pack.ps1
 
 ### Continuous integration
 
-Every push and pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on Python 3.12 and 3.13:
+Every push and pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on Python 3.12 and 3.13, and on Rust stable:
 
 | Job | What it proves |
 |---|---|
-| `contract-tests` | All 29 contract/unit tests pass on both interpreters |
+| `contract-tests` | All 55 contract/unit tests pass on both interpreters |
+| `rust` | The Rust workspace is formatted, lint-clean under `clippy -D warnings`, fully tested, and builds in release mode |
+| `conformance-agreement` | The Rust and the Python implementation produce the same decision and the same reason code for every shared vector |
 | `schema-validation` | All 14 schemas are valid Draft 2020-12 and fixtures conform |
-| `pack-integrity` | SHA-256 checksums of the 43 shipped contract artifacts match `SHA256SUMS.txt` |
+| `pack-integrity` | SHA-256 checksums of the shipped contract artifacts match `SHA256SUMS.txt` |
 | `json-lint` | Every JSON document in the repository parses |
 | `claim-discipline` | Normative documents declare a status and contain no unmarked absolute security claims |
 | `dependency-review` | Dependency changes on a PR are checked against known vulnerabilities and license policy |
@@ -332,7 +365,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 29/29 tests passing · 2/2 state machines structurally valid · 26/26 denial codes unique · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 55/55 Python tests passing · 67/67 Rust tests passing · 30/30 shared vectors agreed · 2/2 state machines structurally valid · 27/27 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 
@@ -343,7 +376,7 @@ Work is sequenced by dependency and evidence, not by launch pressure. **No gate 
 | Gate | Deliverable | Status |
 |---|---|---|
 | **0** | Contract freeze for prototype: identifiers, typed object model, schemas, threat model, state machine, error registry, reference evaluator, traceability matrix | 🟡 **In progress** — this repository is the Gate 0 deliverable |
-| **1** | SCP decision oracle: pure evaluator, capability model, deterministic reason codes, audit-event builder, property tests, fuzzable parser boundary | ⬜ Not started |
+| **1** | SCP decision oracle: pure evaluator, capability model, deterministic reason codes, audit-event builder, property tests, fuzzable parser boundary | 🟡 **In progress** — the Rust oracle, the canonical profile, the shared vectors, and the fuzz harness are in this repository; the signed Operation Registry and the resolution boundary are not |
 | **2** | Change Capsule executor simulator: state machine, operation registry, idempotency ledger, stale-precondition detection, rollback/compensation simulation, fault injection | ⬜ Not started |
 | **3** | Capsule policy simulator: Origin Capsule manifest, bridge registry, budget checks, guest/host authority tests | ⬜ Not started |
 | **4** | Minimal bootable prototype: one declared hardware/emulator profile, trusted boot chain, minimal service supervisor, local policy enforcement, recovery path | ⬜ Not started |
@@ -358,9 +391,9 @@ Full gate definitions and exit criteria: [`ROADMAP.md`](ROADMAP.md).
 
 1. **Threat model** for the SCP decision path (`docs/threat-model.md`) — required for Gate 0 exit.
 2. **Operation Registry v1** — promoted from the unsigned sample to a reviewed, versioned, signed artifact.
-3. **Property-based tests** for capability attenuation (`CAP-001`) — currently a hand-written subset check.
-4. **Fuzzable parser boundary** for the request envelope (Gate 1 prerequisite).
-5. **Canonicalization profile** — the exact canonical byte encoding to be named and tested before any object is signed (ADR-003).
+3. **Property-based tests** for capability attenuation (`CAP-001`) — now property tests over a seeded generator; still no external review.
+4. **Fuzzable parser boundary** for the request envelope (Gate 1 prerequisite) — the canonical parser is fuzzed; the envelope→request mapping is not.
+5. **Canonicalization profile** — named and specified as `SCP-CJSON-0001`; independent review before it is used to verify anything ([ADR-008](decisions/ADR-008-canonical-json-profile.md)).
 
 ---
 
@@ -396,7 +429,7 @@ Requirement  ──▶  Test ID  ──▶  Test artifact  ──▶  Result  �
 | Artifact | Purpose |
 |---|---|
 | [`evidence/traceability.csv`](evidence/traceability.csv) | Requirement → test → evidence → owner → status |
-| [`evidence/local-validation-report.txt`](evidence/local-validation-report.txt) | What the 29 local tests and 14 schema checks actually proved — and what they did not |
+| [`evidence/local-validation-report.txt`](evidence/local-validation-report.txt) | What the local tests and schema checks actually proved — and what they did not |
 | [`evidence/security-claim-ledger-template.md`](evidence/security-claim-ledger-template.md) | Template for publishing a security claim; every field must be filled before publication |
 | [`evidence/claims-ledger.md`](evidence/claims-ledger.md) | Live ledger classifying each claim `PROPOSED` / `IMPLEMENTED` / `TESTED` / `INDEPENDENTLY REVIEWED` / `FORMALLY VERIFIED WITH SCOPE` / `WITHDRAWN` |
 
@@ -459,10 +492,11 @@ Complete list: [Constitution Article 44](docs/constitution/SENVORYN_OS_Constitut
 |---|---|---|
 | [Core Contract Specification](docs/specs/SENVORYN_Core_Contract_Spec_v0.1.md) | `SENVORYN-CORE-SPEC-0001` v0.1.0 | Normative engineering contract: data contracts, state machines, validation order, failure behavior, testable obligations |
 | [Founding Constitution](docs/constitution/SENVORYN_OS_Constitution_v0.6.md) | v0.6.0 | Top-level design authority: 30 constitutional invariants, architecture, governance, acceptance criteria |
+| [Canonical JSON Profile](docs/canonical-json-profile.md) | `SCP-CJSON-0001` v1 | The one byte encoding for every signed, hashed, or compared protocol object |
 | [Architecture overview](ARCHITECTURE.md) | — | Layers, trust boundaries, TCB inventory, dependency direction rules |
 | [Roadmap](ROADMAP.md) | — | Gates 0–8 with deliverables and exit criteria |
 | [Glossary](GLOSSARY.md) | — | Normative vocabulary across both documents |
-| [Architecture Decision Records](decisions/) | ADR-001…007 | Accepted decisions and explicitly open questions |
+| [Architecture Decision Records](decisions/) | ADR-001…011 | Accepted decisions and explicitly open questions |
 | [Changelog](CHANGELOG.md) | — | Versioned history of contract, schema, and model changes |
 
 ### Document hierarchy

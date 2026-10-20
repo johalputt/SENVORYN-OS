@@ -1,0 +1,15 @@
+[package]
+name = "senvoryn-scp"
+description = "Senvoryn System Control Plane decision oracle — a pure, deterministic evaluator for the sixteen validation gates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+senvoryn-canonical = { workspace = true }
+
+[lints]
+workspace = true

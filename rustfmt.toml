@@ -1,0 +1,7 @@
+edition = "2024"
+max_width = 100
+# `use_small_heuristics = "Max"` keeps imports and short functions on one line
+# where they fit, which keeps the security-critical conditionals — the ones a
+# reviewer has to read line by line — visually compact.
+use_small_heuristics = "Max"
+newline_style = "Unix"
