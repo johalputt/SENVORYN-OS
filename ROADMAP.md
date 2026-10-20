@@ -20,10 +20,11 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | Statement | Status |
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
-| 55 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
-| 68 Rust tests pass | ✅ Verified (Rust stable) |
+| 57 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 98 Rust tests pass | ✅ Verified (Rust stable) |
 | 31 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
-| Every control has a test that fails when the control is broken | ✅ Verified — 23 mutations, all killed |
+| 30 Change Capsule vectors are agreed by the one implementation that exists | ⚠️ Verified against one implementation — a second is needed before this is agreement |
+| Every control has a test that fails when the control is broken | ✅ Verified — 40 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
 | 27 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
@@ -80,24 +81,31 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
 - [x] Deterministic reason codes covering all 27 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 23 controls in turn and requires a named test to go red for each
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 40 controls in turn and requires a named test to go red for each
 - [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
 - [ ] An independent reviewer confirms the evaluator has no side effects
 
 ---
 
-### Gate 2 — Change Capsule executor simulator ⬜ NOT STARTED
+### Gate 2 — Change Capsule executor simulator 🟡 IN PROGRESS
 
 **Deliver:** state machine, operation registry, idempotency ledger, stale-precondition detection, rollback/compensation simulation, fault injection.
 
 **Exit:** interrupted operations **never** falsely report `COMMITTED`.
 
-- [ ] Executable `change-capsule-transitions.json` engine with guard evaluation
-- [ ] Idempotency ledger keyed by capsule ID + replay key
-- [ ] Stale target-version and policy-epoch detection before every step
-- [ ] Compensation planner for `COMPENSATABLE` vs `NON_REVERSIBLE` operations
-- [ ] Fault injection: crash, lost storage, stale time, full disk, power interruption, clock rollback, corrupted artifact
-- [ ] Transition tests for every illegal transition in the table
+- [x] Executable `change-capsule-transitions.json` engine with guard evaluation — the executor reads the repository's own table; it does not decide legality itself
+- [x] Idempotency ledger keyed by capsule ID + replay key — an outcome known not to have applied may be retried; an outcome that is *not known* may not
+- [x] Stale target-version and policy-epoch detection before every step — rechecked in the precheck, not only at validation
+- [x] Compensation planner for `COMPENSATABLE` vs `NON_REVERSIBLE` operations — a non-reversible operation escalates to a human rather than claiming a rollback
+- [x] Fault injection: crash, lost storage, stale time, full disk, power interruption, clock rollback, corrupted artifact — crash, I/O error, stale precondition, policy-epoch change, lost audit sink
+- [x] Transition tests for every illegal transition in the table — the table is checked for unreachable states as well as illegal ones
+- [x] 30 capsule conformance vectors, and 17 of the controls mutation-checked
+
+**Still open for Gate 2 exit:**
+
+- [ ] A second implementation of the capsule executor, so the capsule vectors are *agreed* rather than merely self-consistent
+- [ ] Faults the simulator does not yet model: full disk, clock rollback, corrupted artifact
+- [ ] The executor drives a simulated environment; nothing here proves that a real system can be rolled back
 
 ---
 

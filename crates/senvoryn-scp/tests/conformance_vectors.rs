@@ -71,6 +71,14 @@ fn operation_entry(raw: &Value) -> OperationEntry {
         max_duration_ms: optional_u64(raw, "max_duration_ms"),
         max_operation_count: optional_u64(raw, "max_operation_count"),
         required_preconditions: string_set(raw, "required_preconditions"),
+        required_postconditions: string_set(raw, "required_postconditions"),
+        reversibility: raw
+            .get("reversibility")
+            .and_then(Value::as_str)
+            .and_then(senvoryn_scp::Reversibility::parse)
+            .unwrap_or(senvoryn_scp::Reversibility::Unknown),
+        external_effects: string_set(raw, "external_effects"),
+        idempotent: raw.get("idempotent").and_then(Value::as_bool).unwrap_or(false),
         audit_class: raw
             .get("audit_class")
             .and_then(Value::as_str)

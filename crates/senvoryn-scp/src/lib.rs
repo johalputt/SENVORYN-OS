@@ -53,5 +53,7 @@ pub use context::{AuditState, PolicyContext, SystemMode};
 pub use decision::{Decision, DecisionStatus, RecordDetails};
 pub use evaluator::{evaluate, registry_risk_tier};
 pub use reason::{CodeEntry, ReasonCode, registry_codes, registry_default_status, registry_entry};
-pub use registry::{AuditClass, OperationEntry, OperationRegistry, RegistryError, RiskTier};
+pub use registry::{
+    AuditClass, OperationEntry, OperationRegistry, RegistryError, Reversibility, RiskTier,
+};
 pub use request::{Budget, EnvelopeError, Request};

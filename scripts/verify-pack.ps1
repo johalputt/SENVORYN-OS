@@ -7,7 +7,8 @@
       1. SHA-256 manifest integrity for the contract artifacts
       2. JSON Schema Draft 2020-12 validation
       3. The executable contract test suite
-      4. The internal link check
+      4. The Rust workspace test suite
+      5. The internal link check
 
 .EXAMPLE
     pwsh -File scripts/verify-pack.ps1
@@ -32,11 +33,11 @@ function Write-Step {
     Write-Host ('-' * 60) -ForegroundColor DarkGray
 }
 
-Write-Step '1/4  Contract artifact integrity (SHA-256)'
+Write-Step '1/5  Contract artifact integrity (SHA-256)'
 & $python 'scripts/generate-checksums.py' --check
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Step '2/4  JSON Schema validation'
+Write-Step '2/5  JSON Schema validation'
 @'
 import json, sys
 from pathlib import Path
@@ -61,12 +62,23 @@ sys.exit(1 if failed else 0)
 '@ | & $python -
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Step '3/4  Contract test suite'
+Write-Step '3/5  Contract test suite'
 $env:PYTHONPATH = 'reference'
 & $python -m unittest discover -s tests -v
 $testExit = $LASTEXITCODE
 
-Write-Step '4/4  Internal link check'
+Write-Step '4/5  Rust workspace test suite'
+# The Rust workspace carries the canonical profile, the SCP oracle and the
+# Change Capsule executor. A toolchain is not assumed: without one, the step
+# is skipped rather than failed, and the skip is said out loud.
+if (Get-Command cargo -ErrorAction SilentlyContinue) {
+    cargo test --workspace
+    if ($LASTEXITCODE -ne 0 -and $testExit -eq 0) { $testExit = $LASTEXITCODE }
+} else {
+    Write-Host 'SKIP: cargo is not on PATH. The Rust workspace was not tested.'
+}
+
+Write-Step '5/5  Internal link check'
 if ($testExit -eq 0) {
     & $python 'scripts/check-links.py'
     if ($LASTEXITCODE -ne 0) { $testExit = $LASTEXITCODE }

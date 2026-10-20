@@ -23,13 +23,18 @@ Three ways this has produced a false green before, and each is designed out here
 
 The mutated files are restored byte for byte from memory in a ``finally``
 block, so a failure, a crash or a Ctrl-C leaves the working tree exactly as it
-was found.
+was found. A run that is killed outright cannot restore anything, so the
+original is also written to a backup file beside the source, and the next run
+refuses to start if the tree is not in the state the manifest expects.
 
 Usage::
 
     python scripts/mutation-gate.py                    # run every mutation
     python scripts/mutation-gate.py M11-risk-downgrade # run one
     python scripts/mutation-gate.py --list
+
+Do not pipe this script's output through a truncating filter. A pipeline that
+closes early kills the process mid-mutation, and the tree is left broken.
 """
 
 from __future__ import annotations
@@ -114,12 +119,41 @@ def main() -> int:
         print("cargo is not on PATH", file=sys.stderr)
         return 2
 
+    # A run that was killed part way through leaves the tree mutated, and the
+    # next run would then mutate a file that is already broken — which proves
+    # nothing and hides the damage. The tree is checked before anything is
+    # touched, so a dirty tree is reported rather than compounded.
+    dirty = []
+    for mutation in mutations:
+        path = ROOT / mutation["file"]
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if mutation["find"] not in text:
+            dirty.append((mutation["id"], mutation["file"]))
+    if dirty:
+        print("FAIL: the working tree is not in the state the manifest expects.", file=sys.stderr)
+        for identifier, file in dirty:
+            print(f"  {identifier}: the text to mutate is not in {file}", file=sys.stderr)
+        print(
+            "A previous run was probably interrupted. Restore the files and try again.",
+            file=sys.stderr,
+        )
+        return 1
+
     survivors = []
     invalid = []
     for mutation in mutations:
         identifier = mutation["id"]
         path = ROOT / mutation["file"]
         original = path.read_bytes()
+        # The original is also written beside the file. If this process is
+        # killed outright, the `finally` block never runs, and the file on disk
+        # is the only way back.
+        with open(path, "rb") as handle:
+            original = handle.read()
+        backup = path.with_suffix(path.suffix + ".mutation-backup")
+        backup.write_bytes(original)
         print(f"[{identifier}] {mutation['control']}")
         try:
             occurrences = apply_mutation(path, mutation["find"], mutation["replace"])
@@ -129,6 +163,7 @@ def main() -> int:
             )
         finally:
             path.write_bytes(original)
+            backup.unlink(missing_ok=True)
 
         expected = mutation["expect_output_contains"]
         if code == 0:
@@ -167,7 +202,6 @@ def main() -> int:
         return 1
     print(f"OK: all {len(mutations)} mutation(s) were killed.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -132,7 +132,7 @@ $env:PYTHONPATH = "reference"
 python -m unittest discover -s tests -v
 ```
 
-Expected: `Ran 55 tests ... OK`.
+Expected: `Ran 57 tests ... OK`.
 
 Run a single module or test:
 
@@ -156,7 +156,7 @@ nothing. The mutation gate breaks each control in turn and requires a
 **named** test to go red:
 
 ```bash
-python scripts/mutation-gate.py                    # all 23 controls
+python scripts/mutation-gate.py                    # all 40 controls
 python scripts/mutation-gate.py M11-risk-downgrade # one control
 python scripts/mutation-gate.py --list
 ```
@@ -177,6 +177,12 @@ failure modes to avoid are:
 The manifest lives in `scripts/mutations.json`. It is covered by the checksum
 manifest, so deleting a line from it is a visible change.
 
+**Do not pipe the gate's output through a truncating filter.** A pipeline that
+closes early kills the process while a file is mutated, and the tree is left
+broken. The gate writes the original beside the file before it changes
+anything, and refuses to start if the tree is not in the state the manifest
+expects — but the repair is easier to avoid than to make.
+
 ### Verify the shipped pack
 
 ```bash
@@ -190,7 +196,7 @@ pwsh -File scripts/verify-pack.ps1 # Windows
 |---|---|
 | `contract-tests` | All contract tests pass on Python 3.12 **and** 3.13 |
 | `rust` | The workspace is formatted, `clippy -D warnings` clean, tested, and builds in release mode |
-| `conformance-agreement` | The Rust and the Python implementation agree on every shared vector |
+| `conformance-agreement` | The Rust and the Python implementation agree on every shared vector; the capsule vectors are executed and reported separately, because only one implementation of the capsule executor exists |
 | `mutation-gate` | Every control is broken in turn and a named test is required to go red |
 | `schema-validation` | Every schema is valid Draft 2020-12; fixtures conform; unknown fields are rejected |
 | `pack-integrity` | SHA-256 checksums match `SHA256SUMS.txt` |

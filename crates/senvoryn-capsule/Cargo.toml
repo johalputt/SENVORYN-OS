@@ -1,0 +1,16 @@
+[package]
+name = "senvoryn-capsule"
+description = "Senvoryn Change Capsule executor simulator — the state machine, the idempotency ledger and the fault injection harness"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+senvoryn-canonical = { workspace = true }
+senvoryn-scp = { workspace = true }
+
+[lints]
+workspace = true

@@ -39,6 +39,9 @@ The Claims Ledger is the **single source of truth for what this project may publ
 | INV-10 | Verifiable updates | `schemas/update-plan.schema.json` | `PROPOSED` | Schema only; no updater exists |
 | INV-11 | Rollback is not erasure | Specification §7.5 | `PROPOSED` | Not implemented |
 | INV-12 | Data and configuration are distinct | Specification §10.4 | `PROPOSED` | Not implemented |
+| CC-01 | An interrupted Change Capsule never reports COMMITTED | `crates/senvoryn-capsule/tests/fault_injection.rs`; `conformance/capsule-vectors.json` | `TESTED` | Simulated environment only; the compensation is modelled, not exercised against real storage |
+| CC-02 | A decision permits only the capsule it was made about | `crates/senvoryn-capsule/src/authorization.rs`; capsule vector cases CC-007, CC-009 | `TESTED` | The decision is taken as an input; the SCP is not re-implemented here, so this is a binding check and not a policy decision |
+| CC-03 | Every control the capsule implements has a test that fails when the control is broken | `scripts/mutations.json`; `scripts/mutation-gate.py` | `TESTED` | The gate is written by the same project as the code it checks; it is not an independent review |
 | INV-13 | Explainability is evidence-based | `schemas/decision-record.schema.json`, `schemas/audit-event.schema.json` | `PROPOSED` | Schemas only |
 | INV-14 | Offline core operation | Specification §3.4 | `PROPOSED` | Not implemented |
 | INV-15 | User agency | Specification §10.3 | `PROPOSED` | Not implemented |

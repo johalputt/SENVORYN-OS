@@ -1,0 +1,60 @@
+{
+  "schema": "senvoryn.change-capsule.v1",
+  "capsule_id": "capsule:example:0001",
+  "originator_id": "user:alice",
+  "target": {
+    "target_id": "file:report",
+    "target_type": "file_object",
+    "expected_version": "7"
+  },
+  "intent_id": "intent:example:0001",
+  "policy_epoch": 7,
+  "risk_tier": "R2",
+  "reversibility": "COMPENSATABLE",
+  "preconditions": [
+    { "predicate_id": "resource_version_matches", "expected": "7", "observed_version": "7" }
+  ],
+  "steps": [
+    {
+      "step_id": "step.write",
+      "operation": "write",
+      "idempotency_key": "idem:capsule:example:0001:step.write",
+      "parameters_digest": "0000000000000000000000000000000000000000000000000000000000000001",
+      "risk_tier": "R2",
+      "timeout_ms": 30000,
+      "success_predicates": ["write_accepted"],
+      "recovery_action_id": "restore:report:7"
+    },
+    {
+      "step_id": "step.verify",
+      "operation": "read",
+      "idempotency_key": "idem:capsule:example:0001:step.verify",
+      "parameters_digest": "0000000000000000000000000000000000000000000000000000000000000003",
+      "risk_tier": "R0",
+      "timeout_ms": 10000,
+      "success_predicates": ["written_version_verified"],
+      "recovery_action_id": null
+    }
+  ],
+  "budget": {
+    "duration_ms": 60000,
+    "operation_count": 2
+  },
+  "postconditions": [
+    { "predicate_id": "written_version_verified", "mandatory": true }
+  ],
+  "recovery_plan": {
+    "plan_id": "plan:example:0001",
+    "strategy": "COMPENSATE",
+    "recovery_artifact_ref": "artifact:example:snapshot:0001",
+    "irreversible_effects": [],
+    "human_instructions_ref": null
+  },
+  "issued_at": "2026-01-01T00:00:00Z",
+  "expires_at": "2026-01-01T01:00:00Z",
+  "approval_requirements": [
+    { "approval_type": "USER_CONFIRMATION", "count": 1 }
+  ],
+  "payload_digest": "0000000000000000000000000000000000000000000000000000000000000002",
+  "signature_refs": ["signature:example:0001"]
+}

@@ -20,15 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stable denial-code registry with 27 codes, each carrying a class and a default decision.
 - Example fixtures: a valid request envelope, an **unsigned** sample operation registry, and a set of development-tool fixtures.
 - Deterministic reference SCP decision model implementing the 16-gate validation order with a pure, side-effect-free evaluator, in Python.
-- 55 executable Python contract tests covering denials, freshness, epoch binding, approval digests, risk-claim mismatch, mode enforcement, evaluator purity, capability attenuation, and the denial-code registry.
+- 57 executable Python contract tests covering denials, freshness, epoch binding, approval digests, risk-claim mismatch, mode enforcement, evaluator purity, capability attenuation, the denial-code registry, and the Change Capsule fixture's conformance to its schema.
 - **Rust workspace with no third-party dependencies**:
   - `senvoryn-canonical` — the Senvoryn Canonical JSON Profile `SCP-CJSON-0001`: a parser, an encoder, and limits that are checked before the allocation they bound.
   - `senvoryn-scp` — the SCP decision oracle: the sixteen validation gates, the capability model, the attenuation rule, the trusted Operation Registry merge, and the audit-event builder.
+  - `senvoryn-capsule` — the Change Capsule executor **simulator**: the state machine driven from the repository's own transition table, the idempotency ledger, the compensation planner, and a fault injector. It acts on a simulated environment, performs no effect, and decides no policy; it checks that the System Control Plane's decision binds the capsule's own digest.
   - `senvoryn-cli` — a development tool that drives the oracle from files. It says in its own help that it is not an SCP.
-- 68 Rust tests, including a shared conformance-vector suite, seeded property tests, a deterministic fuzz harness over the canonical parser, and a registry-sync suite.
+- 98 Rust tests, including a shared conformance-vector suite, seeded property tests, a deterministic fuzz harness over the canonical parser, a registry-sync suite, the capsule's fault-injection property, and the capsule's vector suite.
 - **Shared conformance vectors** (`conformance/vectors/vectors.json`) — 31 decision cases and 11 attenuation cases executed by *both* the Python model and the Rust implementation. CI fails if they produce a different decision or a different reason code.
-- **A mutation gate** (`scripts/mutation-gate.py`, `scripts/mutations.json`) — 23 controls are broken in turn and a *named* test is required to go red for each. A surviving mutation is a control no test enforces, and the gate fails. It found two real gaps the unit tests had missed: the "not yet valid" half of a capability's validity window had no shared vector, and the decision record's `effect_performed` field had no test.
-- Architecture Decision Records ADR-001 … ADR-011, adding the canonical JSON profile, the zero-dependency trusted core, the delegation-depth contradiction, and the object-resolution reason code.
+- **Change Capsule vectors** (`conformance/capsule-vectors.json`) — 30 cases naming the state the capsule executor must reach, executed by the Rust implementation. They use the `CC-` group of the specification's conformance identifiers.
+- **A mutation gate** (`scripts/mutation-gate.py`, `scripts/mutations.json`) — 40 controls are broken in turn and a *named* test is required to go red for each. A surviving mutation is a control no test enforces, and the gate fails. It found four real gaps the unit tests had missed: the "not yet valid" half of a capability's validity window had no shared vector; the decision record's `effect_performed` field had no test; the capsule's registry-risk check was satisfied by a different control; and the capsule's approval-requirement vector passed for the wrong reason.
+- Architecture Decision Records ADR-001 … ADR-013, adding the canonical JSON profile, the zero-dependency trusted core, the delegation-depth contradiction, the object-resolution reason code, the capsule's strict-UTC timestamp boundary, and the pre-effect failure transitions the Change Capsule state table was missing.
 - Evidence ledger: requirement→test traceability matrix, local validation report, security claim ledger template, and a live claims ledger.
 - Threat model for the SCP decision path (first draft, not independently reviewed).
 - CI pipeline with ten jobs: contract tests on Python 3.12/3.13, a Rust format/lint/test/release job, a conformance-agreement job, a mutation-gate job, schema validation, pack integrity (SHA-256), JSON lint, normative-language checks, dependency review, and YAML/link linting.
@@ -48,7 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Rust oracle is a decision function. It is **not** an SCP: it resolves no resource against a filesystem, keeps no trust store, and writes no audit record.
 - The canonical parser is fuzzed; the envelope→request mapping is not.
 - No property-based test framework is used; the property tests are a seeded generator written for this repository.
-- The mutation gate covers 23 controls. It is not exhaustive: the capsule, installer, update and AI-broker gates have no implementation to mutate yet.
+- The mutation gate covers 40 controls. It is not exhaustive: the installer, update and AI-broker gates have no implementation to mutate yet.
+- The Change Capsule vectors are executed by **one** implementation. They catch drift between the executor and its contract, but they cannot catch drift between two implementations — the failure the shared SCP vectors exist to prevent.
+- The capsule executor acts on a simulated environment. It proves the transaction's bookkeeping and its refusals; it does not prove that a real system can be rolled back, because nothing here touches storage.
+- The Change Capsule state table was amended to add the pre-effect failure transitions the specification requires. `FAILED` was a state the table listed and no transition could reach ([ADR-013](decisions/ADR-013-capsule-pre-effect-failure-transitions.md)).
 - The delegation depth rule follows the specification's literal wording, which contradicts the capability schema's description of the field. The contradiction is recorded, not resolved ([ADR-010](decisions/ADR-010-delegation-depth-reading.md)).
 - The ADR numbering namespace collides between the Constitution's open-decisions register and the Core Contract Specification's ADRs — tracked as a Gate 0 blocker.
 - No artifact is signed, and no SBOM or release-signing ceremony exists yet.

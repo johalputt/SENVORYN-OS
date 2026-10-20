@@ -7,6 +7,14 @@ name = "senvoryn-canonical"
 version = "0.1.0"
 
 [[package]]
+name = "senvoryn-capsule"
+version = "0.1.0"
+dependencies = [
+ "senvoryn-canonical",
+ "senvoryn-scp",
+]
+
+[[package]]
 name = "senvoryn-cli"
 version = "0.1.0"
 dependencies = [

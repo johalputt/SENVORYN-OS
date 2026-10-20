@@ -6,6 +6,8 @@
 #   1. SHA-256 manifest integrity for the contract artifacts
 #   2. JSON Schema Draft 2020-12 validation
 #   3. The executable contract test suite
+#   4. The Rust workspace test suite
+#   5. The internal link check
 #
 # Usage:
 #   bash scripts/verify-pack.sh
@@ -45,11 +47,11 @@ hr()  { printf '%s\n' "---------------------------------------------------------
 step() { hr; printf '>> %s\n' "$1"; hr; }
 
 # ---------------------------------------------------------------------------
-step "1/4  Contract artifact integrity (SHA-256)"
+step "1/5  Contract artifact integrity (SHA-256)"
 "$PYTHON" scripts/generate-checksums.py --check
 
 # ---------------------------------------------------------------------------
-step "2/4  JSON Schema validation"
+step "2/5  JSON Schema validation"
 "$PYTHON" - <<'PY'
 import json
 import sys
@@ -76,11 +78,22 @@ sys.exit(1 if failed else 0)
 PY
 
 # ---------------------------------------------------------------------------
-step "3/4  Contract test suite"
+step "3/5  Contract test suite"
 PYTHONPATH=reference "$PYTHON" -m unittest discover -s tests -v
 
 # ---------------------------------------------------------------------------
-step "4/4  Internal link check"
+step "4/5  Rust workspace test suite"
+# The Rust workspace carries the canonical profile, the SCP oracle and the
+# Change Capsule executor. A toolchain is not assumed: without one, the step
+# is skipped rather than failed, and the skip is said out loud.
+if command -v cargo >/dev/null 2>&1; then
+    cargo test --workspace
+else
+    echo "SKIP: cargo is not on PATH. The Rust workspace was not tested."
+fi
+
+# ---------------------------------------------------------------------------
+step "5/5  Internal link check"
 "$PYTHON" scripts/check-links.py
 
 # ---------------------------------------------------------------------------

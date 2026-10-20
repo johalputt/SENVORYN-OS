@@ -35,6 +35,8 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | [ADR-009](ADR-009-zero-dependency-trusted-core.md) | No third-party dependencies in the trusted core | Proposed | 2 |
 | [ADR-010](ADR-010-delegation-depth-reading.md) | Delegation depth: the literal reading, and the contradiction | Proposed | 3 |
 | [ADR-011](ADR-011-resolution-reason-code.md) | A reason code for the object-resolution gate | Proposed | 2 |
+| [ADR-012](ADR-012-capsule-utc-timestamp-boundary.md) | A capsule's timestamps are parsed once, at the boundary, in strict UTC | Proposed | 2 |
+| [ADR-013](ADR-013-capsule-pre-effect-failure-transitions.md) | The pre-effect failure transitions the capsule state table was missing | Proposed | 2 |
 
 ---
 
@@ -53,13 +55,15 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | **009** | The trusted Rust core carries no third-party dependencies. |
 | **010** | A child's delegation depth must decrease, following the specification's literal wording, and the contradiction with the schema is recorded rather than resolved here. |
 | **011** | The denial-code registry carries a code for the specification's object-resolution gate. |
+| **012** | A capsule's timestamps are parsed once, at the boundary, by a strict UTC-only parser, and the wire string is kept for the evidence. |
+| **013** | The Change Capsule state table gains the pre-effect failure transitions the specification requires, so `FAILED` is reachable. |
 
 ---
 
 ## Writing a new ADR
 
 ```bash
-cp decisions/ADR-XXX-template.md decisions/ADR-012-<slug>.md
+cp decisions/ADR-XXX-template.md decisions/ADR-014-<slug>.md
 ```
 
 Fill in every section. The **Context** section is the one that matters most — it must explain what constraint makes the obvious solution wrong. An ADR without a real constraint is a design note.

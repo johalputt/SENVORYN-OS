@@ -38,6 +38,7 @@ INCLUDE_DIRS = (
     "tests",
     "evidence",
     "conformance",
+    "crates",
     "docs/specs",
     "docs/constitution",
 )
@@ -69,10 +70,15 @@ INCLUDE_FILES = (
     # test that must catch each one. Removing a line from it would silently
     # reduce the number of controls the project believes it has proved.
     "scripts/mutations.json",
+    # The workspace manifest and its lockfile: the Rust crates are contract
+    # artifacts now, and the lockfile is what says the workspace has no
+    # third-party dependency to drift in.
+    "Cargo.toml",
+    "Cargo.lock",
 )
 
 # Never hashed: build noise, caches, editor droppings.
-EXCLUDE_DIR_NAMES = {"__pycache__", ".git", ".mypy_cache", ".pytest_cache", ".ruff_cache"}
+EXCLUDE_DIR_NAMES = {"__pycache__", ".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", "target"}
 EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".swp", ".orig", ".rej"}
 
 

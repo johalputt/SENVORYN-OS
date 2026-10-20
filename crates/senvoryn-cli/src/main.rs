@@ -166,6 +166,14 @@ fn read_registry(document: &Value) -> Result<OperationRegistry, String> {
             max_duration_ms: optional_u64(operation, "max_duration_ms"),
             max_operation_count: optional_u64(operation, "max_operation_count"),
             required_preconditions: string_set(operation, "required_preconditions"),
+            required_postconditions: string_set(operation, "required_postconditions"),
+            reversibility: operation
+                .get("reversibility")
+                .and_then(Value::as_str)
+                .and_then(senvoryn_scp::Reversibility::parse)
+                .unwrap_or(senvoryn_scp::Reversibility::Unknown),
+            external_effects: string_set(operation, "external_effects"),
+            idempotent: operation.get("idempotent").and_then(Value::as_bool).unwrap_or(false),
             audit_class: operation
                 .get("audit_class")
                 .and_then(Value::as_str)

@@ -1,5 +1,5 @@
 SENVORYN CORE CONTRACT SPECIFICATION — LOCAL VALIDATION REPORT
-Date: 2026-10-20
+Date: 2026-10-21
 Specification: SENVORYN Core Contract Specification v0.1.0
 Baseline constitution: v0.6.0
 
@@ -11,12 +11,25 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 55 passed, 0 failed.
-- Rust workspace tests: 67 passed, 0 failed.
-- Shared conformance vectors: 30 decision cases and 11 attenuation cases executed by the
+- Python contract tests: 57 passed, 0 failed.
+- Rust workspace tests: 98 passed, 0 failed.
+- Shared conformance vectors: 31 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
   prototype and the implementation from becoming two authorities on the same question.
+- Change Capsule vectors: 30 cases executed by the Rust implementation, covering the
+  registry's authority over risk and approval requirements, the digest binding of the
+  decision and its approvals, the version and epoch checks, the preconditions, the
+  budget, the mandatory postconditions, the durability of the evidence, the
+  compensation planner, and every injected fault. These are executed by ONE
+  implementation. They catch drift between the executor and its contract; they cannot
+  catch drift between two implementations, because a second implementation of the
+  capsule executor does not exist.
+- Change Capsule fault model: every fault point crossed with every fault kind. The
+  property asserted is that an interrupted operation never reports COMMITTED, and it
+  holds for all combinations. The property test also asserts that each injected fault
+  actually fired, so a fault at a point the transaction never reaches cannot pass
+  quietly.
 - Denial-code registry: 27 codes, unique, each with a class and a default status. Every
   code is produced by at least one implementation and every code an implementation can
   produce is in the registry; both directions are checked by tests on both sides.
@@ -30,17 +43,26 @@ Checks performed
   that does not permit grants no authority.
 - Operation registry sample: validated against its schema; sample is explicitly unsigned
   and is not production policy.
+- Change Capsule sample: validated against its schema; a precondition without an
+  expected value is rejected by the schema and by the Rust reader.
+- Mutation gate: 40 controls broken in turn, each requiring a named test to go red
+  because of that break. 40 killed, 0 survived, 0 invalid.
 
 Limitations
 This report validates a documentation/specification package, a pure reference policy model,
-and a pure decision function. It does not validate an OS kernel, hardware isolation,
-cryptographic implementation, production policy enforcement, secure boot, real
-installation/recovery, or application compatibility.
+a pure decision function, and a transaction simulator. It does not validate an OS kernel,
+hardware isolation, cryptographic implementation, production policy enforcement, secure
+boot, real installation/recovery, or application compatibility.
 
 The Rust crate `senvoryn-scp` is a decision function, not an SCP. It verifies no
 signature, resolves no resource against a filesystem, keeps no trust store, and writes no
 audit record. The development tool `senvoryn-cli` is a driver for that function and says
 so in its own help. Neither may be deployed as a security boundary.
+
+The Rust crate `senvoryn-capsule` is a simulator, not an executor. It drives the Change
+Capsule state machine against a simulated environment and performs no effect of any
+kind. The compensation it models is not exercised against real storage, so nothing in
+this repository shows that a real system can be rolled back.
 
 The Operation Registry used by the tests is the unsigned sample. Capability provenance is
 stated by the caller and checked for consistency, not proven: there is no signature

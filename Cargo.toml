@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/senvoryn-canonical",
     "crates/senvoryn-scp",
+    "crates/senvoryn-capsule",
     "crates/senvoryn-cli",
 ]
 
@@ -17,6 +18,7 @@ authors = ["The Senvoryn OS contributors"]
 [workspace.dependencies]
 senvoryn-canonical = { path = "crates/senvoryn-canonical", version = "0.1.0" }
 senvoryn-scp = { path = "crates/senvoryn-scp", version = "0.1.0" }
+senvoryn-capsule = { path = "crates/senvoryn-capsule", version = "0.1.0" }
 
 # No third-party dependencies anywhere in this workspace.
 #

@@ -1,0 +1,228 @@
+{
+  "schema": "senvoryn.capsule-vectors.v1",
+  "description": "Expected outcomes of the Change Capsule executor. Each case names one control and the state the transaction must end in. The file is the contract; a test that disagrees with it is the thing that is wrong.",
+  "base_capsule": "examples/capsule.sample.json",
+  "cases": [
+    {
+      "id": "CC-001-committed",
+      "control": "A capsule whose every check passes reaches COMMITTED.",
+      "expected_state": "COMMITTED",
+      "expected_reason_contains": "mandatory postcondition held"
+    },
+    {
+      "id": "CC-002-unknown-operation",
+      "control": "An operation the registry does not contain has no risk tier, so the capsule is rejected.",
+      "capsule_overrides": { "steps.0.operation": "teleport" },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "not in the operation registry"
+    },
+    {
+      "id": "CC-003-risk-downgrade",
+      "control": "The registry is the authority on risk; a step claiming less than the registry assigns is rejected.",
+      "capsule_overrides": { "steps.0.risk_tier": "R0" },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "but the registry assigns"
+    },
+    {
+      "id": "CC-030-capsule-tier-below-steps",
+      "control": "A capsule whose own tier is below the risk of its steps is rejected.",
+      "capsule_overrides": { "risk_tier": "R0" },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "risk tier is below the risk of its steps"
+    },
+    {
+      "id": "CC-004-stale-policy-epoch",
+      "control": "A capsule made under an old policy epoch is rejected.",
+      "capsule_overrides": { "policy_epoch": 6 },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "stale policy epoch"
+    },
+    {
+      "id": "CC-005-unexpected-target-version",
+      "control": "A capsule aimed at a version the target is not at is rejected, not adapted.",
+      "capsule_overrides": { "target.expected_version": "6" },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "not at the version the capsule expects"
+    },
+    {
+      "id": "CC-006-expired",
+      "control": "A capsule whose validity window has closed expires.",
+      "capsule_overrides": { "expires_at": "2020-01-01T00:00:00Z" },
+      "expected_state": "EXPIRED",
+      "expected_reason_contains": "validity window has closed"
+    },
+    {
+      "id": "CC-007-digest-mismatch",
+      "control": "A decision that permits a different plan permits nothing here.",
+      "authorization": { "digest": "other", "approvals": [{"type": "USER_CONFIRMATION", "binds": "capsule"}] },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not permit the capsule"
+    },
+    {
+      "id": "CC-008-missing-approval",
+      "control": "A decision without the approval the capsule requires permits nothing.",
+      "authorization": { "digest": "matching", "approvals": [] },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not permit the capsule"
+    },
+    {
+      "id": "CC-009-approval-bound-elsewhere",
+      "control": "An approval that binds a different plan is not an approval for this one.",
+      "authorization": { "digest": "matching", "approvals": [{"type": "USER_CONFIRMATION", "binds": "other"}] },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not permit the capsule"
+    },
+    {
+      "id": "CC-010-precondition-does-not-hold",
+      "control": "A capsule whose precondition does not hold is rejected before anything runs.",
+      "environment_overrides": { "satisfied_preconditions": [] },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not hold"
+    },
+    {
+      "id": "CC-011-recovery-material-missing",
+      "control": "A capsule whose recovery artifact is not present fails in the precheck.",
+      "environment_overrides": { "recovery_material_present": false },
+      "expected_state": "FAILED",
+      "expected_reason_contains": "recovery artifact is missing"
+    },
+    {
+      "id": "CC-012-interrupted-before-validation",
+      "control": "An interruption before validation ends the transaction without an effect.",
+      "fault": { "point": "BEFORE_VALIDATION", "fault": "IO" },
+      "expected_state": "FAILED",
+      "expected_reason_contains": "interrupted before it was validated"
+    },
+    {
+      "id": "CC-013-interrupted-before-authorization",
+      "control": "An interruption before authorization ends the transaction without an effect.",
+      "fault": { "point": "BEFORE_AUTHORIZATION", "fault": "IO" },
+      "expected_state": "FAILED",
+      "expected_reason_contains": "interrupted before it was authorized"
+    },
+    {
+      "id": "CC-014-interrupted-before-staging",
+      "control": "An interruption before staging ends the transaction without an effect.",
+      "fault": { "point": "BEFORE_STAGING", "fault": "IO" },
+      "expected_state": "FAILED",
+      "expected_reason_contains": "interrupted before staging"
+    },
+    {
+      "id": "CC-015-interrupted-after-staging",
+      "control": "An interruption after staging ends the transaction without an effect.",
+      "fault": { "point": "AFTER_STAGING", "fault": "IO" },
+      "expected_state": "FAILED",
+      "expected_reason_contains": "interrupted after staging"
+    },
+    {
+      "id": "CC-016-interrupted-before-precheck",
+      "control": "An interruption before the precheck ends the transaction without an effect.",
+      "fault": { "point": "BEFORE_PRECHECK", "fault": "IO" },
+      "expected_state": "FAILED",
+      "expected_reason_contains": "interrupted before the precheck"
+    },
+    {
+      "id": "CC-017-interrupted-before-step",
+      "control": "A step interrupted before it ran is known not to have applied, so the transaction fails cleanly.",
+      "fault": { "point": "BEFORE_STEP", "index": 0, "fault": "IO" },
+      "expected_state": "FAILED",
+      "expected_reason_contains": "interrupted before it ran"
+    },
+    {
+      "id": "CC-018-interrupted-during-step",
+      "control": "A step interrupted after its effect landed is compensated.",
+      "fault": { "point": "DURING_STEP", "index": 0, "fault": "IO" },
+      "expected_state": "ROLLED_BACK",
+      "expected_reason_contains": "interrupted after its effect landed"
+    },
+    {
+      "id": "CC-019-crash-during-step",
+      "control": "A crash leaves the effect unknown, and an effect that is not known cannot be undone automatically.",
+      "fault": { "point": "DURING_STEP", "index": 0, "fault": "CRASH" },
+      "expected_state": "NEEDS_HUMAN_RECOVERY",
+      "expected_reason_contains": "effect is not known"
+    },
+    {
+      "id": "CC-020-interrupted-after-step",
+      "control": "An interruption after a step landed its effect is compensated.",
+      "fault": { "point": "AFTER_STEP", "index": 0, "fault": "IO" },
+      "expected_state": "ROLLED_BACK",
+      "expected_reason_contains": "interrupted after the step"
+    },
+    {
+      "id": "CC-021-interrupted-before-verification",
+      "control": "An interruption before verification is compensated rather than reported as success.",
+      "fault": { "point": "BEFORE_VERIFICATION", "fault": "IO" },
+      "expected_state": "ROLLED_BACK",
+      "expected_reason_contains": "interrupted before verification"
+    },
+    {
+      "id": "CC-022-interrupted-during-verification",
+      "control": "An interruption during verification is compensated rather than reported as success.",
+      "fault": { "point": "DURING_VERIFICATION", "fault": "IO" },
+      "expected_state": "ROLLED_BACK",
+      "expected_reason_contains": "verification was interrupted"
+    },
+    {
+      "id": "CC-023-mandatory-postcondition-unmet",
+      "control": "A mandatory postcondition that does not hold stops the commit and compensates.",
+      "capsule_overrides": {
+        "postconditions": [{ "predicate_id": "audit_written", "mandatory": true }]
+      },
+      "expected_state": "ROLLED_BACK",
+      "expected_reason_contains": "mandatory postcondition"
+    },
+    {
+      "id": "CC-028-step-success-predicate-unmet",
+      "control": "A step whose success predicates do not hold is compensated rather than counted as done.",
+      "environment_overrides": { "satisfied_postconditions": ["write_accepted"] },
+      "expected_state": "ROLLED_BACK",
+      "expected_reason_contains": "did not meet its success predicates"
+    },
+    {
+      "id": "CC-024-audit-sink-not-durable",
+      "control": "A commit whose evidence cannot be recorded durably is not a commit.",
+      "environment_overrides": { "audit_sink_durable": false },
+      "expected_state": "ROLLED_BACK",
+      "expected_reason_contains": "durably"
+    },
+    {
+      "id": "CC-025-non-reversible-operation",
+      "control": "An operation that cannot be undone escalates to a human rather than claiming a rollback.",
+      "capsule_overrides": {
+        "risk_tier": "R3",
+        "steps.0.operation": "delete",
+        "steps.0.risk_tier": "R3",
+        "approval_requirements": [
+          { "approval_type": "STRONG_AUTH", "count": 1 },
+          { "approval_type": "USER_CONFIRMATION", "count": 1 }
+        ]
+      },
+      "authorization": { "digest": "matching", "approvals": [{"type": "STRONG_AUTH", "binds": "capsule"}, {"type": "USER_CONFIRMATION", "binds": "capsule"}] },
+      "fault": { "point": "DURING_STEP", "index": 0, "fault": "IO" },
+      "expected_state": "NEEDS_HUMAN_RECOVERY",
+      "expected_reason_contains": "automatic recovery cannot safely complete"
+    },
+    {
+      "id": "CC-026-budget-too-small",
+      "control": "A budget that does not cover the plan is rejected.",
+      "capsule_overrides": { "budget.duration_ms": 1000 },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not cover its steps"
+    },
+    {
+      "id": "CC-029-approval-requirement-understated",
+      "control": "A capsule may not ask for less authority than the registry demands of the operation it performs.",
+      "capsule_overrides": { "approval_requirements": [] },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not require the"
+    },
+    {
+      "id": "CC-027-operation-count-exceeded",
+      "control": "A plan that performs an operation more often than the registry allows is rejected.",
+      "capsule_overrides": { "steps.1.operation": "write" },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "the registry allows"
+    }
+  ]
+}

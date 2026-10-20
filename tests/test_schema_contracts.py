@@ -27,6 +27,22 @@ class SchemaContractTests(unittest.TestCase):
         sample = json.loads((ROOT / "examples" / "operation-registry.sample.json").read_text(encoding="utf-8"))
         jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).validate(sample)
 
+    def test_change_capsule_fixture_passes(self):
+        # The capsule the Rust executor reads has to be a capsule the schema
+        # accepts. The Rust reader enforces the fields it needs; the schema
+        # enforces the rest. A fixture that drifts from the schema would be
+        # read by one and rejected by the other.
+        schema = json.loads((ROOT / "schemas" / "change-capsule.schema.json").read_text(encoding="utf-8"))
+        sample = json.loads((ROOT / "examples" / "capsule.sample.json").read_text(encoding="utf-8"))
+        jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).validate(sample)
+
+    def test_a_capsule_without_an_expected_precondition_is_rejected(self):
+        schema = json.loads((ROOT / "schemas" / "change-capsule.schema.json").read_text(encoding="utf-8"))
+        sample = json.loads((ROOT / "examples" / "capsule.sample.json").read_text(encoding="utf-8"))
+        del sample["preconditions"][0]["expected"]
+        with self.assertRaises(jsonschema.ValidationError):
+            jsonschema.Draft202012Validator(schema).validate(sample)
+
     def test_unknown_field_is_rejected(self):
         schema = json.loads((ROOT / "schemas" / "request-envelope.schema.json").read_text(encoding="utf-8"))
         sample = json.loads((ROOT / "examples" / "valid-request-envelope.json").read_text(encoding="utf-8"))

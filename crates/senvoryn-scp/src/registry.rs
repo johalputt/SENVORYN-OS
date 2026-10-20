@@ -84,6 +84,56 @@ impl AuditClass {
     }
 }
 
+/// How an operation's effects can be undone.
+///
+/// The ordering is by how reversible the operation is, least reversible last,
+/// so that merging two rules for the same operation keeps the stricter one.
+/// `Unknown` sorts last because an operation whose reversibility the registry
+/// does not state is treated as the worst case, not as the best one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Reversibility {
+    /// The effect can be undone exactly.
+    Reversible,
+    /// The effect can be compensated for, but not undone.
+    Compensatable,
+    /// The effect cannot be undone or compensated for.
+    NonReversible,
+    /// The registry does not say. Treated as the worst case.
+    Unknown,
+}
+
+impl Reversibility {
+    /// The value as it appears in a registry entry.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Reversible => "REVERSIBLE",
+            Self::Compensatable => "COMPENSATABLE",
+            Self::NonReversible => "NON_REVERSIBLE",
+            Self::Unknown => "UNKNOWN",
+        }
+    }
+
+    /// Reads a value from its serialized form.
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "REVERSIBLE" => Some(Self::Reversible),
+            "COMPENSATABLE" => Some(Self::Compensatable),
+            "NON_REVERSIBLE" => Some(Self::NonReversible),
+            "UNKNOWN" => Some(Self::Unknown),
+            _ => None,
+        }
+    }
+
+    /// Whether the operation can be brought back by compensation.
+    ///
+    /// `UNKNOWN` is not compensation. An operation whose reversibility the
+    /// registry does not state cannot be rolled back on the executor's
+    /// initiative, so it needs human recovery instead.
+    pub fn is_compensatable(&self) -> bool {
+        matches!(self, Self::Reversible | Self::Compensatable)
+    }
+}
+
 /// One entry of the Operation Registry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OperationEntry {
@@ -103,6 +153,22 @@ pub struct OperationEntry {
     pub max_operation_count: Option<u64>,
     /// The preconditions the operation requires.
     pub required_preconditions: BTreeSet<String>,
+    /// The postconditions the operation must leave satisfied.
+    ///
+    /// An operation with no postconditions cannot be verified, and
+    /// specification §5.2 says an outcome that cannot be proven is `PARTIAL`
+    /// or `NEEDS_HUMAN_RECOVERY`, never `COMMITTED`.
+    pub required_postconditions: BTreeSet<String>,
+    /// How the operation's effects can be undone.
+    pub reversibility: Reversibility,
+    /// The out-of-process effects the operation has.
+    ///
+    /// An operation with an external effect is not undone by restoring local
+    /// state; specification §5.4 says "undo" must not imply the external world
+    /// has been rewound.
+    pub external_effects: BTreeSet<String>,
+    /// Whether repeating the operation has the same effect as running it once.
+    pub idempotent: bool,
     /// The audit class the operation's record must reach.
     pub audit_class: AuditClass,
 }
@@ -183,6 +249,19 @@ impl OperationRegistry {
                 .union(&entry.required_preconditions)
                 .cloned()
                 .collect();
+            merged.required_postconditions = merged
+                .required_postconditions
+                .union(&entry.required_postconditions)
+                .cloned()
+                .collect();
+            merged.external_effects =
+                merged.external_effects.union(&entry.external_effects).cloned().collect();
+            // The least reversible rule wins, because a caller must not be able
+            // to escape a strict rule by also matching a lax one.
+            merged.reversibility = merged.reversibility.min(entry.reversibility);
+            // Only an operation that is idempotent under every matching rule
+            // may be treated as idempotent.
+            merged.idempotent = merged.idempotent && entry.idempotent;
             merged.max_duration_ms = min_option(merged.max_duration_ms, entry.max_duration_ms);
             merged.max_operation_count =
                 min_option(merged.max_operation_count, entry.max_operation_count);
@@ -253,6 +332,13 @@ fn read_entry(entry: &Value) -> Result<OperationEntry, RegistryError> {
             field: "audit_class".to_owned(),
             detail: format!("{audit_class_text:?} is not an audit class"),
         })?;
+    let reversibility_text =
+        entry.get("reversibility").and_then(Value::as_str).unwrap_or("UNKNOWN");
+    let reversibility =
+        Reversibility::parse(reversibility_text).ok_or_else(|| RegistryError::Malformed {
+            field: "reversibility".to_owned(),
+            detail: format!("{reversibility_text:?} is not a reversibility"),
+        })?;
     Ok(OperationEntry {
         operation_id,
         risk_tier,
@@ -262,6 +348,10 @@ fn read_entry(entry: &Value) -> Result<OperationEntry, RegistryError> {
         max_duration_ms: integer_field(entry, "max_duration_ms")?,
         max_operation_count: integer_field(entry, "max_operation_count")?,
         required_preconditions: string_set_field(entry, "required_preconditions"),
+        required_postconditions: string_set_field(entry, "required_postconditions"),
+        reversibility,
+        external_effects: string_set_field(entry, "external_effects"),
+        idempotent: entry.get("idempotent").and_then(Value::as_bool).unwrap_or(false),
         audit_class,
     })
 }
