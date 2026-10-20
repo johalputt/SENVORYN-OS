@@ -169,6 +169,24 @@ The code license and the project name are separate. Forks under the applicable c
 
 Full release gates: [`RELEASE_PROCESS.md`](RELEASE_PROCESS.md).
 
+### 7.1 What is machine-enforced today
+
+Process rules that are not enforced by tooling are aspirations. These **are** enforced by the repository configuration:
+
+| Control | Enforced by | Status |
+|---|---|---|
+| CI must pass before merge | Branch protection on `main`, 7 required status checks | ✅ Active |
+| No force-push, no branch deletion | Branch protection | ✅ Active |
+| Conversations resolved before merge | Branch protection | ✅ Active |
+| Dependency changes reviewed for known vulnerabilities and license policy | `dependency-review` CI job on pull requests | ✅ Active |
+| Contract artifacts not silently altered | SHA-256 checksum manifest + `pack-integrity` CI job | ✅ Active |
+| Claims never outrun the evidence | `claim-discipline` CI job | ✅ Active |
+| Two independent reviewers on security-critical changes | — | ⚠️ **Process only.** Not yet enforceable while one steward exists; the `CODEOWNERS` file assigns reviewers but cannot require two |
+| Multi-party release signing | — | ❌ Not possible yet — no signing ceremony exists (ADR-013) |
+| Separation of duties in the build pipeline | — | ❌ Not possible yet — no build pipeline exists |
+
+> **Write this table honestly.** A control listed as "process only" is a control that depends on everyone remembering. As the project grows, each row should move up a column — and the ones that cannot should be marked ❌ so nobody mistakes them for protections.
+
 ---
 
 ## 8. Succession and key recovery

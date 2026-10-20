@@ -221,11 +221,15 @@ Every push and pull request runs [`.github/workflows/ci.yml`](.github/workflows/
 |---|---|
 | `contract-tests` | All 29 contract/unit tests pass on both interpreters |
 | `schema-validation` | All 14 schemas are valid Draft 2020-12 and fixtures conform |
-| `pack-integrity` | SHA-256 checksums of the shipped contract artifacts match `SHA256SUMS.txt` |
+| `pack-integrity` | SHA-256 checksums of the 43 shipped contract artifacts match `SHA256SUMS.txt` |
 | `json-lint` | Every JSON document in the repository parses |
-| `normative-language` | Spec documents declare status and contain no unmarked absolute security claims |
+| `claim-discipline` | Normative documents declare a status and contain no unmarked absolute security claims |
+| `dependency-review` | Dependency changes on a PR are checked against known vulnerabilities and license policy |
+| `yaml-lint` + `link-check` | Every YAML document parses; every relative Markdown link resolves |
 
 > Passing CI proves the **contract package** is internally consistent. It proves nothing about an operating system, because no operating system exists here yet.
+
+Branch protection on `main` requires every one of these checks to pass, blocks force-pushes and branch deletion, and requires conversations to be resolved before merge.
 
 ---
 
