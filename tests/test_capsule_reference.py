@@ -383,5 +383,180 @@ class ExecutorTests(unittest.TestCase):
         self.assertIn("does not permit the capsule", outcome.reason)
 
 
+class WorldChangeTests(unittest.TestCase):
+    """The controls that have to notice the world moving under the transaction.
+
+    A fault that interrupts the transaction is easy to reason about: it ends
+    the transaction. A fault that changes the world is not, because the
+    transaction has to find the change for itself, and a change it did not
+    find is a change it acted on.
+    """
+
+    def test_a_full_disk_leaves_the_effect_unknown(self):
+        # A write that could not complete is not a write that did not happen:
+        # it may have been partially applied. "Partially applied" is not a
+        # state the ledger can describe, so the effect is unknown.
+        executor = Executor(
+            _base_capsule(),
+            load_registry(),
+            _base_environment(),
+            machine=load_state_machine(),
+            faults=FaultInjector.at(FaultPoint.DURING_STEP, Fault.DISK_FULL, 0),
+        )
+        outcome = executor.run(_authorization())
+        self.assertIn(
+            "effect is not known",
+            outcome.reason,
+            "a full disk must leave the effect unknown, and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.NEEDS_HUMAN_RECOVERY)
+        recorded = executor.ledger.lookup(
+            "capsule:example:0001", "idem:capsule:example:0001:step.write"
+        )
+        self.assertIsNotNone(recorded)
+        self.assertIs(recorded.effect, EffectState.UNKNOWN)
+
+    def test_a_clock_that_moves_backwards_is_not_trusted(self):
+        executor = Executor(
+            _base_capsule(),
+            load_registry(),
+            _base_environment(),
+            machine=load_state_machine(),
+            faults=FaultInjector.at(FaultPoint.BEFORE_PRECHECK, Fault.CLOCK_ROLLBACK),
+        )
+        outcome = executor.run(_authorization())
+        self.assertIn(
+            "clock moved backwards",
+            outcome.reason,
+            "a clock that moves backwards must not be trusted, and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.FAILED)
+
+    def test_a_capsule_cannot_be_executed_before_it_was_issued(self):
+        # The only check that catches a clock that moved backwards before the
+        # transaction had observed it at all: a capsule did not exist before it
+        # was issued.
+        environment = _base_environment()
+        environment.now_ms = 1_767_225_600_000 - 1_000
+        executor = Executor(
+            _base_capsule(), load_registry(), environment, machine=load_state_machine()
+        )
+        outcome = executor.run(_authorization())
+        self.assertIn(
+            "not been issued yet",
+            outcome.reason,
+            "a capsule cannot be executed before it was issued, and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+
+    def test_a_recovery_artifact_that_is_present_but_corrupt_is_not_recovery_material(self):
+        # Presence is not integrity. Material that is present but corrupt is
+        # worse than material that is missing, because a missing artefact
+        # stops the transaction and a corrupt one is used.
+        environment = _base_environment()
+        environment.recovery_material_intact = False
+        executor = Executor(
+            _base_capsule(), load_registry(), environment, machine=load_state_machine()
+        )
+        outcome = executor.run(_authorization())
+        self.assertIn(
+            "recovery artifact is corrupt",
+            outcome.reason,
+            "a corrupt recovery artifact is not recovery material, and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.FAILED)
+        self.assertEqual(environment.applied_steps, [])
+
+    def test_recovery_material_that_becomes_corrupt_cannot_undo_the_effect(self):
+        executor = Executor(
+            _base_capsule(),
+            load_registry(),
+            _base_environment(),
+            machine=load_state_machine(),
+            faults=FaultInjector.at(
+                FaultPoint.DURING_STEP, Fault.CORRUPTED_RECOVERY_ARTIFACT, 0
+            ),
+        )
+        outcome = executor.run(_authorization())
+        self.assertIn(
+            "automatic recovery cannot safely complete",
+            outcome.reason,
+            "a compensation needs intact recovery material, and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.NEEDS_HUMAN_RECOVERY)
+
+    def test_a_capsule_whose_window_closes_during_the_plan_does_not_land_the_next_effect(self):
+        # The window is checked before every step, not only at the boundaries.
+        document = _load(BASE_CAPSULE_PATH)
+        document["expires_at"] = "2026-01-01T00:00:30Z"
+        executor = Executor(
+            load_capsule(document),
+            load_registry(),
+            _base_environment(),
+            machine=load_state_machine(),
+        )
+        outcome = executor.run(_authorization())
+        self.assertIn(
+            "validity window closed while the plan was running",
+            outcome.reason,
+            "a capsule whose window closes during the plan must not land the next effect, "
+            "and the reason must say so",
+        )
+        self.assertEqual(outcome.final_state, State.ROLLED_BACK)
+        self.assertEqual(outcome.steps_executed, ("step.write",))
+
+    def test_no_fault_at_any_point_produces_a_commit(self):
+        # The property the whole gate exists for, over the whole fault space
+        # including the faults that change the world rather than interrupting
+        # the transaction.
+        machine = load_state_machine()
+        registry = load_registry()
+        points = [
+            (FaultPoint.BEFORE_VALIDATION, None),
+            (FaultPoint.BEFORE_AUTHORIZATION, None),
+            (FaultPoint.BEFORE_STAGING, None),
+            (FaultPoint.AFTER_STAGING, None),
+            (FaultPoint.BEFORE_PRECHECK, None),
+            (FaultPoint.BEFORE_VERIFICATION, None),
+            (FaultPoint.DURING_VERIFICATION, None),
+        ]
+        for index in (0, 1):
+            points.extend(
+                [
+                    (FaultPoint.BEFORE_STEP, index),
+                    (FaultPoint.DURING_STEP, index),
+                    (FaultPoint.AFTER_STEP, index),
+                ]
+            )
+        kinds = [
+            Fault.IO,
+            Fault.CRASH,
+            Fault.STALE_PRECONDITION,
+            Fault.POLICY_EPOCH_CHANGED,
+            Fault.AUDIT_SINK_LOST,
+            Fault.DISK_FULL,
+            Fault.CLOCK_ROLLBACK,
+            Fault.CORRUPTED_RECOVERY_ARTIFACT,
+        ]
+        checked = 0
+        for point, index in points:
+            for kind in kinds:
+                executor = Executor(
+                    _base_capsule(),
+                    registry,
+                    _base_environment(),
+                    machine=machine,
+                    faults=FaultInjector.at(point, kind, index),
+                )
+                outcome = executor.run(_authorization())
+                self.assertNotEqual(
+                    outcome.final_state,
+                    State.COMMITTED,
+                    f"a {kind.value} at {point.value} was reported as COMMITTED: {outcome.reason}",
+                )
+                checked += 1
+        self.assertGreaterEqual(checked, 100)
+
+
 if __name__ == "__main__":
     unittest.main()

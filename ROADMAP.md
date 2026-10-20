@@ -20,11 +20,11 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | Statement | Status |
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
-| 84 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
-| 105 Rust tests pass | ✅ Verified (Rust stable) |
+| 91 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 111 Rust tests pass | ✅ Verified (Rust stable) |
 | 31 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
-| 30 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
-| Every control has a test that fails when the control is broken | ✅ Verified — 60 mutations, all killed |
+| 35 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
+| Every control has a test that fails when the control is broken | ✅ Verified — 80 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
 | 27 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
@@ -81,7 +81,7 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
 - [x] Deterministic reason codes covering all 27 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 60 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 80 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
 - [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
 - [ ] An independent reviewer confirms the evaluator has no side effects
 
@@ -97,14 +97,17 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] Idempotency ledger keyed by capsule ID + replay key — an outcome known not to have applied may be retried; an outcome that is *not known* may not
 - [x] Stale target-version and policy-epoch detection before every step — rechecked in the precheck, not only at validation
 - [x] Compensation planner for `COMPENSATABLE` vs `NON_REVERSIBLE` operations — a non-reversible operation escalates to a human rather than claiming a rollback
-- [x] Fault injection: crash, lost storage, stale time, full disk, power interruption, clock rollback, corrupted artifact — crash, I/O error, stale precondition, policy-epoch change, lost audit sink
+- [x] Fault injection: crash, lost storage, stale time, full disk, power interruption, clock rollback, corrupted artifact — crash, I/O error, stale precondition, policy-epoch change, lost audit sink, full disk, clock rollback, corrupted recovery artifact
 - [x] Transition tests for every illegal transition in the table — the table is checked for unreachable states as well as illegal ones
-- [x] 30 capsule conformance vectors, and 37 of the controls mutation-checked (17 in Rust, 20 in Python)
+- [x] 35 capsule conformance vectors, and 56 of the controls mutation-checked (27 in Rust, 29 in Python)
 - [x] A second implementation of the capsule executor, so the capsule vectors are *agreed* rather than merely self-consistent — the Python reference model in `reference/capsule_reference.py`, written from the contract rather than from the Rust
+- [x] The validity window is a boundary, not a one-time check — the clock is read before every step, a clock that moves backwards ends the transaction, and the capsule cannot be executed before it was issued ([ADR-015](decisions/ADR-015-capsule-validity-window-and-a-moving-world.md))
+- [x] The three faults the simulator did not model — full disk, clock rollback, corrupted artefact — and the four controls they turned out to be missing
 
 **Still open for Gate 2 exit:**
 
-- [ ] Faults the simulator does not yet model: full disk, clock rollback, corrupted artifact
+- [ ] The budget does not yet have to fit inside the validity window: a plan whose budget outlasts its window runs past it, and the executor stops at the boundary rather than refusing the plan
+- [ ] The registry's `max_duration_ms` and `max_operation_count` are per operation, and the capsule's budget is a total; the executor reconciles the two, and the reading is not yet decided
 - [ ] The executor drives a simulated environment; nothing here proves that a real system can be rolled back
 - [ ] The vectors are read by two implementations of the same contract, and whoever writes the contract decides what "right" means. That is a strong check and not a proof
 
@@ -252,7 +255,7 @@ These must be resolved through ADRs before the corresponding code is frozen. **T
 | ADR-015 | Formal proof scope | Precise spec, toolchain and assumptions | Never claim proof outside defined scope |
 | ADR-016 | Strict Apache-2.0 component policy | Full dependency/license inventory and legal review | Original code Apache-2.0; dependencies disclosed individually |
 
-> **Note:** the `decisions/` directory currently contains **ADR-001 … ADR-007**, which follow the Core Contract Specification's own ADR numbering. The constitution's open-decisions register uses the same IDs for *different* subjects (e.g. constitution ADR-001 is "First CPU architecture"; CCS ADR-001 is "Clean-sheet separation core"). This numbering collision is tracked as a **Gate 0 ambiguity** and must be reconciled before Gate 0 exit — the two registers will be renumbered to a single namespace.
+> **Note:** the `decisions/` directory currently contains **ADR-001 … ADR-015**, which follow the Core Contract Specification's own ADR numbering. The constitution's open-decisions register uses the same IDs for *different* subjects (e.g. constitution ADR-001 is "First CPU architecture"; CCS ADR-001 is "Clean-sheet separation core"; constitution ADR-015 is "Formal proof scope" and this project's ADR-015 is the capsule's validity window). This numbering collision is tracked as a **Gate 0 ambiguity** and must be reconciled before Gate 0 exit — the two registers will be renumbered to a single namespace.
 
 ---
 

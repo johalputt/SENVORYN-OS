@@ -76,6 +76,7 @@ def _base_environment():
         observed_versions={"resource_version_matches": "7"},
         satisfied_postconditions={"write_accepted", "written_version_verified"},
         recovery_material_present=True,
+        recovery_material_intact=True,
         audit_sink_durable=True,
     )
 
@@ -91,6 +92,8 @@ def _apply_environment(environment, overrides):
             environment.now_ms = value
         elif key == "recovery_material_present":
             environment.recovery_material_present = value
+        elif key == "recovery_material_intact":
+            environment.recovery_material_intact = value
         elif key == "audit_sink_durable":
             environment.audit_sink_durable = value
         elif key == "satisfied_preconditions":

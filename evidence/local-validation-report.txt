@@ -11,28 +11,38 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 84 passed, 0 failed.
-- Rust workspace tests: 105 passed, 0 failed.
+- Python contract tests: 91 passed, 0 failed.
+- Rust workspace tests: 111 passed, 0 failed.
 - Shared conformance vectors: 31 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
   prototype and the implementation from becoming two authorities on the same question.
-- Change Capsule vectors: 30 cases executed by the Rust implementation, covering the
-  registry's authority over risk and approval requirements, the digest binding of the
-  decision and its approvals, the version and epoch checks, the preconditions, the
-  budget, the mandatory postconditions, the durability of the evidence, the
-  compensation planner, and every injected fault. These are executed by ONE
-  implementation. They catch drift between the executor and its contract; they cannot
-  catch drift between two implementations, because a second implementation of the
-  capsule executor does not exist.
+- Change Capsule vectors: 35 cases executed by the Rust implementation AND by the Python
+  reference model, covering the registry's authority over risk and approval
+  requirements, the digest binding of the decision and its approvals, the version and
+  epoch checks, the preconditions, the budget, the mandatory postconditions, the
+  durability of the evidence, the compensation planner, every injected fault, and the
+  five cases in which the world moves under the transaction. Both implementations reach
+  the state each case names, and CI fails on a disagreement.
+- Change Capsule validity window: the clock is read before every step, the simulated
+  clock advances by each step's own timeout, a clock that moves backwards ends the
+  transaction rather than being believed, and a capsule cannot be executed before it
+  was issued. Five of the new controls are broken in turn by the mutation gate: the
+  clock's monotonicity, the issue time, the per-step window check, the recovery
+  material's integrity at the precheck and at the commit, and the compensation's own
+  check that the material is usable.
+- Change Capsule fault model: eight fault kinds crossed with thirteen fault points, 104
+  combinations. Three of the kinds change the world rather than interrupting the
+  transaction — a full disk, a clock that rolls back, and a recovery artefact that
+  turns out to be corrupt — and the transaction has to find each of them for itself.
 - Change Capsule fault model: every fault point crossed with every fault kind. The
-  property asserted is that an interrupted operation never reports COMMITTED, and it
-  holds for all combinations. The property test also asserts that each injected fault
+  property asserted is that a fault never produces a COMMITTED report, and it holds for
+  all 104 combinations. The property test also asserts that each injected fault
   actually fired, so a fault at a point the transaction never reaches cannot pass
   quietly.
 - Change Capsule reference model: a second implementation of the capsule executor, written
   in Python from the contract rather than from the Rust. It is held to the same vector
-  file, and the two agree on all 30 cases. Writing it found three defects in the Rust
+  file, and the two agree on all 35 cases. Writing it found three defects in the Rust
   implementation that no test had caught: the registry's merge rule kept the more
   reversible of two conflicting rules, the timestamp parser refused every timestamp with
   fractional seconds, and the timestamp parser rolled a date that does not exist into the
@@ -52,8 +62,8 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 60 controls broken in turn, each requiring a named test to go red
-  because of that break. 60 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 80 controls broken in turn, each requiring a named test to go red
+  because of that break. 80 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
 
@@ -77,6 +87,10 @@ repository shows that a real system can be rolled back.
 Two implementations of one specification is a strong check and not a proof. Both
 implementations read the same vector file, and whoever writes that file decides what
 "right" means. Neither implementation is an independent reviewer.
+
+The capsule's budget does not yet have to fit inside its validity window. A plan whose
+budget outlasts the window is stopped at the boundary rather than refused at admission,
+and the admission-time check is deferred.
 
 The Operation Registry used by the tests is the unsigned sample. Capability provenance is
 stated by the caller and checked for consistency, not proven: there is no signature

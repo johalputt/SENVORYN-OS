@@ -38,6 +38,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | [ADR-012](ADR-012-capsule-utc-timestamp-boundary.md) | A capsule's timestamps are parsed once, at the boundary, in strict UTC | Proposed | 2 |
 | [ADR-013](ADR-013-capsule-pre-effect-failure-transitions.md) | The pre-effect failure transitions the capsule state table was missing | Proposed | 2 |
 | [ADR-014](ADR-014-capsule-two-implementations.md) | The Change Capsule executor has two implementations | Proposed | 3 |
+| [ADR-015](ADR-015-capsule-validity-window-and-a-moving-world.md) | The capsule's validity window is a boundary, and the world moves | Proposed | 3 |
 
 ---
 
@@ -65,7 +66,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 ## Writing a new ADR
 
 ```bash
-cp decisions/ADR-XXX-template.md decisions/ADR-015-<slug>.md
+cp decisions/ADR-XXX-template.md decisions/ADR-016-<slug>.md
 ```
 
 Fill in every section. The **Context** section is the one that matters most — it must explain what constraint makes the obvious solution wrong. An ADR without a real constraint is a design note.

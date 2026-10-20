@@ -152,8 +152,8 @@ SENVORYN-OS/
 ├── conformance/capsule-vectors.json  # Change Capsule vectors — Rust implementation only
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
-├── tests/                       # 84 executable contract tests
-├── decisions/                   # ADR-001 … ADR-014
+├── tests/                       # 91 executable contract tests
+├── decisions/                   # ADR-001 … ADR-015
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
 │
@@ -169,10 +169,10 @@ SENVORYN-OS/
 | `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 27 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
 | `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 31 cases + 11 attenuation cases |
-| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 30 cases |
+| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 35 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 60 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 14 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 80 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 15 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -193,10 +193,10 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (84 tests)
+# Run the contract test suite (91 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (105 tests)
+# Run the Rust workspace (111 tests)
 cargo test --workspace
 
 # Prove every control has a test that fails when it is broken
@@ -255,6 +255,14 @@ sample registry holds one rule per operation, so no test ever ran the merge. The
 second implementation, written from the contract rather than from the first one,
 found it. See [ADR-014](decisions/ADR-014-capsule-two-implementations.md).
 
+The same agreement found the capsule's *missing* controls. Modelling a full
+disk, a clock that rolls back, and a recovery artefact that turns out to be
+corrupt found four things the executor did not have: the validity window was
+checked once instead of being a boundary, a backwards clock was believed, a
+failed write was recorded as a write that landed, and the compensation never
+looked at the material it was about to use. See
+[ADR-015](decisions/ADR-015-capsule-validity-window-and-a-moving-world.md).
+
 ### The mutation gate
 
 A control that has never been seen to fail on the thing it forbids has proved
@@ -265,9 +273,9 @@ test to go red:
 python scripts/mutation-gate.py
 ```
 
-Sixty controls are covered — every one of the sixteen validation gates that the
-oracle implements, three properties of the canonical JSON profile, seventeen
-controls of the Change Capsule executor in Rust, and twenty of them in the
+Eighty controls are covered — every one of the sixteen validation gates that the
+oracle implements, three properties of the canonical JSON profile, twenty-seven
+controls of the Change Capsule executor in Rust, and twenty-nine of them in the
 Python reference model. A surviving mutation is a control that no test enforces,
 and the gate fails.
 
@@ -276,6 +284,12 @@ of a capability's validity window had no shared vector; the decision record's
 `effect_performed` field was not asserted anywhere; the capsule's registry check
 was satisfied by a control it did not actually exercise; and the capsule's
 approval-requirement check had a vector that passed for the wrong reason.
+
+It has also found controls that were *masked*: a check that fires at the same
+moment as another one cannot be broken on its own, so two of the
+recovery-material checks were indistinguishable from each other until they were
+given different reasons and moved to the moments where each one actually
+applies.
 
 The gate now runs tests in two languages, and it removes the Python bytecode
 cache before each run. A cached `.pyc` can shadow a mutated source, and the gate

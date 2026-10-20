@@ -5,10 +5,11 @@
 //! executor that changes an outcome has to change the file as well, which is
 //! what makes the change reviewable.
 //!
-//! The vectors are checked by one implementation, not two. The SCP's vectors
-//! are agreed by the Rust and Python implementations; these are not, because
-//! there is no second implementation of the capsule executor to agree with.
-//! That is a known gap, not a claim of agreement.
+//! The vectors are agreed by two implementations: this one and the Python
+//! reference model in `reference/capsule_reference.py`. Both read the same
+//! file and both must reach the state it names, so the file is a contract
+//! rather than a transcript. CI runs the two suites together and fails on a
+//! disagreement.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -84,6 +85,9 @@ fn fault(name: &str) -> Fault {
         "STALE_PRECONDITION" => Fault::StalePrecondition,
         "POLICY_EPOCH_CHANGED" => Fault::PolicyEpochChanged,
         "AUDIT_SINK_LOST" => Fault::AuditSinkLost,
+        "DISK_FULL" => Fault::DiskFull,
+        "CLOCK_ROLLBACK" => Fault::ClockRollback,
+        "CORRUPTED_RECOVERY_ARTIFACT" => Fault::CorruptedRecoveryArtifact,
         other => panic!("{other:?} is not a fault"),
     }
 }
@@ -110,6 +114,7 @@ fn base_environment() -> Environment {
         compensated_steps: Vec::new(),
         outstanding_effects: BTreeSet::new(),
         recovery_material_present: true,
+        recovery_material_intact: true,
         audit_sink_durable: true,
     }
 }
@@ -135,6 +140,10 @@ fn apply_environment(environment: &mut Environment, overrides: Option<&Value>) {
             "recovery_material_present" => {
                 environment.recovery_material_present =
                     value.as_bool().expect("recovery_material_present is a boolean");
+            }
+            "recovery_material_intact" => {
+                environment.recovery_material_intact =
+                    value.as_bool().expect("recovery_material_intact is a boolean");
             }
             "audit_sink_durable" => {
                 environment.audit_sink_durable =

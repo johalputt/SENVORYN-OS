@@ -30,6 +30,12 @@ use crate::machine::{State, TransitionTable};
 const STATE_TABLE_JSON: &str =
     include_str!("../../../state-machines/change-capsule-transitions.json");
 
+/// How far the clock jumps back when it is rolled back.
+///
+/// An hour is enough to reopen a validity window that had just closed, and
+/// small enough that the transaction's own budget does not notice.
+const CLOCK_ROLLBACK_MS: i64 = 3_600_000;
+
 /// What the executor did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutionOutcome {
@@ -82,6 +88,14 @@ pub struct Executor {
     /// fault the transaction survived. Recording what fired lets a test say
     /// so, instead of quietly proving nothing.
     fired: Vec<FaultPoint>,
+    /// The highest time the transaction has observed.
+    ///
+    /// A clock that moves backwards makes the capsule's validity window
+    /// meaningless: a capsule that looked expired looks unexpired again, and
+    /// a budget that looked spent looks unspent. The transaction records the
+    /// highest time it has seen and refuses to act on a clock that has gone
+    /// behind it.
+    highest_now_ms: i64,
 }
 
 impl Executor {
@@ -111,6 +125,7 @@ impl Executor {
             state,
             history: vec![state],
             fired: Vec::new(),
+            highest_now_ms: i64::MIN,
         })
     }
 
@@ -143,13 +158,56 @@ impl Executor {
         &self.fired
     }
 
-    /// The fault at a point, recording that the transaction reached it.
+    /// The fault at a point, recording that the transaction reached it, and
+    /// letting the fault change the world.
     fn fault_at(&mut self, point: FaultPoint) -> Option<Fault> {
         let fault = self.faults.fault_at(point);
-        if fault.is_some() {
+        if let Some(fault) = fault {
             self.fired.push(point);
+            self.apply_fault(fault);
         }
         fault
+    }
+
+    /// Lets a fault change the simulated world.
+    ///
+    /// A fault is not only an event the transaction observes. Some of them are
+    /// changes to the world the transaction is acting on, and a change has to
+    /// be found by the transaction's own checks rather than announced to it:
+    /// a clock that moves backwards does not announce itself, and neither
+    /// does a recovery artefact that turns out to be corrupt.
+    fn apply_fault(&mut self, fault: Fault) {
+        match fault {
+            Fault::ClockRollback => self.environment.now_ms -= CLOCK_ROLLBACK_MS,
+            Fault::CorruptedRecoveryArtifact => self.environment.recovery_material_intact = false,
+            _ => {}
+        }
+    }
+
+    /// The current time, if the clock can be trusted.
+    ///
+    /// Every read of the clock goes through here. A transaction that read the
+    /// clock once and trusted it again later is a transaction whose expiry
+    /// check can be defeated by moving the clock back.
+    fn now(&mut self) -> Result<i64, Stop> {
+        let now = self.environment.now_ms;
+        if now < self.highest_now_ms {
+            return Err(self.untrusted_clock("the clock moved backwards under the capsule"));
+        }
+        self.highest_now_ms = now;
+        Ok(now)
+    }
+
+    /// The transaction cannot trust the clock, so it stops.
+    ///
+    /// Nothing has landed, so the transaction failed. Something has landed,
+    /// so the transaction has to undo it before it can report anything.
+    fn untrusted_clock(&mut self, reason: &str) -> Stop {
+        if self.environment.applied_steps.is_empty() {
+            self.fail(reason)
+        } else {
+            self.compensate(reason)
+        }
     }
 
     /// Injects a fault.
@@ -208,11 +266,24 @@ impl Executor {
     /// `DRAFT → VALIDATED`: the capsule is a plan the registry accepts.
     fn validate(&mut self) -> Option<Stop> {
         if let Some(fault) = self.fault_at(FaultPoint::BeforeValidation) {
-            return Some(self.fail(&format!(
-                "the capsule was interrupted before it was validated ({fault:?})"
-            )));
+            if fault.interrupts() {
+                return Some(self.fail(&format!(
+                    "the capsule was interrupted before it was validated ({fault:?})"
+                )));
+            }
         }
-        if self.capsule.expires_at_ms <= self.environment.now_ms {
+        let now = match self.now() {
+            Ok(now) => now,
+            Err(stop) => return Some(stop),
+        };
+        // A capsule cannot be executed before it was issued, so a clock that
+        // reads earlier than the issue time is a clock that cannot be
+        // trusted. This is the only check that catches a clock that moved
+        // backwards before the transaction had observed it at all.
+        if now < self.capsule.issued_at_ms {
+            return Some(self.reject("the capsule has not been issued yet"));
+        }
+        if self.capsule.expires_at_ms <= now {
             return Some(self.expire("the capsule's validity window has closed"));
         }
         for step in &self.capsule.steps {
@@ -332,9 +403,11 @@ impl Executor {
     /// `VALIDATED → AUTHORIZED`: the decision permits this exact plan.
     fn authorize(&mut self, authorization: &Authorization) -> Option<Stop> {
         if let Some(fault) = self.fault_at(FaultPoint::BeforeAuthorization) {
-            return Some(self.fail(&format!(
-                "the capsule was interrupted before it was authorized ({fault:?})"
-            )));
+            if fault.interrupts() {
+                return Some(self.fail(&format!(
+                    "the capsule was interrupted before it was authorized ({fault:?})"
+                )));
+            }
         }
         match authorization::check(&self.capsule, authorization) {
             Ok(()) => self.transition(State::Authorized),
@@ -347,15 +420,19 @@ impl Executor {
     /// `AUTHORIZED → STAGED`: the artifacts are staged outside the active storage.
     fn stage(&mut self) -> Option<Stop> {
         if let Some(fault) = self.fault_at(FaultPoint::BeforeStaging) {
-            return Some(
-                self.fail(&format!("the capsule was interrupted before staging ({fault:?})")),
-            );
+            if fault.interrupts() {
+                return Some(
+                    self.fail(&format!("the capsule was interrupted before staging ({fault:?})")),
+                );
+            }
         }
         self.environment.staged = true;
         if let Some(fault) = self.fault_at(FaultPoint::AfterStaging) {
-            return Some(
-                self.fail(&format!("the capsule was interrupted after staging ({fault:?})")),
-            );
+            if fault.interrupts() {
+                return Some(
+                    self.fail(&format!("the capsule was interrupted after staging ({fault:?})")),
+                );
+            }
         }
         self.transition(State::Staged)
     }
@@ -363,9 +440,22 @@ impl Executor {
     /// `STAGED → PRECHECKED`: the world is rechecked, because it moved.
     fn precheck(&mut self) -> Option<Stop> {
         if let Some(fault) = self.fault_at(FaultPoint::BeforePrecheck) {
-            return Some(
-                self.fail(&format!("the capsule was interrupted before the precheck ({fault:?})")),
-            );
+            if fault.interrupts() {
+                return Some(self.fail(&format!(
+                    "the capsule was interrupted before the precheck ({fault:?})"
+                )));
+            }
+        }
+        // The clock is read again, and a clock that has gone backwards is
+        // not a clock the transaction can act on. The validity window is
+        // *not* rechecked here: the simulator cannot move the clock forward
+        // between the validation and the precheck, so a check here could
+        // never fire, and a control that has never been seen to fail has
+        // proved nothing. The window is checked before every step, which is
+        // where the clock does move.
+        match self.now() {
+            Ok(_) => {}
+            Err(stop) => return Some(stop),
         }
         if self.capsule.target.expected_version != self.environment.current_version {
             return Some(self.fail("the target version changed under the capsule"));
@@ -381,10 +471,16 @@ impl Executor {
                 )));
             }
         }
-        if self.capsule.recovery_plan.recovery_artifact_ref.is_some()
-            && !self.environment.recovery_material_present
-        {
-            return Some(self.fail("the recovery artifact is missing"));
+        if self.capsule.recovery_plan.recovery_artifact_ref.is_some() {
+            if !self.environment.recovery_material_present {
+                return Some(self.fail("the recovery artifact is missing"));
+            }
+            // Presence is not integrity. Material that is present but corrupt
+            // would be used to undo the effect, and using it would undo the
+            // effect with material that cannot be trusted.
+            if !self.environment.recovery_material_intact {
+                return Some(self.fail("the recovery artifact is corrupt"));
+            }
         }
         self.transition(State::Prechecked)
     }
@@ -436,21 +532,49 @@ impl Executor {
             }
 
             if let Some(fault) = self.fault_at(FaultPoint::BeforeStep { index }) {
-                self.ledger.record(
-                    &capsule_id,
-                    &step.idempotency_key,
-                    StepOutcome::Interrupted { effect: EffectState::NotApplied },
-                );
-                return Some(self.fail(&format!(
-                    "the step {:?} was interrupted before it ran ({fault:?})",
-                    step.step_id
-                )));
+                if fault.interrupts() {
+                    self.ledger.record(
+                        &capsule_id,
+                        &step.idempotency_key,
+                        StepOutcome::Interrupted { effect: EffectState::NotApplied },
+                    );
+                    return Some(self.fail(&format!(
+                        "the step {:?} was interrupted before it ran ({fault:?})",
+                        step.step_id
+                    )));
+                }
             }
 
-            // The step runs. A crash leaves it unknown whether the effect
-            // landed; every other fault leaves it known.
-            let effect = match self.fault_at(FaultPoint::DuringStep { index }) {
-                Some(Fault::Crash) => EffectState::Unknown,
+            // The validity window is checked before every step, and not only
+            // at the boundaries. A step that lands an effect after the
+            // window closed is the case the window exists to prevent, and a
+            // transaction that admits a capsule and then applies it an hour
+            // later has defeated its own check.
+            let now = match self.now() {
+                Ok(now) => now,
+                Err(stop) => return Some(stop),
+            };
+            if self.capsule.expires_at_ms <= now {
+                let reason = "the capsule's validity window closed while the plan was running";
+                // Nothing has landed yet, so the transaction failed. Something
+                // has landed, so the transaction has to undo it before it can
+                // report anything.
+                return Some(if self.environment.applied_steps.is_empty() {
+                    self.fail(reason)
+                } else {
+                    self.compensate(reason)
+                });
+            }
+
+            // The step runs. A crash or a full disk leaves it unknown whether
+            // the effect landed; every other fault leaves it known.
+            let fault = self.fault_at(FaultPoint::DuringStep { index });
+            let effect = match fault {
+                // A machine that stopped, and a write that could not
+                // complete, both leave the effect unknown. A write that fails
+                // may have been partially applied, and "partially applied" is
+                // not a state the ledger can describe.
+                Some(Fault::Crash) | Some(Fault::DiskFull) => EffectState::Unknown,
                 Some(_) => {
                     self.environment.apply_step(&step.step_id);
                     EffectState::Applied
@@ -473,7 +597,7 @@ impl Executor {
                 )));
             }
 
-            if let Some(fault) = self.fault_at(FaultPoint::DuringStep { index }) {
+            if let Some(fault) = fault {
                 self.ledger.record(
                     &capsule_id,
                     &step.idempotency_key,
@@ -500,11 +624,18 @@ impl Executor {
             self.ledger.record(&capsule_id, &step.idempotency_key, StepOutcome::Succeeded);
             executed.push(step.step_id.clone());
 
+            // The step took the time it declared. The clock moves with the
+            // work, which is what makes a validity window close *during* a
+            // plan rather than only before it.
+            self.environment.now_ms += step.timeout_ms as i64;
+
             if let Some(fault) = self.fault_at(FaultPoint::AfterStep { index }) {
-                return Some(self.compensate(&format!(
-                    "the capsule was interrupted after the step {:?} ({fault:?})",
-                    step.step_id
-                )));
+                if fault.interrupts() {
+                    return Some(self.compensate(&format!(
+                        "the capsule was interrupted after the step {:?} ({fault:?})",
+                        step.step_id
+                    )));
+                }
             }
         }
         self.transition(State::Verifying)
@@ -513,9 +644,11 @@ impl Executor {
     /// `VERIFYING → COMMITTED`: the outcome is proven, or it is not reported.
     fn verify(&mut self) -> Option<Stop> {
         if let Some(fault) = self.fault_at(FaultPoint::BeforeVerification) {
-            return Some(self.compensate(&format!(
-                "the capsule was interrupted before verification ({fault:?})"
-            )));
+            if fault.interrupts() {
+                return Some(self.compensate(&format!(
+                    "the capsule was interrupted before verification ({fault:?})"
+                )));
+            }
         }
         for step in &self.capsule.steps {
             if self.ledger.lookup(&self.capsule.capsule_id, &step.idempotency_key).is_none() {
@@ -525,7 +658,11 @@ impl Executor {
             }
         }
         if let Some(fault) = self.fault_at(FaultPoint::DuringVerification) {
-            return Some(self.compensate(&format!("the verification was interrupted ({fault:?})")));
+            if fault.interrupts() {
+                return Some(
+                    self.compensate(&format!("the verification was interrupted ({fault:?})")),
+                );
+            }
         }
         let mandatory = self.capsule.mandatory_postconditions();
         let unmet: Vec<&String> = mandatory
@@ -539,6 +676,21 @@ impl Executor {
         }
         if !self.environment.audit_sink_durable {
             return Some(self.compensate("the audit sink cannot record the evidence durably"));
+        }
+        // The last read of the clock, and the last look at the validity
+        // window. A commit is the moment the operator stops watching, and it
+        // is the last moment at which the transaction can refuse.
+        let now = match self.now() {
+            Ok(now) => now,
+            Err(stop) => return Some(stop),
+        };
+        if self.capsule.expires_at_ms <= now {
+            return Some(self.compensate("the capsule's validity window closed before the commit"));
+        }
+        if self.capsule.recovery_plan.recovery_artifact_ref.is_some()
+            && !self.environment.recovery_material_intact
+        {
+            return Some(self.compensate("the recovery artifact was corrupted before the commit"));
         }
         self.transition(State::Committed)
     }
@@ -562,6 +714,18 @@ impl Executor {
         // thing is worse than stopping.
         if self.has_unknown_effect() {
             return self.escalate(reason);
+        }
+        // The recovery material is checked **here**, and not only at the
+        // precheck. Material that was present before the steps ran may be
+        // gone or corrupt now, and a compensation that claims to have undone
+        // an effect without material to undo it with is a false claim.
+        if self.capsule.recovery_plan.recovery_artifact_ref.is_some() {
+            if !self.environment.recovery_material_present {
+                return self.escalate(reason);
+            }
+            if !self.environment.recovery_material_intact {
+                return self.escalate(reason);
+            }
         }
         for step in &self.environment.applied_steps {
             let Some(entry) = self.registry.effective(&step_operation(self, step)) else {

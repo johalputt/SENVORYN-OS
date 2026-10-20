@@ -33,8 +33,14 @@ pub struct Environment {
     pub compensated_steps: Vec<String>,
     /// The effects that are still outstanding.
     pub outstanding_effects: BTreeSet<String>,
-    /// Whether the recovery material is present and verified.
+    /// Whether the recovery material is present.
     pub recovery_material_present: bool,
+    /// Whether the recovery material is intact.
+    ///
+    /// Presence is not integrity. Material that is present but corrupt is
+    /// worse than material that is missing, because a missing artefact stops
+    /// the transaction and a corrupt one is used.
+    pub recovery_material_intact: bool,
     /// Whether the audit sink can record durably.
     pub audit_sink_durable: bool,
 }
@@ -53,6 +59,7 @@ impl Default for Environment {
             compensated_steps: Vec::new(),
             outstanding_effects: BTreeSet::new(),
             recovery_material_present: true,
+            recovery_material_intact: true,
             audit_sink_durable: true,
         }
     }
@@ -134,6 +141,37 @@ pub enum Fault {
     PolicyEpochChanged,
     /// The audit sink stopped accepting durable records.
     AuditSinkLost,
+    /// The storage could not accept a write.
+    ///
+    /// A write that fails is not a write that did not happen: it may have
+    /// been partially applied. "Partially applied" is not a state the
+    /// idempotency ledger can describe, so the effect of a step interrupted
+    /// this way is **not known**, exactly as it is after a crash.
+    DiskFull,
+    /// The clock moved backwards.
+    ///
+    /// A clock that goes backwards makes a validity window meaningless: a
+    /// capsule that looked expired looks unexpired again. The transaction
+    /// records the highest time it has seen and refuses to act on a clock
+    /// that has gone behind it.
+    ClockRollback,
+    /// The recovery material turned out to be corrupt.
+    ///
+    /// The material is present, and using it would undo the effect with
+    /// material that cannot be trusted. Presence is not integrity.
+    CorruptedRecoveryArtifact,
+}
+
+impl Fault {
+    /// Whether the fault stops the transaction where it happened.
+    ///
+    /// An interruption is a moment the transaction does not continue past. A
+    /// change to the world is not: the clock moved backwards, or the recovery
+    /// material turned out to be corrupt, and the transaction carries on and
+    /// finds the change for itself.
+    pub fn interrupts(self) -> bool {
+        !matches!(self, Fault::ClockRollback | Fault::CorruptedRecoveryArtifact)
+    }
 }
 
 /// The faults to inject, by point.

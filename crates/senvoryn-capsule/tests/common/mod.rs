@@ -71,6 +71,7 @@ pub fn environment() -> Environment {
         compensated_steps: Vec::new(),
         outstanding_effects: BTreeSet::new(),
         recovery_material_present: true,
+        recovery_material_intact: true,
         audit_sink_durable: true,
     }
 }

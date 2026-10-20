@@ -137,6 +137,20 @@ class Fault(str, enum.Enum):
     STALE_PRECONDITION = "STALE_PRECONDITION"
     POLICY_EPOCH_CHANGED = "POLICY_EPOCH_CHANGED"
     AUDIT_SINK_LOST = "AUDIT_SINK_LOST"
+    DISK_FULL = "DISK_FULL"
+    CLOCK_ROLLBACK = "CLOCK_ROLLBACK"
+    CORRUPTED_RECOVERY_ARTIFACT = "CORRUPTED_RECOVERY_ARTIFACT"
+
+    @property
+    def interrupts(self) -> bool:
+        """Whether the fault stops the transaction where it happened.
+
+        An interruption is a moment the transaction does not continue past. A
+        change to the world is not: the clock moved backwards, or the recovery
+        material turned out to be corrupt, and the transaction carries on and
+        finds the change for itself.
+        """
+        return self not in (Fault.CLOCK_ROLLBACK, Fault.CORRUPTED_RECOVERY_ARTIFACT)
 
 
 # ---------------------------------------------------------------------------
@@ -652,6 +666,7 @@ class Environment:
     compensated_steps: list[str] = field(default_factory=list)
     outstanding_effects: set[str] = field(default_factory=set)
     recovery_material_present: bool = True
+    recovery_material_intact: bool = True
     audit_sink_durable: bool = True
 
     def precondition_holds(self, predicate_id: str) -> bool:
@@ -867,6 +882,10 @@ class Executor:
         self._executed: list[str] = []
         self._reused: list[str] = []
         self._fired: list[tuple[FaultPoint, Optional[int]]] = []
+        # The highest time the transaction has observed. A clock that moves
+        # backwards makes the capsule's validity window meaningless, so the
+        # transaction refuses to act on a clock that has gone behind it.
+        self._highest_now_ms: Optional[int] = None
 
     # -- the transaction ----------------------------------------------------
 
@@ -890,11 +909,18 @@ class Executor:
     def _validate(self) -> None:
         """``DRAFT → VALIDATED``: the capsule is a plan the registry accepts."""
         fault = self._fault_at(FaultPoint.BEFORE_VALIDATION)
-        if fault is not None:
+        if fault is not None and fault.interrupts:
             raise self._fail(
                 f"the capsule was interrupted before it was validated ({fault.value})"
             )
-        if self._capsule.expires_at_ms <= self._environment.now_ms:
+        now = self._now()
+        # A capsule cannot be executed before it was issued, so a clock that
+        # reads earlier than the issue time is a clock that cannot be
+        # trusted. This is the only check that catches a clock that moved
+        # backwards before the transaction had observed it at all.
+        if now < self._capsule.issued_at_ms:
+            raise self._reject("the capsule has not been issued yet")
+        if self._capsule.expires_at_ms <= now:
             raise self._expire("the capsule's validity window has closed")
 
         for step in self._capsule.steps:
@@ -985,7 +1011,7 @@ class Executor:
     def _authorize(self, authorization: Authorization) -> None:
         """``VALIDATED → AUTHORIZED``: the decision permits this exact plan."""
         fault = self._fault_at(FaultPoint.BEFORE_AUTHORIZATION)
-        if fault is not None:
+        if fault is not None and fault.interrupts:
             raise self._fail(
                 f"the capsule was interrupted before it was authorized ({fault.value})"
             )
@@ -997,19 +1023,27 @@ class Executor:
     def _stage(self) -> None:
         """``AUTHORIZED → STAGED``: the artifacts are staged outside the active storage."""
         fault = self._fault_at(FaultPoint.BEFORE_STAGING)
-        if fault is not None:
+        if fault is not None and fault.interrupts:
             raise self._fail(f"the capsule was interrupted before staging ({fault.value})")
         self._environment.staged = True
         fault = self._fault_at(FaultPoint.AFTER_STAGING)
-        if fault is not None:
+        if fault is not None and fault.interrupts:
             raise self._fail(f"the capsule was interrupted after staging ({fault.value})")
         self._transition(State.STAGED)
 
     def _precheck(self) -> None:
         """``STAGED → PRECHECKED``: the world is rechecked, because it moved."""
         fault = self._fault_at(FaultPoint.BEFORE_PRECHECK)
-        if fault is not None:
+        if fault is not None and fault.interrupts:
             raise self._fail(f"the capsule was interrupted before the precheck ({fault.value})")
+        # The clock is read again, and a clock that has gone backwards is not
+        # a clock the transaction can act on. The validity window is *not*
+        # rechecked here: the simulator cannot move the clock forward between
+        # the validation and the precheck, so a check here could never fire,
+        # and a control that has never been seen to fail has proved nothing.
+        # The window is checked before every step, which is where the clock
+        # does move.
+        self._now()
         if self._capsule.target.expected_version != self._environment.current_version:
             raise self._fail("the target version changed under the capsule")
         if self._capsule.policy_epoch != self._environment.policy_epoch:
@@ -1019,11 +1053,13 @@ class Executor:
                 raise self._fail(
                     f"the precondition {precondition.predicate_id!r} no longer holds"
                 )
-        if (
-            self._capsule.recovery_artifact_ref is not None
-            and not self._environment.recovery_material_present
-        ):
-            raise self._fail("the recovery artifact is missing")
+        if self._capsule.recovery_artifact_ref is not None:
+            if not self._environment.recovery_material_present:
+                raise self._fail("the recovery artifact is missing")
+            # Presence is not integrity. Material that is present but corrupt
+            # would be used to undo the effect.
+            if not self._environment.recovery_material_intact:
+                raise self._fail("the recovery artifact is corrupt")
         self._transition(State.PRECHECKED)
 
     def _apply(self) -> None:
@@ -1053,7 +1089,7 @@ class Executor:
                     )
 
             fault = self._fault_at(FaultPoint.BEFORE_STEP, index)
-            if fault is not None:
+            if fault is not None and fault.interrupts:
                 self._ledger.record(
                     capsule_id,
                     step.idempotency_key,
@@ -1063,10 +1099,26 @@ class Executor:
                     f"the step {step.step_id!r} was interrupted before it ran ({fault.value})"
                 )
 
+            # The validity window is checked before every step, and not only
+            # at the boundaries. A step that lands an effect after the window
+            # closed is the case the window exists to prevent.
+            now = self._now()
+            if self._capsule.expires_at_ms <= now:
+                reason = "the capsule's validity window closed while the plan was running"
+                # Nothing has landed yet, so the transaction failed. Something
+                # has landed, so the transaction has to undo it before it can
+                # report anything.
+                if not self._environment.applied_steps:
+                    raise self._fail(reason)
+                self._compensate(reason)
+
             fault = self._fault_at(FaultPoint.DURING_STEP, index)
-            if fault is Fault.CRASH:
-                # The machine stopped. Whether the effect landed is not known,
-                # and an effect that is not known cannot be undone automatically.
+            if fault in (Fault.CRASH, Fault.DISK_FULL):
+                # The machine stopped, or the write could not complete.
+                # Whether the effect landed is not known, and an effect that is
+                # not known cannot be undone automatically. A write that fails
+                # may have been partially applied, and "partially applied" is
+                # not a state the ledger can describe.
                 self._ledger.record(
                     capsule_id,
                     step.idempotency_key,
@@ -1104,9 +1156,13 @@ class Executor:
                 capsule_id, step.idempotency_key, StepOutcome(OutcomeKind.SUCCEEDED)
             )
             self._executed.append(step.step_id)
+            # The step took the time it declared. The clock moves with the
+            # work, which is what makes a validity window close *during* a
+            # plan rather than only before it.
+            self._environment.now_ms += step.timeout_ms
 
             fault = self._fault_at(FaultPoint.AFTER_STEP, index)
-            if fault is not None:
+            if fault is not None and fault.interrupts:
                 self._compensate(
                     f"the capsule was interrupted after the step {step.step_id!r} "
                     f"({fault.value})"
@@ -1117,13 +1173,13 @@ class Executor:
     def _verify(self) -> None:
         """``VERIFYING → COMMITTED``: the outcome is proven, or it is not reported."""
         fault = self._fault_at(FaultPoint.BEFORE_VERIFICATION)
-        if fault is not None:
+        if fault is not None and fault.interrupts:
             self._compensate(f"the capsule was interrupted before verification ({fault.value})")
         for step in self._capsule.steps:
             if self._ledger.lookup(self._capsule.capsule_id, step.idempotency_key) is None:
                 self._compensate(f"the step {step.step_id!r} has no outcome")
         fault = self._fault_at(FaultPoint.DURING_VERIFICATION)
-        if fault is not None:
+        if fault is not None and fault.interrupts:
             self._compensate(f"the verification was interrupted ({fault.value})")
         unmet = [
             predicate
@@ -1134,6 +1190,17 @@ class Executor:
             self._compensate(f"the mandatory postcondition {unmet} did not hold")
         if not self._environment.audit_sink_durable:
             self._compensate("the audit sink cannot record the evidence durably")
+        # The last read of the clock, and the last look at the validity
+        # window. A commit is the moment the operator stops watching, and it
+        # is the last moment at which the transaction can refuse.
+        now = self._now()
+        if self._capsule.expires_at_ms <= now:
+            self._compensate("the capsule's validity window closed before the commit")
+        if (
+            self._capsule.recovery_artifact_ref is not None
+            and not self._environment.recovery_material_intact
+        ):
+            self._compensate("the recovery artifact was corrupted before the commit")
         self._transition(State.COMMITTED)
 
     # -- the ways a transaction ends ----------------------------------------
@@ -1160,6 +1227,15 @@ class Executor:
         # thing is worse than stopping.
         if self._has_unknown_effect():
             raise self._escalate(reason)
+        # The recovery material is checked **here**, and not only at the
+        # precheck. Material that was present before the steps ran may be
+        # gone or corrupt now, and a compensation that claims to have undone
+        # an effect without material to undo it with is a false claim.
+        if self._capsule.recovery_artifact_ref is not None:
+            if not self._environment.recovery_material_present:
+                raise self._escalate(reason)
+            if not self._environment.recovery_material_intact:
+                raise self._escalate(reason)
         for step_id in self._environment.applied_steps:
             entry = self._registry.effective(self._operation_of(step_id))
             if entry is None or not entry.compensatable:
@@ -1216,8 +1292,48 @@ class Executor:
 
     # -- the helpers --------------------------------------------------------
 
+    def _apply_fault(self, fault: Fault) -> None:
+        """Lets a fault change the simulated world.
+
+        A fault is not only an event the transaction observes. Some of them
+        are changes to the world the transaction is acting on, and a change
+        has to be found by the transaction's own checks rather than announced
+        to it: a clock that moves backwards does not announce itself, and
+        neither does a recovery artefact that turns out to be corrupt.
+        """
+        if fault is Fault.CLOCK_ROLLBACK:
+            # An hour is enough to reopen a validity window that had just
+            # closed, and small enough that the budget does not notice.
+            self._environment.now_ms -= 3_600_000
+        elif fault is Fault.CORRUPTED_RECOVERY_ARTIFACT:
+            self._environment.recovery_material_intact = False
+
+    def _now(self) -> int:
+        """The current time, if the clock can be trusted.
+
+        Every read of the clock goes through here. A transaction that read the
+        clock once and trusted it again later is a transaction whose expiry
+        check can be defeated by moving the clock back.
+        """
+        now = self._environment.now_ms
+        if self._highest_now_ms is not None and now < self._highest_now_ms:
+            raise self._untrusted_clock("the clock moved backwards under the capsule")
+        self._highest_now_ms = now
+        return now
+
+    def _untrusted_clock(self, reason: str) -> _Halt:
+        """The transaction cannot trust the clock, so it stops.
+
+        Nothing has landed, so the transaction failed. Something has landed,
+        so the transaction has to undo it before it can report anything.
+        """
+        if not self._environment.applied_steps:
+            raise self._fail(reason)
+        raise self._compensate(reason)
+
     def _fault_at(self, point: FaultPoint, index: Optional[int] = None) -> Optional[Fault]:
-        """The fault at a point, recording that the transaction reached it.
+        """The fault at a point, recording that the transaction reached it,
+        and letting the fault change the world.
 
         A fault injected at a point the transaction never reaches is not a
         fault the transaction survived, and a test that counted it as one
@@ -1226,6 +1342,7 @@ class Executor:
         fault = self._faults.fault_at(point, index)
         if fault is not None:
             self._fired.append((point, index))
+            self._apply_fault(fault)
         return fault
 
     def _has_unknown_effect(self) -> bool:
