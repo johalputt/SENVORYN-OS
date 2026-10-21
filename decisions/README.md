@@ -42,6 +42,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | [ADR-016](ADR-016-operation-registry-limits-epoch-and-freshness.md) | The Operation Registry's limits, its epoch, and its freshness | Proposed | 3 |
 | [ADR-017](ADR-017-the-clock-is-a-boundary.md) | The clock is a boundary | Proposed | 3 |
 | [ADR-018](ADR-018-the-resolution-boundary.md) | The resolution boundary: a name is not an identity | Proposed | 4 |
+| [ADR-019](ADR-019-the-policy-request-form.md) | The policy request form: one name, two documents | Proposed | 6 |
 
 ---
 
@@ -67,6 +68,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | **016** | The registry's limits are per operation and the capsule's budget is a total for the plan; the registry must be the registry for the epoch in force, and it must carry a validity window. |
 | **017** | The monotonic clock is the session's authority; a wall clock is only a statement about a document, and it is refused when it moves backwards. |
 | **018** | A resolved resource is a canonical identifier, a canonical type and a version; the caller's type claim is checked rather than obeyed, and the canonical identity governs every later gate. |
+| **019** | The policy request form is the transport layer's output and not the wire envelope; its field set is closed, so a field the node cannot account for is refused rather than ignored. |
 
 ---
 

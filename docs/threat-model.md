@@ -299,6 +299,15 @@ Each abuse case names the gate that must hold, the spec rule that requires it, a
 **Failure mode:** Access to an object the principal was not authorized for.
 **Tests:** `SCP-004`.
 
+### AS-21 · Silently dropped request fields
+
+**Adversary:** ADV-1, ADV-4
+**Attack:** Send a request carrying a field this node does not understand — a field a newer sender expects the node to enforce — and rely on the node ignoring it. A field that carries a demand ("this request is a recovery request", "this request is already approved", "this effect is external") is then dropped, and the node acts on a request that does not say what the sender thought it said.
+**Gate:** Canonical parse gate (#2).
+**Required controls:** The policy request form is closed: a document carrying a field the form does not define is refused, and the refusal names the field. A reader may not ignore a field it cannot account for, because "ignore what you do not understand" is a decision to enforce a contract nobody wrote down. The reader enforces the form and nothing else — an unknown field is refused before any gate runs, and a refusal at the reader is not a decision.
+**Failure mode if control fails:** A request is judged on a contract the sender did not write, and the difference between the two is invisible to both sides.
+**Tests:** `SCP-001`, `SCP-002`.
+
 ---
 
 ## 6. Risk ranking
@@ -324,6 +333,7 @@ Ranked by **(impact × likelihood)** given the current implementation state. "Li
 | 15 | AS-15 Delegation widening | High | Medium | Attenuation rules specified; subset semantics per resource type undefined — **open risk** |
 | 16 | AS-18 Verification bypass | High | Low | State machine + invariant specified |
 | 17 | AS-4 / AS-17 Exploit chains | Medium | Low | Partial mitigation specified |
+| 18 | AS-21 Silently dropped request fields | High | Low | The policy request form is closed and the reader's nine controls are mutation-tested, but the transport that would read the wire envelope does not exist, so the wire envelope's own closure is unproven in code — **open risk** |
 
 > **Every "open risk" above is a Gate 1–8 deliverable, not a bug in the design.** The design states the requirement; the implementation does not exist yet. The purpose of this table is to make sure nothing is *forgotten*, not to claim anything is solved.
 

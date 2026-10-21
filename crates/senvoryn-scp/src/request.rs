@@ -1,4 +1,20 @@
 //! The request, as the policy layer sees it.
+//!
+//! Two documents are called a request, and they are not the same one. The
+//! *wire envelope* (`schemas/request-envelope.schema.json`) is what travels:
+//! it carries date-times, a replay key, a target node and the caller's
+//! classification and effect claims. The *policy request* is what the
+//! transport layer hands to the policy layer: the same intent with the times
+//! already expressed in monotonic milliseconds and the fields the policy
+//! layer does not read removed.
+//!
+//! This module reads the policy request. The transport layer that produces it
+//! is not built yet, so the wire envelope has no reader in this repository
+//! and the two forms have drifted apart: the policy request has no replay key
+//! distinct from its nonce, no target node, no classification claim and no
+//! effect claim. Those gaps are recorded in ADR-019 rather than papered over,
+//! because a reader that pretends to be the wire envelope's reader is a
+//! reader whose contract nobody can state.
 
 use senvoryn_canonical::Value;
 
@@ -57,6 +73,35 @@ pub struct Request {
     pub budget: Option<Budget>,
 }
 
+/// The fields the policy request form defines.
+///
+/// The form is closed: a document carrying a field this list does not name is
+/// refused rather than read. The specification requires an unknown critical
+/// field to be rejected, and the form marks no field as non-critical, so a
+/// field this node does not understand may be a field a newer sender expects
+/// this node to enforce. Ignoring it would be a decision to enforce a
+/// contract nobody wrote down.
+const FIELDS: &[&str] = &[
+    "schema",
+    "request_id",
+    "principal_id",
+    "recipient_id",
+    "resource_id",
+    "resource_type",
+    "operation",
+    "purpose",
+    "policy_epoch",
+    "issued_at",
+    "expires_at",
+    "nonce",
+    "risk_claim",
+    "approval_digest",
+    "budget",
+];
+
+/// The fields the policy request form's budget defines.
+const BUDGET_FIELDS: &[&str] = &["duration_ms", "operation_count"];
+
 /// Why a document could not be read as a request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnvelopeError {
@@ -66,6 +111,11 @@ pub enum EnvelopeError {
         field: &'static str,
         /// What was wrong with it.
         detail: String,
+    },
+    /// The document carried a field the policy request form does not define.
+    UnknownField {
+        /// The field that is not in the form.
+        field: String,
     },
     /// The document declared a schema this node does not support.
     UnsupportedSchema {
@@ -80,6 +130,9 @@ impl core::fmt::Display for EnvelopeError {
             Self::Malformed { field, detail } => {
                 write!(f, "field {field:?} is malformed: {detail}")
             }
+            Self::UnknownField { field } => {
+                write!(f, "field {field:?} is not part of the policy request form")
+            }
             Self::UnsupportedSchema { declared } => {
                 write!(f, "unsupported request schema {declared:?}")
             }
@@ -92,10 +145,17 @@ impl std::error::Error for EnvelopeError {}
 impl Request {
     /// Reads a request from a canonical document.
     ///
-    /// The document is the request envelope with its times already expressed
-    /// in monotonic milliseconds. The schema's date-time form belongs to the
-    /// wire format, and the conversion belongs to the transport layer.
+    /// The document is the policy request form: the transport layer's output,
+    /// with the times already expressed in monotonic milliseconds. The reader
+    /// enforces the form — the field set is closed, the required fields are
+    /// present and non-empty, the numbers are non-negative integers and the
+    /// risk claim is a tier this node knows — and nothing else. It does not
+    /// judge the request: an operation this node has never heard of, a
+    /// resource it cannot resolve and a principal it does not know are all
+    /// read successfully and refused by the gates that follow.
     pub fn from_value(document: &Value) -> Result<Self, EnvelopeError> {
+        reject_unknown_fields(document, "document", FIELDS)?;
+
         let schema =
             document.get("schema").and_then(Value::as_str).ok_or(EnvelopeError::Malformed {
                 field: "schema",
@@ -128,10 +188,13 @@ impl Request {
         let approval_digest = optional_string(document, "approval_digest")?;
         let budget = match document.get("budget") {
             None | Some(Value::Null) => None,
-            Some(value) => Some(Budget {
-                duration_ms: optional_u64(value, "duration_ms")?,
-                operation_count: optional_u64(value, "operation_count")?,
-            }),
+            Some(value) => {
+                reject_unknown_fields(value, "budget", BUDGET_FIELDS)?;
+                Some(Budget {
+                    duration_ms: optional_u64(value, "duration_ms")?,
+                    operation_count: optional_u64(value, "operation_count")?,
+                })
+            }
         };
 
         Ok(Self {
@@ -151,6 +214,34 @@ impl Request {
             budget,
         })
     }
+}
+
+/// Refuses a document that is not an object, or that carries a field the
+/// form does not define.
+///
+/// The check is on the way in rather than on each field, so a document with
+/// an extra field is refused for the extra field and not for the first
+/// required field that happens to be missing.
+fn reject_unknown_fields(
+    document: &Value,
+    container: &'static str,
+    fields: &[&str],
+) -> Result<(), EnvelopeError> {
+    let object = match document.as_object() {
+        Some(object) => object,
+        None => {
+            return Err(EnvelopeError::Malformed {
+                field: container,
+                detail: format!("expected an object, found {}", document.type_name()),
+            });
+        }
+    };
+    for key in object.keys() {
+        if !fields.contains(&key.as_str()) {
+            return Err(EnvelopeError::UnknownField { field: key.clone() });
+        }
+    }
+    Ok(())
 }
 
 fn required_string(document: &Value, field: &'static str) -> Result<String, EnvelopeError> {

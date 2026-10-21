@@ -11,8 +11,8 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 105 passed, 0 failed.
-- Rust workspace tests: 123 passed, 0 failed.
+- Python contract tests: 106 passed, 0 failed.
+- Rust workspace tests: 135 passed, 0 failed.
 - Shared conformance vectors: 40 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
@@ -48,8 +48,28 @@ Checks performed
   fractional seconds, and the timestamp parser rolled a date that does not exist into the
   next month. All three are fixed and pinned by a test in each implementation.
 - Denial-code registry: 32 codes, unique, each with a class and a default status. Every
-  code is produced by at least one implementation and every code an implementation can
-  produce is in the registry; both directions are checked by tests on both sides.
+  code an implementation can produce is in the registry, and that direction is checked by
+  a test on both sides. The other direction is checked too: 30 of the 32 codes are
+  produced by a shared vector, and the two that are not are named by the test that checks
+  it. UNSUPPORTED_CRITICAL_SCHEMA names the transport's refusal of a document whose
+  schema this node does not support, which is a refusal and not a decision, because the
+  request never existed; ANTI_ROLLBACK_VIOLATION names the updater's refusal of a
+  downgrade, and there is no updater. A code added to the registry without a case that
+  produces it fails the test in both implementations, and the failure asks the author to
+  say which of the two kinds of code it is.
+- The policy request form is closed: a document carrying a field the form does not define
+  is refused, at the top level and inside the budget, because a field this node cannot
+  account for may be a field a newer sender expects this node to enforce. The reader
+  enforces the form and nothing else. Nine of its controls are broken in turn by the
+  mutation gate: the closed field set, the closed budget, the object check, the schema
+  check, the missing field, the empty field, the negative number, the malformed risk
+  claim, and the reader's duty to keep the value it read.
+- The request boundary is fuzzed: a corpus of policy requests is mutated in a reproducible
+  way, and the harness asserts that the reader never panics, that a request which was
+  read says exactly what the document said, and that the same document is read the same
+  way twice. The policy request form and the wire envelope the schema describes are
+  different documents, and the transport that converts one into the other does not exist
+  yet; the drift between them is recorded in ADR-019 rather than implied.
 - The resolution boundary: a resolved resource is a canonical identifier, a canonical
   type and a version. The canonical identity — never the caller's own strings — governs
   the capability gate, the risk gate, and the record that authorises the effect. A
@@ -78,8 +98,8 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 126 controls broken in turn, each requiring a named test to go red
-  because of that break. 126 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 135 controls broken in turn, each requiring a named test to go red
+  because of that break. 135 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
 

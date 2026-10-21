@@ -199,6 +199,35 @@ class ConformanceVectorTests(unittest.TestCase):
         identifiers += [case["id"] for case in VECTORS["attenuation_cases"]]
         self.assertEqual(len(identifiers), len(set(identifiers)), "a case identifier repeats")
 
+    def test_every_registry_code_is_produced_by_a_case_or_is_ahead_of_the_code(self):
+        # A code in the registry that nothing produces is a promise the
+        # registry cannot keep: a reader consulting it would expect a refusal
+        # that cannot happen. The two codes named here name refusals the
+        # decision path does not produce. UNSUPPORTED_CRITICAL_SCHEMA names
+        # the transport's refusal of a document whose schema this node does
+        # not support - a refusal that is not a decision, because the request
+        # never existed - and ANTI_ROLLBACK_VIOLATION names the updater's
+        # refusal of a downgrade, and there is no updater.
+        ahead_of_the_code = {"UNSUPPORTED_CRITICAL_SCHEMA", "ANTI_ROLLBACK_VIOLATION"}
+        produced = {case["expected"]["reason"] for case in VECTORS["cases"]}
+        for code in ALL_REASON_CODES:
+            if code in produced:
+                continue
+            self.assertIn(
+                code,
+                ahead_of_the_code,
+                f"{code} is in the denial-code registry and no case produces it. Either give it "
+                "a case, or list it as a code that names a refusal the decision path does not "
+                "produce.",
+            )
+        for code in ahead_of_the_code:
+            self.assertNotIn(
+                code,
+                produced,
+                f"{code} is produced by a case now, so it no longer belongs to the list of "
+                "codes that are ahead of the code",
+            )
+
     def test_every_case_names_the_requirement_it_covers(self):
         # A case cites either a constitutional invariant (INV-nn) or the
         # conformance test identifier it exercises (SCP-nnn and the rest).

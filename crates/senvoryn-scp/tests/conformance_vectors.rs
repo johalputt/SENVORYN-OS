@@ -323,6 +323,50 @@ fn the_vector_file_covers_the_specification() {
 }
 
 #[test]
+fn every_registry_code_is_produced_by_a_case_or_is_ahead_of_the_code() {
+    // A code in the registry that nothing produces is a promise the registry
+    // cannot keep: a reader consulting it would expect a refusal that cannot
+    // happen. The two codes named here name refusals the decision path does
+    // not produce. `UNSUPPORTED_CRITICAL_SCHEMA` names the transport's
+    // refusal of a document whose schema this node does not support — a
+    // refusal that is not a decision, because the request never existed — and
+    // `ANTI_ROLLBACK_VIOLATION` names the updater's refusal of a downgrade,
+    // and there is no updater. A code added to the registry without a case
+    // that produces it fails here, and the failure asks the author to say
+    // which of the two kinds of code it is.
+    const AHEAD_OF_THE_CODE: [&str; 2] = ["UNSUPPORTED_CRITICAL_SCHEMA", "ANTI_ROLLBACK_VIOLATION"];
+    let document = vectors();
+    let cases = document.get("cases").and_then(Value::as_array).expect("cases");
+    let mut produced: Vec<String> = cases
+        .iter()
+        .map(|case| string_field(case.get("expected").expect("an expectation"), "reason"))
+        .collect();
+    produced.sort();
+    produced.dedup();
+
+    for code in senvoryn_scp::registry_codes() {
+        if produced.iter().any(|reason| reason == code) {
+            continue;
+        }
+        assert!(
+            AHEAD_OF_THE_CODE.contains(code),
+            "{code} is in the denial-code registry and no case produces it. Either give it a \
+             case, or list it as a code that names a refusal the decision path does not produce."
+        );
+    }
+    // The list is not a place to hide a code: a code that is named here and
+    // also produced by a case is a code that has caught up, and the list
+    // should say so.
+    for code in AHEAD_OF_THE_CODE {
+        assert!(
+            !produced.iter().any(|reason| reason == code),
+            "{code} is produced by a case now, so it no longer belongs to the list of codes \
+             that are ahead of the code"
+        );
+    }
+}
+
+#[test]
 fn every_case_names_the_requirement_it_covers() {
     // A case cites either a constitutional invariant (INV-nn) or the
     // conformance test identifier it exercises (SCP-nnn and the rest).

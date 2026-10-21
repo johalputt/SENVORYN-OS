@@ -144,6 +144,8 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 
 **Policy Epoch** — The monotonically increasing version of the policy under which a decision is made. Stale high-risk requests are denied. A capability does not override a policy-revoked state.
 
+**Policy Request Form** — The document the transport layer hands to the policy layer: the request's intent with its times expressed in monotonic milliseconds and the fields the policy layer does not read removed. It is not the wire envelope, and the reader's contract is the form's. The form is **closed**: a document carrying a field the form does not define is refused, because a field this node cannot account for may be a field a newer sender expects this node to enforce. See [ADR-019](decisions/ADR-019-the-policy-request-form.md).
+
 **Principal** — An authenticated actor that can request an operation. Types: `user`, `service`, `application`, `driver_service`, `ai_agent`, `device`, `recovery_actor`, `remote_controller`, `build_identity`. A label like "administrator" is **not** an identity — it is a role assignment that must itself be authenticated, scoped, and auditable.
 
 ---
@@ -205,6 +207,8 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 ## W
 
 **Witness / Evidence Record** — The per-test record containing requirement ID, test ID, source revision, harness version, profile, environment, input/fixture hash, expected result, actual result, status, log/artifact references, reviewer, date, and known limitations. **A passing unit test is not evidence of the absence of all vulnerabilities.**
+
+**Wire Envelope** — The request as it travels: the document `schemas/request-envelope.schema.json` describes, carrying date-times, a replay key, a target node and the caller's classification and effect claims. It is the transport layer's input, and the transport layer's output is the policy request form. The two are different documents, and the transport that converts one into the other is not built yet. See [ADR-019](decisions/ADR-019-the-policy-request-form.md).
 
 ---
 

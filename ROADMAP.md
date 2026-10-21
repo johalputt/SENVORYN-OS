@@ -20,13 +20,13 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | Statement | Status |
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
-| 103 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
-| 122 Rust tests pass | ✅ Verified (Rust stable) |
-| 33 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
+| 106 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 135 Rust tests pass | ✅ Verified (Rust stable) |
+| 40 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
 | 36 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
-| Every control has a test that fails when the control is broken | ✅ Verified — 117 mutations, all killed |
+| Every control has a test that fails when the control is broken | ✅ Verified — 135 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
-| 31 denial codes are unique with defined defaults | ✅ Verified |
+| 32 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
 | The decision evaluator is pure (no side effects) | ✅ Verified by test + code review |
 | A threat model for the SCP decision path exists | 🟡 First draft exists — **not independently reviewed** (Gate 0 blocker) |
@@ -78,11 +78,12 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] Canonical parser rejecting duplicate keys, invalid UTF-8, ambiguous numbers, unknown critical fields — `crates/senvoryn-canonical`
 - [x] Canonicalization profile implemented and tested — `SCP-CJSON-0001`, [ADR-008](decisions/ADR-008-canonical-json-profile.md)
 - [x] Property-based test suite: attenuation never broadens authority; denied requests create no effects; schema version change never silently grants new fields — seeded property tests in `crates/senvoryn-scp/tests/properties.rs`
-- [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
+- [x] Fuzz harness for the request boundary — the canonical parser is fuzzed over bytes (`crates/senvoryn-canonical/tests/fuzz.rs`) and the policy request reader is fuzzed over documents (`crates/senvoryn-scp/tests/fuzz.rs`), asserting that the reader never panics, that a request which was read says exactly what the document said, and that the same document is read the same way twice. The transport that turns a wire envelope into a policy request is not written, so the wire envelope's own reader does not exist yet — [ADR-019](decisions/ADR-019-the-policy-request-form.md)
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
 - [x] Deterministic reason codes covering all 32 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 126 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 135 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
 - [x] The resolution boundary that gate 6 needs — a canonical identifier, a canonical type and a version; the caller's type claim is checked rather than obeyed — [ADR-018](decisions/ADR-018-the-resolution-boundary.md). The resolution is not yet designed per resource type, and nothing resolves a name against a filesystem
+- [x] The policy request form is closed and stated — an unknown field is refused, the reader enforces the form and nothing else, and the reader's nine controls are mutation-tested — [ADR-019](decisions/ADR-019-the-policy-request-form.md)
 - [ ] The signed Operation Registry
 - [ ] An independent reviewer confirms the evaluator has no side effects
 
