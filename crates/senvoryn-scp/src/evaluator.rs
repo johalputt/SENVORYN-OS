@@ -11,6 +11,7 @@ use crate::decision::Decision;
 use crate::reason::ReasonCode;
 use crate::registry::{AuditClass, OperationEntry, RiskTier};
 use crate::request::Request;
+use crate::resolution::ResolvedResource;
 
 /// Evaluates one request against the policy context.
 ///
@@ -59,13 +60,42 @@ pub fn evaluate(
         return Decision::deny(ReasonCode::REQUEST_NOT_FRESH, epoch);
     }
 
-    // Gate 6 — object resolution. The resource must resolve to a canonical
-    // object; an identifier that resolves to nothing is denied rather than
-    // dereferenced.
-    if !context.resolved_resources.contains_key(&request.resource_id) {
+    // Gate 6 — object resolution. The name the caller used is resolved to the
+    // canonical identity of an object: the identifier the rest of the system
+    // knows it by, its type, and its version. A name that resolves to nothing
+    // is denied rather than dereferenced. A name that resolves to an object
+    // whose type is not the type the request claimed is denied rather than
+    // corrected: the type in the envelope is the caller's claim about its own
+    // target, and a caller that misdescribes its target is either confused or
+    // hostile, and the boundary does not decide which.
+    let resolved = context.resolved_resources.get(&request.resource_id).cloned();
+    let Some(resolved) = resolved else {
         return Decision::deny(ReasonCode::RESOURCE_UNRESOLVABLE, epoch);
+    };
+    if resolved.resource_type != request.resource_type {
+        return Decision::deny(ReasonCode::RESOURCE_TYPE_MISMATCH, epoch).with_resolved(resolved);
     }
 
+    // Everything from here on is judged against the canonical identity rather
+    // than against what the caller wrote, and the decision carries that
+    // identity so that the record and the audit name the object the effect
+    // will be applied to.
+    decide(request, capability, context, &resolved, epoch).with_resolved(resolved)
+}
+
+/// The gates that follow the resolution.
+///
+/// These are the gates that need the canonical identity, and they are a
+/// separate function so that the identity reaches all of them from one place:
+/// a gate that could read the caller's strings instead would be one line away
+/// from doing so.
+fn decide(
+    request: &Request,
+    capability: Option<&Capability>,
+    context: &PolicyContext,
+    resolved: &ResolvedResource,
+    epoch: u64,
+) -> Decision {
     // Gate 7 — revocation. Principal revocation is expressed by removing the
     // principal from `known_principals`; capability revocation is listed
     // here.
@@ -128,8 +158,13 @@ pub fn evaluate(
     if capability.subject_id != request.principal_id {
         return Decision::deny(ReasonCode::CAPABILITY_SUBJECT_MISMATCH, epoch);
     }
-    if capability.resource_id != request.resource_id
-        || capability.resource_type != request.resource_type
+    // The grant is over an object, so it is compared with the canonical
+    // identity of the object the name resolved to and with nothing the
+    // caller wrote. A grant for one object cannot be aimed at another by
+    // addressing it differently, and an alias still matches the grant that
+    // names the object the alias means.
+    if capability.resource_id != resolved.canonical_id
+        || capability.resource_type != resolved.resource_type
     {
         return Decision::deny(ReasonCode::CAPABILITY_RESOURCE_MISMATCH, epoch);
     }
@@ -150,11 +185,13 @@ pub fn evaluate(
 
     // Gate 11 — risk and consent. The tier comes from the registry. The
     // caller's claim is never authoritative: a lower claim is a mismatch, and
-    // a higher claim is ignored in favour of the registry's tier.
+    // a higher claim is ignored in favour of the registry's tier. The
+    // registry's rules are keyed by canonical resource type, so the type that
+    // is looked up is the one the environment resolved.
     let Some(entry) = entry else {
         return Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, epoch);
     };
-    if !entry.resource_types.contains(&request.resource_type) {
+    if !entry.resource_types.contains(&resolved.resource_type) {
         return Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, epoch);
     }
     if request.risk_claim < entry.risk_tier {

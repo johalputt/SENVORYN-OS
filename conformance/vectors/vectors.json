@@ -1,6 +1,6 @@
 {
   "schema": "senvoryn.conformance-vectors.v1",
-  "description": "Shared conformance vectors for the Senvoryn SCP decision oracle. The Python reference model in reference/scp_reference.py and the Rust implementation in crates/senvoryn-scp both execute this file, and CI fails if they produce different decisions or reason codes. A case supplies only the fields that differ from the base; each named field replaces the base value wholesale, so there is no merge rule for the two implementations to disagree about. Times are monotonic milliseconds since boot. The vectors cover the policy layer, where a risk claim is a typed tier in Rust and a checked string in Python. A malformed risk claim is a wire-layer rejection and is tested in each implementation's own suite rather than here, because the two layers reject it in different places.",
+  "description": "Shared conformance vectors for the Senvoryn SCP decision oracle. The Python reference model in reference/scp_reference.py and the Rust implementation in crates/senvoryn-scp both execute this file, and CI fails if they produce different decisions or reason codes. A case supplies only the fields that differ from the base; each named field replaces the base value wholesale, so there is no merge rule for the two implementations to disagree about. Times are monotonic milliseconds since boot. The context carries the environment's resolution table: each name a caller may use maps to the canonical identity of the object that name means, and the decision path judges the canonical identity rather than what the caller wrote. The vectors cover the policy layer, where a risk claim is a typed tier in Rust and a checked string in Python. A malformed risk claim is a wire-layer rejection and is tested in each implementation's own suite rather than here, because the two layers reject it in different places.",
   "registry_epoch": 7,
   "registry_valid_from_ms": 1767225600000,
   "registry_valid_until_ms": 1767312000000,
@@ -145,9 +145,26 @@
       "user:alice"
     ],
     "resolved_resources": {
-      "file:report": "v1",
-      "file:other": "v1",
-      "dev:0": "v1"
+      "file:report": {
+        "canonical_id": "file:report",
+        "resource_type": "file_object",
+        "version": "v1"
+      },
+      "file:other": {
+        "canonical_id": "file:other",
+        "resource_type": "file_object",
+        "version": "v1"
+      },
+      "dev:0": {
+        "canonical_id": "dev:0",
+        "resource_type": "device",
+        "version": "v1"
+      },
+      "report-alias": {
+        "canonical_id": "file:report",
+        "resource_type": "file_object",
+        "version": "v1"
+      }
     },
     "audit_state": "READY",
     "action_digest": null,
@@ -452,6 +469,62 @@
       "expected": {
         "status": "DENY",
         "reason": "RESOURCE_UNRESOLVABLE"
+      }
+    },
+    {
+      "id": "gate-06-resource-type-mismatch",
+      "requirement": "INV-01",
+      "gate": 6,
+      "request": {
+        "resource_type": "data_object"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "RESOURCE_TYPE_MISMATCH"
+      }
+    },
+    {
+      "id": "gate-06-a-caller-cannot-claim-a-wider-type",
+      "requirement": "INV-01",
+      "gate": 6,
+      "request": {
+        "resource_id": "dev:0",
+        "resource_type": "file_object"
+      },
+      "capability": {
+        "resource_id": "dev:0",
+        "resource_type": "file_object"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "RESOURCE_TYPE_MISMATCH"
+      }
+    },
+    {
+      "id": "gate-06-an-alias-resolves-to-the-canonical-object",
+      "requirement": "SCP-004",
+      "gate": 15,
+      "request": {
+        "resource_id": "report-alias"
+      },
+      "expected": {
+        "status": "PERMIT",
+        "reason": "ALL_POLICY_GATES_PASSED"
+      }
+    },
+    {
+      "id": "gate-10-an-alias-cannot-reach-another-grant",
+      "requirement": "SCP-004",
+      "gate": 10,
+      "request": {
+        "resource_id": "report-alias"
+      },
+      "capability": {
+        "resource_id": "file:other"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_RESOURCE_MISMATCH"
       }
     },
     {

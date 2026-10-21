@@ -75,6 +75,11 @@ impl DataClassification {
 /// The result is a document shaped like `senvoryn.audit-event.v1`. The
 /// `audit_ref` a decision record carries is the `event_id` of the event built
 /// here, which is how a decision is tied to its record.
+///
+/// The event names the canonical object the decision was about, because the
+/// event is the system's own record of what it acted on and not a copy of
+/// what the caller asked for. A decision refused before the resource was
+/// resolved names the identifier the request used.
 #[allow(clippy::too_many_arguments)]
 pub fn build_audit_event(
     decision: &Decision,
@@ -106,7 +111,13 @@ pub fn build_audit_event(
             None => Value::Null,
         },
     );
-    event.insert("resource_id".to_owned(), Value::from(request.resource_id.clone()));
+    event.insert(
+        "resource_id".to_owned(),
+        match decision.resolved() {
+            Some(resolved) => Value::from(resolved.canonical_id.clone()),
+            None => Value::from(request.resource_id.clone()),
+        },
+    );
     event.insert("request_id".to_owned(), Value::from(request.request_id.clone()));
     event.insert(
         "capability_id".to_owned(),

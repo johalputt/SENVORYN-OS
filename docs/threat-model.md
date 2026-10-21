@@ -286,7 +286,7 @@ Each abuse case names the gate that must hold, the spec rule that requires it, a
 **Adversary:** ADV-1, ADV-2
 **Attack:** Change the resource, version, or policy between the decision and the effect.
 **Gate:** Effect separation (#16) — executor re-checks.
-**Required controls:** The evaluator MUST be side-effect free. The executor independently rechecks authorization and transaction preconditions immediately before acting. Object resolution must be resistant to aliasing, link traversal, namespace confusion, and TOCTOU races. Before each capsule step, target preconditions and policy epoch are rechecked.
+**Required controls:** The evaluator MUST be side-effect free. The executor independently rechecks authorization and transaction preconditions immediately before acting. Object resolution must be resistant to aliasing, link traversal, namespace confusion, and TOCTOU races. Before each capsule step, target preconditions and policy epoch are rechecked. The artefact that authorises an effect names the canonical identifier of the object and the version the decision was made against, so that the recheck has something to compare against that the caller cannot change.
 **Failure mode:** Authorized-for-A effect applied to B.
 **Tests:** `SCP-007`, `CC-003`.
 
@@ -295,7 +295,7 @@ Each abuse case names the gate that must hold, the spec rule that requires it, a
 **Adversary:** ADV-1, ADV-2
 **Attack:** Reference a protected object via an alias, symlink, hard link, alternate namespace, or ambiguous path string so the resolved object differs from the authorized one.
 **Gate:** Object resolution gate (#6).
-**Required controls:** Every resource has a canonical typed identity. **Path strings alone are insufficient identifiers for security decisions.** Resolution occurs before authorization and must be resistant to aliasing, link traversal, namespace confusion, and TOCTOU. Unknown resource → `DENY` without dereferencing an untrusted path.
+**Required controls:** Every resource has a canonical typed identity. **Path strings alone are insufficient identifiers for security decisions.** Resolution occurs before authorization and must be resistant to aliasing, link traversal, namespace confusion, and TOCTOU. Unknown resource → `DENY` without dereferencing an untrusted path. A grant is compared with the canonical identity the name resolved to, and the registry's rules are keyed by the canonical type, so that neither the object nor the rule that applies to it is chosen by the caller.
 **Failure mode:** Access to an object the principal was not authorized for.
 **Tests:** `SCP-004`.
 
@@ -313,7 +313,7 @@ Ranked by **(impact × likelihood)** given the current implementation state. "Li
 | 4 | AS-9 / AS-10 AI escalation & injection | Critical | Medium | Broker not implemented — **open risk** |
 | 5 | AS-16 Compromised pipeline | Critical | Low–Medium | Signing ceremony undefined — **open risk** |
 | 6 | AS-13 Audit evasion | High | Medium | Depends on audit sink durability — **open risk** |
-| 7 | AS-19 / AS-20 TOCTOU & aliasing | High | Medium | Resolution design not yet specified per resource type — **open risk** |
+| 7 | AS-19 / AS-20 TOCTOU & aliasing | High | Medium | Resolution boundary specified and implemented: the canonical identity governs the later gates. The per-resource-type resolution design, the alias-revocation rule and the executor's version recheck are still open — **open risk** |
 | 8 | AS-3 Approval substitution | High | Medium | Digest binding specified; implementation pending |
 | 9 | AS-8 Remote command escalation | High | Medium | Local re-authorization specified; federation unimplemented |
 | 10 | AS-7 Mode bypass | High | Low | Mode table specified; enforcement unimplemented |

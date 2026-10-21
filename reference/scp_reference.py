@@ -28,7 +28,7 @@ already caused a real defect elsewhere in this project:
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import FrozenSet, Mapping, Optional
 
 #: The reason a permitted decision carries. Not a denial, so it is not in the
@@ -66,13 +66,14 @@ ALL_REASON_CODES = frozenset(
         "REQUEST_NOT_FRESH",
         "REPLAY_OR_REVOKED_NONCE",
         "RESOURCE_UNRESOLVABLE",
+        "RESOURCE_TYPE_MISMATCH",
         "UNKNOWN_OPERATION_RISK",
         "RISK_CLAIM_MISMATCH",
         "POLICY_EPOCH_MISMATCH",
         "REGISTRY_EPOCH_MISMATCH",
-    "CLOCK_UNTRUSTED",
-    "REGISTRY_NOT_YET_VALID",
-    "REGISTRY_EXPIRED",
+        "CLOCK_UNTRUSTED",
+        "REGISTRY_NOT_YET_VALID",
+        "REGISTRY_EXPIRED",
         "MISSING_CAPABILITY",
         "UNVERIFIED_CAPABILITY_ISSUER",
         "CAPABILITY_REVOKED",
@@ -198,6 +199,28 @@ class OperationEntry:
 
 
 @dataclass(frozen=True)
+class ResolvedResource:
+    """The canonical identity of a resource, as the environment resolved it.
+
+    The environment resolves; this model does not. It has no filesystem and no
+    resolver, and it is not the component that knows what objects exist. What
+    arrives here is the result of that resolution: the identifier the rest of
+    the system knows the object by, the type the object has, and the version
+    it was at when it was resolved.
+
+    The distinction the record draws is between the *name* a caller used and
+    the *identity* the name means. A caller may address an object by an alias,
+    and the alias is legitimate; what the decision path compares against is
+    the canonical identity, because that is what a grant is over and what the
+    registry's rules are keyed by.
+    """
+
+    canonical_id: str
+    resource_type: str
+    version: str
+
+
+@dataclass(frozen=True)
 class PolicyContext:
     """The state the policy environment provides.
 
@@ -218,7 +241,7 @@ class PolicyContext:
     clock_state: str
     mode: str
     known_principals: FrozenSet[str]
-    resolved_resources: Mapping[str, str]
+    resolved_resources: Mapping[str, ResolvedResource]
     operations: tuple[OperationEntry, ...]
     registry_epoch: int
     registry_valid_from_ms: int
@@ -239,6 +262,7 @@ class Decision:
     reason: str
     capability_id: Optional[str] = None
     policy_epoch: int = 0
+    resolved: Optional[ResolvedResource] = None
 
     @property
     def effect_performed(self) -> bool:
@@ -344,12 +368,41 @@ def evaluate(req: Request, cap: Optional[Capability], ctx: PolicyContext) -> Dec
     if req.issued_at > ctx.now_monotonic or req.expires_at <= ctx.now_monotonic:
         return _deny("REQUEST_NOT_FRESH", epoch)
 
-    # Gate 6 - object resolution. The resource must resolve to a canonical
-    # object; an identifier that resolves to nothing is denied rather than
-    # dereferenced.
-    if req.resource_id not in ctx.resolved_resources:
+    # Gate 6 - object resolution. The name the caller used is resolved to the
+    # canonical identity of an object: the identifier the rest of the system
+    # knows it by, its type, and its version. A name that resolves to nothing
+    # is denied rather than dereferenced. A name that resolves to an object
+    # whose type is not the type the request claimed is denied rather than
+    # corrected: the type in the envelope is the caller's claim about its own
+    # target, and a caller that misdescribes its target is either confused or
+    # hostile, and the boundary does not decide which.
+    resolved = ctx.resolved_resources.get(req.resource_id)
+    if resolved is None:
         return _deny("RESOURCE_UNRESOLVABLE", epoch)
+    if resolved.resource_type != req.resource_type:
+        return replace(_deny("RESOURCE_TYPE_MISMATCH", epoch), resolved=resolved)
 
+    # Everything from here on is judged against the canonical identity rather
+    # than against what the caller wrote, and the decision carries that
+    # identity so that the record and the audit name the object the effect
+    # will be applied to.
+    return replace(_decide(req, cap, ctx, resolved, epoch), resolved=resolved)
+
+
+def _decide(
+    req: Request,
+    cap: Optional[Capability],
+    ctx: PolicyContext,
+    resolved: ResolvedResource,
+    epoch: int,
+) -> Decision:
+    """The gates that follow the resolution.
+
+    These are the gates that need the canonical identity, and they are a
+    separate function so that the identity reaches all of them from one place:
+    a gate that could read the caller's strings instead would be one line away
+    from doing so.
+    """
     # Gate 7 - revocation. Principal revocation is expressed by removing the
     # principal from `known_principals`; capability revocation is listed here.
     if cap is not None and cap.capability_id in ctx.revoked_capabilities:
@@ -389,7 +442,12 @@ def evaluate(req: Request, cap: Optional[Capability], ctx: PolicyContext) -> Dec
         return _deny("UNVERIFIED_CAPABILITY_ISSUER", epoch)
     if cap.subject_id != req.principal_id:
         return _deny("CAPABILITY_SUBJECT_MISMATCH", epoch)
-    if cap.resource_id != req.resource_id or cap.resource_type != req.resource_type:
+    # The grant is over an object, so it is compared with the canonical
+    # identity of the object the name resolved to and with nothing the caller
+    # wrote. A grant for one object cannot be aimed at another by addressing
+    # it differently, and an alias still matches the grant that names the
+    # object the alias means.
+    if cap.resource_id != resolved.canonical_id or cap.resource_type != resolved.resource_type:
         return _deny("CAPABILITY_RESOURCE_MISMATCH", epoch)
     if req.operation not in cap.operations:
         return _deny("CAPABILITY_OPERATION_MISMATCH", epoch)
@@ -402,10 +460,12 @@ def evaluate(req: Request, cap: Optional[Capability], ctx: PolicyContext) -> Dec
 
     # Gate 11 - risk and consent. The tier comes from the registry. The
     # caller's claim is never authoritative: a lower claim is a mismatch, and
-    # a higher claim is ignored in favour of the registry's tier.
+    # a higher claim is ignored in favour of the registry's tier. The
+    # registry's rules are keyed by canonical resource type, so the type that
+    # is looked up is the one the environment resolved.
     if entry is None:
         return _deny("UNKNOWN_OPERATION_RISK", epoch)
-    if req.resource_type not in entry.resource_types:
+    if resolved.resource_type not in entry.resource_types:
         return _deny("UNKNOWN_OPERATION_RISK", epoch)
     if _risk_rank(req.risk_claim) < _risk_rank(entry.risk_tier):
         return _deny("RISK_CLAIM_MISMATCH", epoch)

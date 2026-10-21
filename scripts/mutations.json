@@ -57,10 +57,10 @@
     {
       "id": "M06-object-resolution",
       "gate": 6,
-      "control": "The object-resolution gate refuses a resource that does not resolve.",
+      "control": "The object-resolution gate refuses a resource that does not resolve, rather than resolving it to whatever the caller said.",
       "file": "crates/senvoryn-scp/src/evaluator.rs",
-      "find": "if !context.resolved_resources.contains_key(&request.resource_id) {",
-      "replace": "if false {",
+      "find": "    let resolved = context.resolved_resources.get(&request.resource_id).cloned();\n    let Some(resolved) = resolved else {\n        return Decision::deny(ReasonCode::RESOURCE_UNRESOLVABLE, epoch);\n    };\n",
+      "replace": "    let resolved = context\n        .resolved_resources\n        .get(&request.resource_id)\n        .cloned()\n        .unwrap_or(ResolvedResource {\n            canonical_id: request.resource_id.clone(),\n            resource_type: request.resource_type.clone(),\n            version: \"0\".to_owned(),\n        });\n",
       "package": "senvoryn-scp",
       "test": "every_case_matches_the_expected_decision",
       "expect_output_contains": "gate-06-resource-unresolvable",
@@ -1317,6 +1317,104 @@
       "replace": "    if False:",
       "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
       "expect_output_contains": "SCP-005-clock-untrusted"
+    },
+    {
+      "id": "M06-resource-type-mismatch",
+      "gate": 6,
+      "control": "The object-resolution gate refuses a resource whose canonical type is not the type the request claimed, rather than accepting the caller's claim about its own target.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "    if resolved.resource_type != request.resource_type {\n",
+      "replace": "    if false {\n",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-06-resource-type-mismatch",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M10-capability-canonical-id",
+      "gate": 10,
+      "control": "The capability gate compares the grant with the canonical identifier the name resolved to, so that a grant for one object cannot be aimed at another by addressing it differently.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "    if capability.resource_id != resolved.canonical_id\n",
+      "replace": "    if capability.resource_id != request.resource_id\n",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-06-an-alias-resolves-to-the-canonical-object",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M10-capability-type",
+      "gate": 10,
+      "control": "The capability gate compares the grant's type with the canonical type of the object, so that a grant for one type of object is not a grant for another.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "    if capability.resource_id != resolved.canonical_id\n        || capability.resource_type != resolved.resource_type\n    {\n",
+      "replace": "    if capability.resource_id != resolved.canonical_id\n    {\n",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "SCP-004-resource-type-mismatch",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M11-resource-types",
+      "gate": 11,
+      "control": "The risk gate asks the registry whether the operation is defined for the canonical type of the object, so that the caller's claim cannot widen the reach of an operation.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "    if !entry.resource_types.contains(&resolved.resource_type) {\n",
+      "replace": "    if false {\n",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-11-operation-not-defined-for-resource-type",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "SCP-py-object-resolution",
+      "gate": 6,
+      "control": "The reference model refuses a name that resolves to nothing, so that the two implementations agree.",
+      "file": "reference/scp_reference.py",
+      "find": "    resolved = ctx.resolved_resources.get(req.resource_id)\n",
+      "replace": "    resolved = ctx.resolved_resources.get(req.resource_id) or next(\n        iter(ctx.resolved_resources.values()), None\n    )\n",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-06-resource-unresolvable"
+    },
+    {
+      "id": "SCP-py-resource-type-mismatch",
+      "gate": 6,
+      "control": "The reference model refuses a type claim that disagrees with the canonical type, so that the two implementations agree.",
+      "file": "reference/scp_reference.py",
+      "find": "    if resolved.resource_type != req.resource_type:\n",
+      "replace": "    if False:\n",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-06-resource-type-mismatch"
+    },
+    {
+      "id": "SCP-py-canonical-id",
+      "gate": 10,
+      "control": "The reference model compares the grant with the canonical identifier, so that the two implementations agree about aliasing.",
+      "file": "reference/scp_reference.py",
+      "find": "    if cap.resource_id != resolved.canonical_id or cap.resource_type != resolved.resource_type:\n",
+      "replace": "    if cap.resource_id != req.resource_id or cap.resource_type != req.resource_type:\n",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-06-an-alias-resolves-to-the-canonical-object"
+    },
+    {
+      "id": "SCP-py-capability-type",
+      "gate": 10,
+      "control": "The reference model compares the grant's type with the canonical type, so that the two implementations agree.",
+      "file": "reference/scp_reference.py",
+      "find": "    if cap.resource_id != resolved.canonical_id or cap.resource_type != resolved.resource_type:\n",
+      "replace": "    if cap.resource_id != resolved.canonical_id:\n",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "SCP-004-resource-type-mismatch"
+    },
+    {
+      "id": "SCP-py-resource-types",
+      "gate": 11,
+      "control": "The reference model asks the registry about the canonical type, so that the two implementations agree.",
+      "file": "reference/scp_reference.py",
+      "find": "    if resolved.resource_type not in entry.resource_types:\n",
+      "replace": "    if False:\n",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-11-operation-not-defined-for-resource-type"
     }
   ]
 }

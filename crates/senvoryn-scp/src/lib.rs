@@ -24,6 +24,9 @@
 //! * [`capability::attenuate`] — the attenuation rule of specification §4.2.
 //! * [`registry::OperationRegistry`] — the trusted Operation Registry, and
 //!   the "most restrictive rule wins" merge of specification §3.2.
+//! * [`resolution::ResolvedResource`] — the canonical identity a name
+//!   resolves to, and the reason the caller's own strings are never what a
+//!   gate is judged against.
 //! * [`reason`] — the reason codes, checked against the denial-code registry
 //!   that is their authority.
 //! * [`audit`] — the audit-event builder.
@@ -46,6 +49,7 @@ mod evaluator;
 mod reason;
 mod registry;
 mod request;
+mod resolution;
 
 pub use audit::{DataClassification, TrustedTimeStatus, build_audit_event};
 pub use capability::{Capability, Provenance, attenuate};
@@ -57,3 +61,4 @@ pub use registry::{
     AuditClass, OperationEntry, OperationRegistry, RegistryError, Reversibility, RiskTier,
 };
 pub use request::{Budget, EnvelopeError, Request};
+pub use resolution::ResolvedResource;

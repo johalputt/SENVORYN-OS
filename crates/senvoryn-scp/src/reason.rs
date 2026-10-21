@@ -44,6 +44,8 @@ impl ReasonCode {
     pub const REPLAY_OR_REVOKED_NONCE: Self = Self("REPLAY_OR_REVOKED_NONCE");
     /// The resource does not resolve to an object.
     pub const RESOURCE_UNRESOLVABLE: Self = Self("RESOURCE_UNRESOLVABLE");
+    /// The resource resolves, but not to the type the request claimed.
+    pub const RESOURCE_TYPE_MISMATCH: Self = Self("RESOURCE_TYPE_MISMATCH");
     /// The operation is unknown, or is not defined for this resource type.
     pub const UNKNOWN_OPERATION_RISK: Self = Self("UNKNOWN_OPERATION_RISK");
     /// The caller claimed less risk than the registry assigns.
@@ -111,6 +113,7 @@ impl ReasonCode {
         Self::REQUEST_NOT_FRESH,
         Self::REPLAY_OR_REVOKED_NONCE,
         Self::RESOURCE_UNRESOLVABLE,
+        Self::RESOURCE_TYPE_MISMATCH,
         Self::UNKNOWN_OPERATION_RISK,
         Self::RISK_CLAIM_MISMATCH,
         Self::POLICY_EPOCH_MISMATCH,

@@ -21,6 +21,7 @@ from scp_reference import (
     PolicyContext,
     Provenance,
     Request,
+    ResolvedResource,
     Status,
     attenuate,
     evaluate,
@@ -104,7 +105,14 @@ def _context(raw, registry, registry_epoch):
         registry_valid_until_ms=1_767_225_600_000 + 86_400_000,
         mode=raw["mode"],
         known_principals=frozenset(raw["known_principals"]),
-        resolved_resources=dict(raw["resolved_resources"]),
+        resolved_resources={
+            name: ResolvedResource(
+                canonical_id=entry["canonical_id"],
+                resource_type=entry["resource_type"],
+                version=entry["version"],
+            )
+            for name, entry in raw["resolved_resources"].items()
+        },
         operations=tuple(_operation_entry(entry) for entry in registry),
         registry_epoch=registry_epoch,
         audit_state=AuditState(raw["audit_state"]),

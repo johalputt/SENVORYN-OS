@@ -13,10 +13,12 @@ from scp_reference import (
     AuditState,
     Budget,
     Capability,
+    Decision,
     OperationEntry,
     PolicyContext,
     Provenance,
     Request,
+    ResolvedResource,
     Status,
     attenuate,
     evaluate,
@@ -107,7 +109,11 @@ def make_context(**overrides):
         registry_valid_until_ms=1_767_225_600_000 + 86_400_000,
         mode="NORMAL",
         known_principals=frozenset({"user:alice"}),
-        resolved_resources={"file:report": "v1"},
+        resolved_resources={
+            "file:report": ResolvedResource(
+                canonical_id="file:report", resource_type="file_object", version="v1"
+            )
+        },
         operations=REGISTRY,
         registry_epoch=7,
         audit_state=AuditState.READY,
@@ -144,6 +150,31 @@ class SCPReferenceTests(unittest.TestCase):
     def test_wrong_resource_denied(self):
         cap = make_capability(resource_id="file:other")
         self.assertEqual(evaluate(make_request(), cap, make_context()).reason, "CAPABILITY_RESOURCE_MISMATCH")
+
+    def test_a_resource_type_that_does_not_match_the_resolution_is_denied(self):
+        # The type in the envelope is the caller's claim about its own
+        # target. The environment knows what the object is, and a claim that
+        # disagrees with it is refused rather than corrected.
+        req = make_request(resource_type="data_object")
+        self.assertEqual(
+            evaluate(req, make_capability(), make_context()).reason, "RESOURCE_TYPE_MISMATCH"
+        )
+
+    def test_an_alias_resolves_to_the_canonical_object(self):
+        # The name a caller used is the caller's to choose; the object it
+        # means is not. The decision names the canonical object, and a grant
+        # over that object still matches.
+        ctx = make_context(
+            resolved_resources={
+                "report-alias": ResolvedResource(
+                    canonical_id="file:report", resource_type="file_object", version="v1"
+                )
+            }
+        )
+        req = make_request(resource_id="report-alias")
+        decision = evaluate(req, make_capability(), ctx)
+        self.assertEqual(decision.status, Status.PERMIT)
+        self.assertEqual(decision.resolved.canonical_id, "file:report")
 
     def test_wrong_operation_denied(self):
         req = make_request(operation="write", risk_claim="R2")
@@ -318,10 +349,12 @@ class SCPReferenceTests(unittest.TestCase):
 
     def test_effect_performed_cannot_be_set(self):
         # The property, not a field: no caller can construct a decision that
-        # claims an effect happened.
+        # claims an effect happened, and none can set one afterwards either.
         with self.assertRaises(TypeError):
-            Decision = type(evaluate(make_request(), make_capability(), make_context()))
-            Decision(Status.PERMIT, ALL_GATES_PASSED, None, 7, True)
+            Decision(Status.PERMIT, ALL_GATES_PASSED, None, 7, effect_performed=True)
+        decision = evaluate(make_request(), make_capability(), make_context())
+        with self.assertRaises(AttributeError):
+            decision.effect_performed = True
 
     def test_attenuation_accepts_narrower_child(self):
         child = make_capability(not_before=10, expires_at=40, delegation_depth=2)

@@ -9,14 +9,14 @@
 //! It reads three documents, evaluates one request against one context, and
 //! writes the decision record to standard output as canonical JSON.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::process::ExitCode;
 
 use senvoryn_canonical::{Value, encode_to_string, parse};
 use senvoryn_instant::parse_utc_millis;
 use senvoryn_scp::{
     AuditState, Capability, ClockState, OperationEntry, OperationRegistry, PolicyContext,
-    Provenance, RecordDetails, Request, SystemMode, evaluate,
+    Provenance, RecordDetails, Request, ResolvedResource, SystemMode, evaluate,
 };
 
 const USAGE: &str = "\
@@ -100,7 +100,7 @@ fn run() -> Result<String, String> {
         decision_id: "decision:cli:0001",
         request_id: &request.request_id,
         evaluated_at: "1970-01-01T00:00:00Z",
-        target_resource_id: &request.resource_id,
+        presented_resource_id: &request.resource_id,
         audit_ref: "audit:cli:0001",
         valid_until: None,
         required_next_step: None,
@@ -126,17 +126,7 @@ fn read_context(document: &Value) -> Result<PolicyContext, String> {
         mode: SystemMode::parse(&required_string(document, "mode")?)
             .ok_or_else(|| "the context names a system mode that does not exist".to_owned())?,
         known_principals: string_set(document, "known_principals"),
-        resolved_resources: document
-            .get("resolved_resources")
-            .and_then(Value::as_object)
-            .map(|map| {
-                map.iter()
-                    .map(|(key, version)| {
-                        (key.clone(), version.as_str().map(str::to_owned).unwrap_or_default())
-                    })
-                    .collect()
-            })
-            .unwrap_or_default(),
+        resolved_resources: read_resolved_resources(document)?,
         operations: read_registry(document)?,
         audit_state: AuditState::parse(&required_string(document, "audit_state")?)
             .ok_or_else(|| "the context names an audit state that does not exist".to_owned())?,
@@ -149,6 +139,36 @@ fn read_context(document: &Value) -> Result<PolicyContext, String> {
             .unwrap_or(false),
         satisfied_preconditions: string_set(document, "satisfied_preconditions"),
     })
+}
+
+/// Reads the environment's resolution table.
+///
+/// Each entry maps a name a caller may use to the canonical identity of the
+/// object that name means. A context without the table cannot resolve
+/// anything, so a missing or malformed table is an error rather than an empty
+/// one: an empty table would refuse every request for a reason that has
+/// nothing to do with the request.
+fn read_resolved_resources(document: &Value) -> Result<BTreeMap<String, ResolvedResource>, String> {
+    let table = document
+        .get("resolved_resources")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "the context has no \"resolved_resources\" table".to_owned())?;
+    let mut resolved = BTreeMap::new();
+    for (name, entry) in table {
+        let field = |field: &str| -> Result<String, String> {
+            required_string(entry, field)
+                .map_err(|error| format!("{error} (the resolution of {name:?})"))
+        };
+        resolved.insert(
+            name.clone(),
+            ResolvedResource {
+                canonical_id: field("canonical_id")?,
+                resource_type: field("resource_type")?,
+                version: field("version")?,
+            },
+        );
+    }
+    Ok(resolved)
 }
 
 fn read_registry(document: &Value) -> Result<OperationRegistry, String> {

@@ -32,6 +32,11 @@
       "default": "DENY"
     },
     {
+      "code": "RESOURCE_TYPE_MISMATCH",
+      "class": "resolution",
+      "default": "DENY"
+    },
+    {
       "code": "UNKNOWN_OPERATION_RISK",
       "class": "policy",
       "default": "DENY"

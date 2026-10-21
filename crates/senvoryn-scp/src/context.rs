@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::registry::OperationRegistry;
+use crate::resolution::ResolvedResource;
 
 /// The system state the node is in.
 ///
@@ -144,8 +145,14 @@ pub struct PolicyContext {
     pub mode: SystemMode,
     /// The principals this node knows.
     pub known_principals: BTreeSet<String>,
-    /// The resources this node can resolve, and the version each resolves to.
-    pub resolved_resources: BTreeMap<String, String>,
+    /// The resources this node can resolve, and what each name resolves to.
+    ///
+    /// The key is the name a caller may use — which may be an alias — and
+    /// the value is the canonical identity of the object that name means.
+    /// A caller cannot be its own authority here either: the table is the
+    /// environment's, and the decision path reads the canonical identity out
+    /// of it rather than out of the request.
+    pub resolved_resources: BTreeMap<String, ResolvedResource>,
     /// The trusted Operation Registry.
     pub operations: OperationRegistry,
     /// Whether the audit sink can record what an action needs.

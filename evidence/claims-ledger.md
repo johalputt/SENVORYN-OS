@@ -1,6 +1,6 @@
 # Claims Ledger
 
-**Status:** Live. **Last updated:** 2026-10-15.
+**Status:** Live. **Last updated:** 2026-10-22.
 
 The Claims Ledger is the **single source of truth for what this project may publicly claim**. Documentation, README text, release notes, and marketing must never advertise a status stronger than the ledger shows.
 
@@ -43,7 +43,8 @@ The Claims Ledger is the **single source of truth for what this project may publ
 | CC-02 | A decision permits only the capsule it was made about | `crates/senvoryn-capsule/src/authorization.rs`; capsule vector cases CC-007, CC-009 | `TESTED` | The decision is taken as an input; the SCP is not re-implemented here, so this is a binding check and not a policy decision |
 | CC-03 | Every control the capsule implements has a test that fails when the control is broken | `scripts/mutations.json`; `scripts/mutation-gate.py` | `TESTED` | The gate is written by the same project as the code it checks; it is not an independent review |
 | CC-04 | Two independent implementations of the capsule executor agree on every case | `reference/capsule_reference.py`; `crates/senvoryn-capsule`; `conformance/capsule-vectors.json` | `TESTED` | Both implementations read the same vector file, and whoever writes it decides what "right" means. Agreement between two implementations of one specification is a strong check and not a proof |
-| CC-05 | A capsule is applied only inside its validity window, and a transaction whose world moves under it is refused rather than believed | `crates/senvoryn-capsule/src/executor.rs`; `reference/capsule_reference.py`; `conformance/capsule-vectors.json` cases CC-031…CC-035; `scripts/mutations.json` | `TESTED` | The clock is the simulator's own, advanced by each step's timeout; a real time source is not modelled, and the budget does not yet have to fit inside the window |
+| CC-05 | A capsule is applied only inside its validity window, and a transaction whose world moves under it is refused rather than believed | `crates/senvoryn-capsule/src/executor.rs`; `reference/capsule_reference.py`; `conformance/capsule-vectors.json` cases CC-031…CC-035; `scripts/mutations.json` | `TESTED` | The clock is the simulator's own, advanced by each step's timeout; a real time source is not modelled |
+| SCP-RESOLUTION | A decision judges the canonical identity of a resource — its identifier, its type and its version — and never the caller's own strings | `crates/senvoryn-scp/src/resolution.rs`; `crates/senvoryn-scp/src/evaluator.rs`; `reference/scp_reference.py`; conformance vectors `gate-06-resource-type-mismatch`, `gate-06-a-caller-cannot-claim-a-wider-type`, `gate-06-an-alias-resolves-to-the-canonical-object`, `gate-10-an-alias-cannot-reach-another-grant`; ADR-018 | `TESTED` | The environment's resolution table is supplied to the oracle; nothing in this repository resolves a name against a filesystem, the resolution is not yet designed per resource type, and the executor does not yet recheck the resolved version before it acts |
 | INV-13 | Explainability is evidence-based | `schemas/decision-record.schema.json`, `schemas/audit-event.schema.json` | `PROPOSED` | Schemas only |
 | INV-14 | Offline core operation | Specification §3.4 | `PROPOSED` | Not implemented |
 | INV-15 | User agency | Specification §10.3 | `PROPOSED` | Not implemented |

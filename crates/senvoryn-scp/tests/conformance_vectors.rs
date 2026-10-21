@@ -11,8 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use senvoryn_canonical::{Value, parse};
 use senvoryn_scp::{
     AuditState, Budget, Capability, ClockState, DecisionStatus, OperationEntry, OperationRegistry,
-    PolicyContext, Provenance, ReasonCode, RecordDetails, Request, RiskTier, SystemMode, attenuate,
-    evaluate,
+    PolicyContext, Provenance, ReasonCode, RecordDetails, Request, ResolvedResource, RiskTier,
+    SystemMode, attenuate, evaluate,
 };
 
 const VECTORS_JSON: &str = include_str!("../../../conformance/vectors/vectors.json");
@@ -158,6 +158,15 @@ fn request_from(raw: &Value) -> Request {
     }
 }
 
+/// Reads one entry of the environment's resolution table.
+fn resolved_resource(raw: &Value) -> ResolvedResource {
+    ResolvedResource {
+        canonical_id: string_field(raw, "canonical_id"),
+        resource_type: string_field(raw, "resource_type"),
+        version: string_field(raw, "version"),
+    }
+}
+
 fn context_from(raw: &Value, registry: &OperationRegistry) -> PolicyContext {
     PolicyContext {
         local_node_id: string_field(raw, "local_node_id"),
@@ -173,11 +182,7 @@ fn context_from(raw: &Value, registry: &OperationRegistry) -> PolicyContext {
             .get("resolved_resources")
             .and_then(Value::as_object)
             .map(|map| {
-                map.iter()
-                    .map(|(key, version)| {
-                        (key.clone(), version.as_str().map(str::to_owned).unwrap_or_default())
-                    })
-                    .collect()
+                map.iter().map(|(name, entry)| (name.clone(), resolved_resource(entry))).collect()
             })
             .unwrap_or_default(),
         operations: registry.clone(),
@@ -373,7 +378,7 @@ fn a_decision_record_reports_that_no_effect_was_performed() {
         decision_id: "decision:test:0001",
         request_id: &request.request_id,
         evaluated_at: "1970-01-01T00:00:00Z",
-        target_resource_id: &request.resource_id,
+        presented_resource_id: &request.resource_id,
         audit_ref: "audit:test:0001",
         valid_until: None,
         required_next_step: None,
@@ -384,6 +389,48 @@ fn a_decision_record_reports_that_no_effect_was_performed() {
         "the decision record reported an effect"
     );
     assert_eq!(record.get("status").and_then(Value::as_str), Some("PERMIT"));
+}
+
+#[test]
+fn a_decision_record_names_the_canonical_object_and_its_version() {
+    // The record is what authorises an effect, so it has to name the object
+    // the effect will be applied to and the version the decision was made
+    // against. The identifier in the request is the caller's to change, and
+    // the alias it used here is not the object the grant was issued for.
+    let document = vectors();
+    let base_request = document.get("request").expect("the vector file has a base request");
+    let base_capability =
+        document.get("capability").expect("the vector file has a base capability");
+    let base_context = document.get("context").expect("the vector file has a base context");
+    let base_registry =
+        document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
+    let mut request = request_from(base_request);
+    request.resource_id = "report-alias".to_owned();
+    let capability = capability_from(base_capability);
+    let context = context_from(base_context, &registry);
+
+    let decision = evaluate(&request, Some(&capability), &context);
+    assert_eq!(decision.status(), DecisionStatus::Permit);
+    let record = decision.to_record(&RecordDetails {
+        decision_id: "decision:test:0002",
+        request_id: &request.request_id,
+        evaluated_at: "1970-01-01T00:00:00Z",
+        presented_resource_id: &request.resource_id,
+        audit_ref: "audit:test:0002",
+        valid_until: None,
+        required_next_step: None,
+    });
+    assert_eq!(
+        record.get("target_resource_id").and_then(Value::as_str),
+        Some("file:report"),
+        "the record named the identifier the request used"
+    );
+    assert_eq!(
+        record.get("target_resource_version").and_then(Value::as_str),
+        Some("v1"),
+        "the record did not name the version the decision was made against"
+    );
 }
 
 #[test]

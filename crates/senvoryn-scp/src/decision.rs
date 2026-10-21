@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use senvoryn_canonical::Value;
 
 use crate::reason::ReasonCode;
+use crate::resolution::ResolvedResource;
 
 /// The decision vocabulary of specification §3.3.
 ///
@@ -62,17 +63,30 @@ pub struct Decision {
     reason: ReasonCode,
     capability_id: Option<String>,
     policy_epoch: u64,
+    resolved: Option<ResolvedResource>,
 }
 
 impl Decision {
     /// A decision that refuses the request.
     pub fn deny(reason: ReasonCode, policy_epoch: u64) -> Self {
-        Self { status: DecisionStatus::Deny, reason, capability_id: None, policy_epoch }
+        Self {
+            status: DecisionStatus::Deny,
+            reason,
+            capability_id: None,
+            policy_epoch,
+            resolved: None,
+        }
     }
 
     /// A decision that asks for more evidence or approval.
     pub fn challenge(reason: ReasonCode, policy_epoch: u64) -> Self {
-        Self { status: DecisionStatus::Challenge, reason, capability_id: None, policy_epoch }
+        Self {
+            status: DecisionStatus::Challenge,
+            reason,
+            capability_id: None,
+            policy_epoch,
+            resolved: None,
+        }
     }
 
     /// A decision that permits the request, scoped by a capability.
@@ -82,6 +96,7 @@ impl Decision {
             reason,
             capability_id: Some(capability_id),
             policy_epoch,
+            resolved: None,
         }
     }
 
@@ -105,6 +120,22 @@ impl Decision {
         self.policy_epoch
     }
 
+    /// The canonical identity the decision was made about, if the request
+    /// resolved to one.
+    ///
+    /// A decision that names nothing was refused before the resource was
+    /// resolved, and the record for such a decision names the identifier the
+    /// request used instead.
+    pub fn resolved(&self) -> Option<&ResolvedResource> {
+        self.resolved.as_ref()
+    }
+
+    /// Attaches the canonical identity the decision was made about.
+    pub fn with_resolved(mut self, resolved: ResolvedResource) -> Self {
+        self.resolved = Some(resolved);
+        self
+    }
+
     /// Whether the decision grants any authority.
     pub fn grants_authority(&self) -> bool {
         self.status.grants_authority() && self.capability_id.is_some()
@@ -116,6 +147,11 @@ impl Decision {
     /// `const: false`, and that is not decoration: effect separation is the
     /// sixteenth of the sixteen gates, and the evaluator has no way to
     /// perform one.
+    ///
+    /// The record names the canonical object the decision was about, and the
+    /// version of it the decision was made against. The identifier the
+    /// request used is the fallback for a decision that was refused before
+    /// the resource was resolved.
     pub fn to_record(&self, details: &RecordDetails<'_>) -> Value {
         let mut record = BTreeMap::new();
         record.insert("schema".to_owned(), Value::from("senvoryn.decision-record.v1"));
@@ -131,7 +167,20 @@ impl Decision {
             Value::Int(i64::try_from(self.policy_epoch).unwrap_or(i64::MAX)),
         );
         record.insert("evaluated_at".to_owned(), Value::from(details.evaluated_at));
-        record.insert("target_resource_id".to_owned(), Value::from(details.target_resource_id));
+        record.insert(
+            "target_resource_id".to_owned(),
+            match &self.resolved {
+                Some(resolved) => Value::from(resolved.canonical_id.clone()),
+                None => Value::from(details.presented_resource_id),
+            },
+        );
+        record.insert(
+            "target_resource_version".to_owned(),
+            match &self.resolved {
+                Some(resolved) => Value::from(resolved.version.clone()),
+                None => Value::Null,
+            },
+        );
         record.insert("effect_performed".to_owned(), Value::Bool(false));
         record.insert("audit_ref".to_owned(), Value::from(details.audit_ref));
         record.insert(
@@ -171,8 +220,12 @@ pub struct RecordDetails<'a> {
     pub request_id: &'a str,
     /// When the decision was made, as a date-time.
     pub evaluated_at: &'a str,
-    /// The resource the decision evaluated.
-    pub target_resource_id: &'a str,
+    /// The identifier the request used.
+    ///
+    /// The record names the canonical object when the request resolved to
+    /// one; this is the fallback for a decision that was refused before the
+    /// resource was resolved.
+    pub presented_resource_id: &'a str,
     /// The audit event that records this decision.
     pub audit_ref: &'a str,
     /// How long the granted authority lasts.

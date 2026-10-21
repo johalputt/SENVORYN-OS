@@ -59,6 +59,12 @@
       "type": "string",
       "minLength": 3
     },
+    "target_resource_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "capability_scope_ref": {
       "type": [
         "string",

@@ -12,7 +12,11 @@
     "user:alice"
   ],
   "resolved_resources": {
-    "file:report": "v1"
+    "file:report": {
+      "canonical_id": "file:report",
+      "resource_type": "file_object",
+      "version": "v1"
+    }
   },
   "audit_state": "READY",
   "action_digest": null,

@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 use senvoryn_scp::{
     AuditState, Capability, DecisionStatus, OperationRegistry, PolicyContext, Provenance, Request,
-    RiskTier, SystemMode, evaluate,
+    ResolvedResource, RiskTier, SystemMode, evaluate,
 };
 
 /// The policy epoch the node is running.
@@ -61,7 +61,16 @@ fn context(operations: OperationRegistry) -> PolicyContext {
         clock_state: senvoryn_scp::ClockState::Trusted,
         mode: SystemMode::Normal,
         known_principals: ["user:alice".to_owned()].into_iter().collect(),
-        resolved_resources: [("file:report".to_owned(), "v1".to_owned())].into_iter().collect(),
+        resolved_resources: [(
+            "file:report".to_owned(),
+            ResolvedResource {
+                canonical_id: "file:report".to_owned(),
+                resource_type: "file_object".to_owned(),
+                version: "v1".to_owned(),
+            },
+        )]
+        .into_iter()
+        .collect(),
         operations,
         audit_state: AuditState::Ready,
         action_digest: None,

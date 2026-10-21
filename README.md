@@ -152,8 +152,8 @@ SENVORYN-OS/
 ├── conformance/capsule-vectors.json  # Change Capsule vectors — Rust implementation only
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
-├── tests/                       # 103 executable contract tests
-├── decisions/                   # ADR-001 … ADR-017
+├── tests/                       # 105 executable contract tests
+├── decisions/                   # ADR-001 … ADR-018
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
 │
@@ -166,13 +166,13 @@ SENVORYN-OS/
 |---|---|---|
 | `schemas/` | JSON Schema Draft 2020-12 for principals, resources, requests, capabilities, decisions, approvals, intents, operations, Change Capsules, Origin Capsules, audit events, artifacts, updates, system states | 14 |
 | `state-machines/` | Change Capsule lifecycle + system-mode transition tables | 2 |
-| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 31 codes |
+| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 32 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
-| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 33 cases + 11 attenuation cases |
+| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 40 cases + 11 attenuation cases |
 | `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 36 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 117 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 17 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 126 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 18 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -270,6 +270,17 @@ two of them, so the third survived the gate — correctly. A control that a test
 does not reach is a control the test does not enforce, however carefully the
 test is written. Each of them now has a test of its own. See
 [ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md).
+
+The decision path was then rebuilt around the **resolution boundary**. The
+resource table mapped a name to a version string, so the type the request
+claimed decided which registry rule applied, and the capability was compared
+with the caller's own strings — the caller chose both the object and the rule
+that applied to it. A resolved resource is now a canonical identifier, a
+canonical type and a version; the canonical identity governs the capability
+gate, the risk gate, and the record that authorises the effect; and a caller's
+type claim is *checked* rather than obeyed, so a request that misdescribes its
+own target is refused instead of being quietly corrected. See
+[ADR-018](decisions/ADR-018-the-resolution-boundary.md).
 
 ### The mutation gate
 
@@ -404,6 +415,7 @@ Every privileged request passes **16 gates in a fixed order**. A rejection at an
 | Unknown/stale policy epoch for a privileged action | `DENY` or `CHALLENGE` — never a silent permit |
 | Revoked or expired capability | `DENY` |
 | Unknown resource | `DENY` without dereferencing an untrusted path |
+| Resource whose canonical type contradicts the caller's claim | `DENY` — the claim is checked, not corrected |
 | Audit storage unavailable for a high-risk operation | `DENY` |
 | SCP coordinator unavailable | No new high-risk grants; already-issued capabilities remain valid only within their original scope and until expiry/revocation |
 | AI unavailable | Operate without AI |
@@ -413,6 +425,10 @@ Every privileged request passes **16 gates in a fixed order**. A rejection at an
 ### Risk is determined by policy, not by the caller
 
 The SCP derives the effective risk tier from a **signed, versioned Operation Registry**. A caller's risk claim is never authoritative. If the claim is *lower* than the registry result → `RISK_CLAIM_MISMATCH` (denied). Unknown operations have **no default low-risk classification** → `UNKNOWN_OPERATION_RISK` (denied). When multiple rules apply, the most restrictive tier wins.
+
+### A name is not an identity
+
+The registry's rules are keyed by the **canonical type** of the resource, and the canonical type is the one the environment resolved — not the one the request claimed. A request that names an object by an alias is fine: the alias resolves to the canonical object, and a grant over that object still matches. A request that claims the *wrong* type for an object it names is refused with `RESOURCE_TYPE_MISMATCH` rather than corrected, because a caller that believes it is addressing a file when the node knows it is addressing a device will handle the object wrongly even though the node's authorisation was right. The decision record names the canonical object and the version the decision was made against. See [ADR-018](decisions/ADR-018-the-resolution-boundary.md).
 
 ### Change Capsule state machine
 
@@ -443,7 +459,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 103/103 Python tests passing · 122/122 Rust tests passing · 36/36 shared vectors agreed · 36/36 capsule vectors agreed by two implementations · 117/117 mutations killed · 2/2 state machines structurally valid · 31/31 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 105/105 Python tests passing · 123/123 Rust tests passing · 40/40 shared vectors agreed · 36/36 capsule vectors agreed by two implementations · 126/126 mutations killed · 2/2 state machines structurally valid · 32/32 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 
@@ -454,7 +470,7 @@ Work is sequenced by dependency and evidence, not by launch pressure. **No gate 
 | Gate | Deliverable | Status |
 |---|---|---|
 | **0** | Contract freeze for prototype: identifiers, typed object model, schemas, threat model, state machine, error registry, reference evaluator, traceability matrix | 🟡 **In progress** — this repository is the Gate 0 deliverable |
-| **1** | SCP decision oracle: pure evaluator, capability model, deterministic reason codes, audit-event builder, property tests, fuzzable parser boundary | 🟡 **In progress** — the Rust oracle, the canonical profile, the shared vectors, and the fuzz harness are in this repository; the signed Operation Registry and the resolution boundary are not |
+| **1** | SCP decision oracle: pure evaluator, capability model, deterministic reason codes, audit-event builder, property tests, fuzzable parser boundary | 🟡 **In progress** — the Rust oracle, the canonical profile, the shared vectors, the fuzz harness and the resolution boundary are in this repository; the signed Operation Registry is not, and the resolution is not yet designed per resource type |
 | **2** | Change Capsule executor simulator: state machine, operation registry, idempotency ledger, stale-precondition detection, rollback/compensation simulation, fault injection | 🟡 **In progress** — the simulator, its fault model, its vectors, and two implementations that agree on all thirty vectors are in this repository; the executor performs no effect, and the compensation is modelled rather than exercised against storage |
 | **3** | Capsule policy simulator: Origin Capsule manifest, bridge registry, budget checks, guest/host authority tests | ⬜ Not started |
 | **4** | Minimal bootable prototype: one declared hardware/emulator profile, trusted boot chain, minimal service supervisor, local policy enforcement, recovery path | ⬜ Not started |

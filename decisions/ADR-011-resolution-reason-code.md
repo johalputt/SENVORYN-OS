@@ -1,6 +1,6 @@
 # ADR-011 — Adding a Reason Code for the Object-Resolution Gate
 
-**Status:** Proposed
+**Status:** Revised by [ADR-018](ADR-018-the-resolution-boundary.md) — the version is part of the resolution, so a name whose version does not exist does not resolve and carries this code
 **Date:** 2026-10-20
 **Deciders:** Project maintainers
 **Affected components:** `errors/denial-codes.json`, Core Contract Specification §3.2 gate 6
@@ -83,9 +83,11 @@ exist is refused. There is no further evidence that would help.
 
 ## Open items
 
-- [ ] Whether a resource that resolves but whose *version* does not exist should carry
-      this code or a separate one — what evidence would close it: the specification
-      stating whether version resolution is part of gate 6 or a separate check.
+- [x] Whether a resource that resolves but whose *version* does not exist should carry
+      this code or a separate one — **closed by
+      [ADR-018](ADR-018-the-resolution-boundary.md)**: the version is part of the
+      resolution rather than a separate check, so a name whose version does not
+      exist does not resolve at all and carries this code.
 - [ ] Whether resolution failures are distinguishable to the caller, since telling a
       caller that a resource does not exist is itself an information disclosure — what
       evidence would close it: a rule in the specification about what a refusal may
@@ -97,3 +99,4 @@ exist is refused. There is no further evidence that would help.
 - [`errors/denial-codes.json`](../errors/denial-codes.json)
 - [`crates/senvoryn-scp/tests/reason_code_registry.rs`](../crates/senvoryn-scp/tests/reason_code_registry.rs)
 - [`tests/test_reason_code_registry.py`](../tests/test_reason_code_registry.py)
+- [ADR-018 — the resolution boundary](ADR-018-the-resolution-boundary.md)

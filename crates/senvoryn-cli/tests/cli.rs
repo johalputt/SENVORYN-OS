@@ -35,6 +35,11 @@ fn a_permitted_request_produces_a_permitted_record() {
     assert!(stdout.contains("\"reason_codes\":[\"ALL_POLICY_GATES_PASSED\"]"));
     assert!(stdout.contains("\"effect_performed\":false"));
     assert!(stdout.contains("\"capability_scope_ref\":\"cap:example:0001\""));
+    // The record names the object the effect would be applied to and the
+    // version the decision was made against, not the identifier the request
+    // happened to use.
+    assert!(stdout.contains("\"target_resource_id\":\"file:report\""));
+    assert!(stdout.contains("\"target_resource_version\":\"v1\""));
 }
 
 #[test]

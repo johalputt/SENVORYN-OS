@@ -80,9 +80,10 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] Property-based test suite: attenuation never broadens authority; denied requests create no effects; schema version change never silently grants new fields — seeded property tests in `crates/senvoryn-scp/tests/properties.rs`
 - [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
-- [x] Deterministic reason codes covering all 28 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 117 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
-- [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
+- [x] Deterministic reason codes covering all 32 registry entries — cross-checked against the registry by both implementations
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 126 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
+- [x] The resolution boundary that gate 6 needs — a canonical identifier, a canonical type and a version; the caller's type claim is checked rather than obeyed — [ADR-018](decisions/ADR-018-the-resolution-boundary.md). The resolution is not yet designed per resource type, and nothing resolves a name against a filesystem
+- [ ] The signed Operation Registry
 - [ ] An independent reviewer confirms the evaluator has no side effects
 
 ---

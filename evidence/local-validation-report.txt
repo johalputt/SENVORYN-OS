@@ -1,5 +1,5 @@
 SENVORYN CORE CONTRACT SPECIFICATION — LOCAL VALIDATION REPORT
-Date: 2026-10-21
+Date: 2026-10-22
 Specification: SENVORYN Core Contract Specification v0.1.0
 Baseline constitution: v0.6.0
 
@@ -11,9 +11,9 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 103 passed, 0 failed.
-- Rust workspace tests: 122 passed, 0 failed.
-- Shared conformance vectors: 36 decision cases and 11 attenuation cases executed by the
+- Python contract tests: 105 passed, 0 failed.
+- Rust workspace tests: 123 passed, 0 failed.
+- Shared conformance vectors: 40 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
   prototype and the implementation from becoming two authorities on the same question.
@@ -47,9 +47,19 @@ Checks performed
   reversible of two conflicting rules, the timestamp parser refused every timestamp with
   fractional seconds, and the timestamp parser rolled a date that does not exist into the
   next month. All three are fixed and pinned by a test in each implementation.
-- Denial-code registry: 31 codes, unique, each with a class and a default status. Every
+- Denial-code registry: 32 codes, unique, each with a class and a default status. Every
   code is produced by at least one implementation and every code an implementation can
   produce is in the registry; both directions are checked by tests on both sides.
+- The resolution boundary: a resolved resource is a canonical identifier, a canonical
+  type and a version. The canonical identity — never the caller's own strings — governs
+  the capability gate, the risk gate, and the record that authorises the effect. A
+  caller's type claim is checked rather than obeyed, so a request that misdescribes its
+  own target is refused with RESOURCE_TYPE_MISMATCH rather than corrected, and an
+  alias resolves to the object it means and still has to match a grant over that
+  object. Five controls are broken in turn by the mutation gate, in the Rust oracle and
+  in the Python reference model: the resolution itself, the type cross-check, the
+  canonical identifier in the capability gate, the canonical type in the capability
+  gate, and the canonical type in the risk gate.
 - Change Capsule timestamp boundary: the strict-UTC parser's guards — the form, the zone
   marker, the fraction, the date, the leap year, the time and the year — are each broken
   in turn by the mutation gate, in the Rust executor and in the Python reference model.
@@ -68,8 +78,8 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 117 controls broken in turn, each requiring a named test to go red
-  because of that break. 117 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 126 controls broken in turn, each requiring a named test to go red
+  because of that break. 126 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
 
@@ -94,9 +104,12 @@ Two implementations of one specification is a strong check and not a proof. Both
 implementations read the same vector file, and whoever writes that file decides what
 "right" means. Neither implementation is an independent reviewer.
 
-The capsule's budget does not yet have to fit inside its validity window. A plan whose
-budget outlasts the window is stopped at the boundary rather than refused at admission,
-and the admission-time check is deferred.
+The resolution boundary is specified but not finished. The environment's resolution
+table is supplied to the oracle; nothing in this repository resolves a name against a
+filesystem, decides which resource types need a richer identity than an identifier, a
+type and a version, or says who may define an alias and how one is revoked. The
+executor does not yet recheck the resolved version before it acts, so the record's
+version is an anchor that nothing compares against yet.
 
 The Operation Registry used by the tests is the unsigned sample. Capability provenance is
 stated by the caller and checked for consistency, not proven: there is no signature

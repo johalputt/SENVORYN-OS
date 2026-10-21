@@ -152,6 +152,8 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 
 **Reason Code** — The stable identifier explaining a decision. See [`errors/denial-codes.json`](errors/denial-codes.json).
 
+**Resolution** — The turning of a name a caller used into the canonical identity of an object: its canonical identifier, its canonical type, and its version. The name may be an alias; the canonical identity is the truth, and it is the environment's. A name that resolves to nothing is denied rather than dereferenced, and a name that resolves to an object whose type is not the type the request claimed is denied rather than corrected. The canonical identity is what a grant is compared with and what the Operation Registry's rules are keyed by.
+
 **Recovery Actor** — A principal type authorized to perform verified recovery operations when the system is in `RECOVERY` mode.
 
 **Resource** — Any object whose access or modification can affect confidentiality, integrity, availability, safety, or cost. Every resource has a canonical typed identity, owner, sensitivity label, lifecycle state, supported operation set, version/epoch, and policy domain. **Path strings alone are insufficient identifiers for security decisions.**

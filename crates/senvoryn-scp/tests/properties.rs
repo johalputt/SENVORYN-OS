@@ -11,8 +11,8 @@ use std::collections::BTreeSet;
 
 use senvoryn_canonical::{Value, canonicalize, encode_to_string, parse};
 use senvoryn_scp::{
-    AuditState, Capability, OperationRegistry, PolicyContext, Provenance, Request, RiskTier,
-    SystemMode, attenuate, evaluate,
+    AuditState, Capability, OperationRegistry, PolicyContext, Provenance, Request,
+    ResolvedResource, RiskTier, SystemMode, attenuate, evaluate,
 };
 
 const SEEDS: [u64; 8] = [
@@ -103,7 +103,16 @@ fn context(registry: OperationRegistry) -> PolicyContext {
         clock_state: senvoryn_scp::ClockState::Trusted,
         mode: SystemMode::Normal,
         known_principals: ["user:alice".to_owned()].into_iter().collect(),
-        resolved_resources: [("file:report".to_owned(), "v1".to_owned())].into_iter().collect(),
+        resolved_resources: [(
+            "file:report".to_owned(),
+            ResolvedResource {
+                canonical_id: "file:report".to_owned(),
+                resource_type: "file_object".to_owned(),
+                version: "v1".to_owned(),
+            },
+        )]
+        .into_iter()
+        .collect(),
         operations: registry,
         audit_state: AuditState::Ready,
         action_digest: None,
