@@ -11,7 +11,7 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 95 passed, 0 failed.
+- Python contract tests: 99 passed, 0 failed.
 - Rust workspace tests: 119 passed, 0 failed.
 - Shared conformance vectors: 33 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
@@ -42,7 +42,7 @@ Checks performed
   quietly.
 - Change Capsule reference model: a second implementation of the capsule executor, written
   in Python from the contract rather than from the Rust. It is held to the same vector
-  file, and the two agree on all 35 cases. Writing it found three defects in the Rust
+  file, and the two agree on all 36 cases. Writing it found three defects in the Rust
   implementation that no test had caught: the registry's merge rule kept the more
   reversible of two conflicting rules, the timestamp parser refused every timestamp with
   fractional seconds, and the timestamp parser rolled a date that does not exist into the
@@ -51,8 +51,8 @@ Checks performed
   code is produced by at least one implementation and every code an implementation can
   produce is in the registry; both directions are checked by tests on both sides.
 - JSON Schema Draft 2020-12 structural checks: 14 schemas passed.
-- JSON syntax checks: 48 JSON documents parsed.
-- Canonical JSON profile SCP-CJSON-0001: 37 conformance tests over the profile's clauses,
+- JSON syntax checks: 72 JSON documents parsed.
+- Canonical JSON profile SCP-CJSON-0001: 40 conformance tests over the profile's clauses,
   plus a deterministic fuzz harness over a seed corpus (132000 mutated inputs, no panic,
   no encoding disagreement).
 - Property tests over a seeded generator: attenuation never broadens a capability, the
