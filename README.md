@@ -152,7 +152,7 @@ SENVORYN-OS/
 ├── conformance/capsule-vectors.json  # Change Capsule vectors — Rust implementation only
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
-├── tests/                       # 106 executable contract tests
+├── tests/                       # 108 executable contract tests
 ├── decisions/                   # ADR-001 … ADR-018
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
@@ -169,10 +169,10 @@ SENVORYN-OS/
 | `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 32 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
 | `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 40 cases + 11 attenuation cases |
-| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 36 cases |
+| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 38 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 135 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 19 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 139 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 20 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -193,7 +193,7 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (106 tests)
+# Run the contract test suite (108 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
 # Run the Rust workspace (135 tests)
@@ -206,7 +206,7 @@ python scripts/mutation-gate.py
 Expected tail of output:
 
 ```
-Ran 106 tests in 0.574s
+Ran 108 tests in 0.644s
 
 OK
 ```
@@ -282,6 +282,15 @@ type claim is *checked* rather than obeyed, so a request that misdescribes its
 own target is refused instead of being quietly corrected. See
 [ADR-018](decisions/ADR-018-the-resolution-boundary.md).
 
+The anchor that decision carried was then used. The decision record names the
+version the decision was made against, and the executor now checks it: a
+decision made against one version of a target does not authorise a capsule
+acting on another, and a decision that names no version at all — one made
+before the resource was resolved — authorises nothing. The digest binding
+answers "is this the plan I judged?" and the version binding answers "was the
+object in the state I judged it in?". See
+[ADR-020](decisions/ADR-020-the-decision-names-the-version.md).
+
 ### The mutation gate
 
 A control that has never been seen to fail on the thing it forbids has proved
@@ -292,9 +301,9 @@ test to go red:
 python scripts/mutation-gate.py
 ```
 
-One hundred and thirty-five controls are covered — 39 of the policy layer, 3
-properties of the canonical JSON profile, 8 of the strict UTC time parser, 34
-controls of the Change Capsule executor in Rust, and 51 of them in the Python
+One hundred and thirty-nine controls are covered — 39 of the policy layer, 3
+properties of the canonical JSON profile, 8 of the strict UTC time parser, 36
+controls of the Change Capsule executor in Rust, and 53 of them in the Python
 reference model. A surviving mutation is a control that no test enforces, and
 the gate fails.
 
@@ -471,7 +480,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 106/106 Python tests passing · 135/135 Rust tests passing · 40/40 shared vectors agreed · 36/36 capsule vectors agreed by two implementations · 135/135 mutations killed · 2/2 state machines structurally valid · 32/32 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 108/108 Python tests passing · 135/135 Rust tests passing · 40/40 shared vectors agreed · 38/38 capsule vectors agreed by two implementations · 139/139 mutations killed · 2/2 state machines structurally valid · 32/32 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 
@@ -483,7 +492,7 @@ Work is sequenced by dependency and evidence, not by launch pressure. **No gate 
 |---|---|---|
 | **0** | Contract freeze for prototype: identifiers, typed object model, schemas, threat model, state machine, error registry, reference evaluator, traceability matrix | 🟡 **In progress** — this repository is the Gate 0 deliverable |
 | **1** | SCP decision oracle: pure evaluator, capability model, deterministic reason codes, audit-event builder, property tests, fuzzable parser boundary | 🟡 **In progress** — the Rust oracle, the canonical profile, the shared vectors, two fuzz harnesses and the resolution boundary are in this repository; the signed Operation Registry is not, the resolution is not yet designed per resource type, and the transport that turns a wire envelope into a policy request does not exist |
-| **2** | Change Capsule executor simulator: state machine, operation registry, idempotency ledger, stale-precondition detection, rollback/compensation simulation, fault injection | 🟡 **In progress** — the simulator, its fault model, its vectors, and two implementations that agree on all thirty vectors are in this repository; the executor performs no effect, and the compensation is modelled rather than exercised against storage |
+| **2** | Change Capsule executor simulator: state machine, operation registry, idempotency ledger, stale-precondition detection, rollback/compensation simulation, fault injection | 🟡 **In progress** — the simulator, its fault model, its vectors, and two implementations that agree on all thirty-eight vectors are in this repository; the executor performs no effect, and the compensation is modelled rather than exercised against storage |
 | **3** | Capsule policy simulator: Origin Capsule manifest, bridge registry, budget checks, guest/host authority tests | ⬜ Not started |
 | **4** | Minimal bootable prototype: one declared hardware/emulator profile, trusted boot chain, minimal service supervisor, local policy enforcement, recovery path | ⬜ Not started |
 | **5** | Direct Installer prototype: one certified host profile, safe staging, cancellation, power-loss simulation, disk target confirmation, first-boot verification | ⬜ Not started |

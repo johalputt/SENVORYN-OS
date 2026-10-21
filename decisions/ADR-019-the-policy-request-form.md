@@ -1,7 +1,7 @@
 # ADR-019 — The Policy Request Form: One Name, Two Documents
 
 **Status:** Proposed
-**Date:** 2026-10-22
+**Date:** 2026-10-21
 **Deciders:** Project maintainers
 **Affected components:** `crates/senvoryn-scp/src/request.rs`, `crates/senvoryn-scp/tests/envelope.rs`, `crates/senvoryn-scp/tests/fuzz.rs`, `schemas/request-envelope.schema.json`, `examples/cli/request.json`, `scripts/mutations.json`
 

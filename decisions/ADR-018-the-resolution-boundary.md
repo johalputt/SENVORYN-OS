@@ -1,7 +1,7 @@
 # ADR-018 — The Resolution Boundary: A Name Is Not an Identity
 
 **Status:** Proposed
-**Date:** 2026-10-22
+**Date:** 2026-10-21
 **Deciders:** Project maintainers
 **Affected components:** `crates/senvoryn-scp`, `reference/scp_reference.py`, `conformance/vectors/vectors.json`, `crates/senvoryn-cli`, `schemas/decision-record.schema.json`, `errors/denial-codes.json`
 
@@ -175,7 +175,7 @@ race has to be detected against.
 | The canonical identity at gates 10 and 11 | done | the decision path, with a shared vector per gate |
 | The canonical identifier in the decision record and the audit event | done | `Decision::to_record`, `build_audit_event` |
 | The resolved version in the decision record | done | `Decision::to_record`, `schemas/decision-record.schema.json` |
-| The executor's recheck of the resolved version (gate 16) | **not done** | the record carries the version as the anchor; nothing rechecks it yet |
+| The executor's recheck of the resolved version (gate 16) | done | ADR-020: the authorization names the version the decision was made against, and the executor refuses a decision that names none or names another one |
 
 ## Alternatives considered
 
@@ -192,12 +192,14 @@ race has to be detected against.
 
 ## Open items
 
-- [ ] The request envelope carries no target version, so the resolved version
-      cannot be compared with anything. The executor's recheck of the
-      version — the time-of-check/time-of-use anchor AS-19 asks for — is not
-      implemented. What evidence would close it: a target version in the
-      envelope, a precondition that compares it with the resolution, and the
-      executor refusing to act on a record whose version has moved.
+- [x] The request envelope carries no target version, so the resolved version
+      cannot be compared with anything the request says. The executor's
+      recheck of the version — the time-of-check/time-of-use anchor AS-19 asks
+      for — is implemented (ADR-020): the authorization names the version the
+      decision was made against, and the executor refuses a decision that
+      names none or names another one. What is left: the envelope still
+      carries no target version, and nothing yet ties the request to the
+      plan — the plan digest is that tie, and it is ADR-020's open item.
 - [ ] The resolution design *per resource type*. The table models a canonical
       identifier, a type and a version. Whether a resource type needs more of
       the identity the resource-record schema states — owner, sensitivity,

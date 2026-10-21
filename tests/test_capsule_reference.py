@@ -83,6 +83,7 @@ def _base_environment():
 def _authorization():
     return Authorization(
         permitted_digest=BASE_DIGEST,
+        permitted_resource_version="7",
         approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
     )
 
@@ -461,11 +462,45 @@ class ExecutorTests(unittest.TestCase):
         outcome = executor.run(
             Authorization(
                 permitted_digest="0000000000000000000000000000000000000000000000000000000000000009",
+                permitted_resource_version="7",
                 approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
             )
         )
         self.assertEqual(outcome.final_state, State.REJECTED)
         self.assertIn("does not permit the capsule", outcome.reason)
+
+    def test_a_decision_made_against_another_version_permits_nothing(self):
+        # The decision names the version of the target it was made against.
+        # A decision made against an earlier version says nothing about the
+        # one the executor is about to act on.
+        executor = Executor(
+            _base_capsule(), load_registry(), _base_environment(), machine=load_state_machine()
+        )
+        outcome = executor.run(
+            Authorization(
+                permitted_digest=BASE_DIGEST,
+                permitted_resource_version="6",
+                approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
+            )
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+        self.assertIn("was made against version", outcome.reason)
+
+    def test_a_decision_that_names_no_version_permits_nothing(self):
+        # A decision made before the resource was resolved names no version.
+        # That is a refusal, not a wildcard.
+        executor = Executor(
+            _base_capsule(), load_registry(), _base_environment(), machine=load_state_machine()
+        )
+        outcome = executor.run(
+            Authorization(
+                permitted_digest=BASE_DIGEST,
+                permitted_resource_version=None,
+                approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
+            )
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+        self.assertIn("does not name the version", outcome.reason)
 
 
 class ValidationTests(unittest.TestCase):

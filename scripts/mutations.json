@@ -415,6 +415,30 @@
       "expect_output_contains": "CC-009-approval-bound-elsewhere"
     },
     {
+      "id": "CC-executor-target-version-binding",
+      "gate": 2,
+      "control": "The decision must have been made against the version of the target the capsule is about to act on.",
+      "file": "crates/senvoryn-capsule/src/authorization.rs",
+      "find": "if permitted_version != &capsule.target.expected_version {",
+      "replace": "if false {",
+      "package": "senvoryn-capsule",
+      "test": "every_vector_reaches_the_state_it_names",
+      "test_file": "conformance_vectors",
+      "expect_output_contains": "CC-037-decision-made-against-another-version"
+    },
+    {
+      "id": "CC-executor-target-version-named",
+      "gate": 2,
+      "control": "A decision that names no version of the target authorises no effect on it.",
+      "file": "crates/senvoryn-capsule/src/authorization.rs",
+      "find": "let Some(permitted_version) = &authorization.permitted_resource_version else {\n        return Err(AuthorizationError::TargetVersionNotNamed);\n    };",
+      "replace": "let Some(permitted_version) = &authorization.permitted_resource_version else {\n        return Ok(());\n    };",
+      "package": "senvoryn-capsule",
+      "test": "every_vector_reaches_the_state_it_names",
+      "test_file": "conformance_vectors",
+      "expect_output_contains": "CC-038-decision-that-names-no-version"
+    },
+    {
       "id": "CC-executor-unknown-operation",
       "gate": 2,
       "control": "An operation the registry does not contain has no risk tier and no place in a capsule.",
@@ -613,6 +637,26 @@
       "replace": "if False:",
       "test": "tests.test_capsule_vectors.CapsuleVectorTests.test_every_vector_reaches_the_state_it_names",
       "expect_output_contains": "CC-009-approval-bound-elsewhere"
+    },
+    {
+      "id": "CC-py-target-version-binding",
+      "gate": 2,
+      "control": "The decision must have been made against the version of the target the capsule is about to act on.",
+      "file": "reference/capsule_reference.py",
+      "find": "if permitted_version != capsule.target.expected_version:",
+      "replace": "if False:",
+      "test": "tests.test_capsule_vectors.CapsuleVectorTests.test_every_vector_reaches_the_state_it_names",
+      "expect_output_contains": "CC-037-decision-made-against-another-version"
+    },
+    {
+      "id": "CC-py-target-version-named",
+      "gate": 2,
+      "control": "A decision that names no version of the target authorises no effect on it.",
+      "file": "reference/capsule_reference.py",
+      "find": "if permitted_version is None:\n        return \"the decision does not name the version of the target it was made against\"",
+      "replace": "if permitted_version is None:\n        return None",
+      "test": "tests.test_capsule_vectors.CapsuleVectorTests.test_every_vector_reaches_the_state_it_names",
+      "expect_output_contains": "CC-038-decision-that-names-no-version"
     },
     {
       "id": "CC-py-unknown-operation",

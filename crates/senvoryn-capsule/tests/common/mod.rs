@@ -89,6 +89,7 @@ pub fn environment() -> Environment {
 pub fn authorization() -> Authorization {
     Authorization {
         permitted_digest: DIGEST.to_owned(),
+        permitted_resource_version: Some("7".to_owned()),
         approvals: vec![Approval {
             approval_type: "USER_CONFIRMATION".to_owned(),
             binds_digest: DIGEST.to_owned(),

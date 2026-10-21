@@ -781,11 +781,13 @@ class Authorization:
 
     The SCP is the authority on whether a capsule may run. This model takes
     its decision as an input and checks the thing the decision has to bind —
-    the exact digest of the plan that was authorized — plus the approvals the
-    capsule asked for. It does not decide policy.
+    the exact digest of the plan that was authorized, and the version of the
+    target the decision was made against — plus the approvals the capsule
+    asked for. It does not decide policy.
     """
 
     permitted_digest: str
+    permitted_resource_version: Optional[str]
     approvals: tuple[Approval, ...]
 
 
@@ -796,12 +798,23 @@ def check_authorization(
 
     The digest check comes first because it is the one that cannot be worked
     around: an approval for a different plan is not an approval for this
-    one, however many there are of them.
+    one, however many there are of them. The version check comes next: a
+    decision names the version of the target it was made against, and the
+    target may have moved since (ADR-018, threat model AS-19).
     """
     if authorization.permitted_digest != capsule.payload_digest:
         return (
             f"the decision permits digest {authorization.permitted_digest!r}, "
             f"not the capsule's {capsule.payload_digest!r}"
+        )
+    permitted_version = authorization.permitted_resource_version
+    if permitted_version is None:
+        return "the decision does not name the version of the target it was made against"
+    if permitted_version != capsule.target.expected_version:
+        return (
+            f"the decision was made against version {permitted_version!r} of the "
+            f"target, not the version {capsule.target.expected_version!r} the "
+            "capsule expects"
         )
     given: dict[str, int] = {}
     for approval in authorization.approvals:

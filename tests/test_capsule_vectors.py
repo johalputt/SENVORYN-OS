@@ -43,6 +43,12 @@ BASE_DIGEST = "0000000000000000000000000000000000000000000000000000000000000002"
 #: A digest that is not the base capsule's.
 OTHER_DIGEST = "0000000000000000000000000000000000000000000000000000000000000009"
 
+#: The version the base capsule expects its target to be at.
+BASE_VERSION = "7"
+
+#: A version the base capsule does not expect.
+OTHER_VERSION = "6"
+
 
 def _load(path):
     with open(path, encoding="utf-8") as handle:
@@ -109,6 +115,7 @@ def _authorization(specification):
     if specification is None:
         return Authorization(
             permitted_digest=BASE_DIGEST,
+            permitted_resource_version=BASE_VERSION,
             approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
         )
     digest = specification.get("digest")
@@ -118,6 +125,15 @@ def _authorization(specification):
         permitted = OTHER_DIGEST
     else:
         raise AssertionError(f"{digest!r} is not a digest selector")
+    version = specification.get("version", "matching")
+    if version == "matching":
+        permitted_version = BASE_VERSION
+    elif version == "other":
+        permitted_version = OTHER_VERSION
+    elif version == "none":
+        permitted_version = None
+    else:
+        raise AssertionError(f"{version!r} is not a version selector")
     approvals = []
     for entry in specification.get("approvals", []):
         binding = entry.get("binds")
@@ -128,7 +144,11 @@ def _authorization(specification):
         else:
             raise AssertionError(f"{binding!r} is not a binding selector")
         approvals.append(Approval(entry["type"], binds))
-    return Authorization(permitted_digest=permitted, approvals=tuple(approvals))
+    return Authorization(
+        permitted_digest=permitted,
+        permitted_resource_version=permitted_version,
+        approvals=tuple(approvals),
+    )
 
 
 def _fault_injector(specification):

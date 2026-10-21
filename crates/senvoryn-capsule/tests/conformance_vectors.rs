@@ -29,6 +29,12 @@ const BASE_DIGEST: &str = "00000000000000000000000000000000000000000000000000000
 /// A digest that is not the base capsule's.
 const OTHER_DIGEST: &str = "0000000000000000000000000000000000000000000000000000000000000009";
 
+/// The version the base capsule expects its target to be at.
+const BASE_VERSION: &str = "7";
+
+/// A version the base capsule does not expect.
+const OTHER_VERSION: &str = "6";
+
 /// Sets a value at a dotted path, where a numeric part is an array index.
 fn set_path(root: &mut Value, path: &str, new_value: Value) {
     let parts: Vec<&str> = path.split('.').collect();
@@ -177,6 +183,7 @@ fn build_authorization(specification: Option<&Value>) -> Authorization {
     let Some(specification) = specification.and_then(Value::as_object) else {
         return Authorization {
             permitted_digest: BASE_DIGEST.to_owned(),
+            permitted_resource_version: Some(BASE_VERSION.to_owned()),
             approvals: vec![Approval {
                 approval_type: "USER_CONFIRMATION".to_owned(),
                 binds_digest: BASE_DIGEST.to_owned(),
@@ -187,6 +194,13 @@ fn build_authorization(specification: Option<&Value>) -> Authorization {
         Some("matching") => BASE_DIGEST.to_owned(),
         Some("other") => OTHER_DIGEST.to_owned(),
         other => panic!("{other:?} is not a digest selector"),
+    };
+    let permitted_resource_version = match specification.get("version").and_then(Value::as_str) {
+        Some("matching") => Some(BASE_VERSION.to_owned()),
+        Some("other") => Some(OTHER_VERSION.to_owned()),
+        Some("none") => None,
+        None => Some(BASE_VERSION.to_owned()),
+        other => panic!("{other:?} is not a version selector"),
     };
     let approvals = specification
         .get("approvals")
@@ -209,7 +223,7 @@ fn build_authorization(specification: Option<&Value>) -> Authorization {
                 .collect()
         })
         .unwrap_or_default();
-    Authorization { permitted_digest, approvals }
+    Authorization { permitted_digest, permitted_resource_version, approvals }
 }
 
 #[test]

@@ -20,11 +20,11 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | Statement | Status |
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
-| 106 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 108 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
 | 135 Rust tests pass | ✅ Verified (Rust stable) |
 | 40 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
-| 36 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
-| Every control has a test that fails when the control is broken | ✅ Verified — 135 mutations, all killed |
+| 38 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
+| Every control has a test that fails when the control is broken | ✅ Verified — 139 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
 | 32 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
@@ -81,7 +81,7 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] Fuzz harness for the request boundary — the canonical parser is fuzzed over bytes (`crates/senvoryn-canonical/tests/fuzz.rs`) and the policy request reader is fuzzed over documents (`crates/senvoryn-scp/tests/fuzz.rs`), asserting that the reader never panics, that a request which was read says exactly what the document said, and that the same document is read the same way twice. The transport that turns a wire envelope into a policy request is not written, so the wire envelope's own reader does not exist yet — [ADR-019](decisions/ADR-019-the-policy-request-form.md)
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
 - [x] Deterministic reason codes covering all 32 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 135 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 139 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
 - [x] The resolution boundary that gate 6 needs — a canonical identifier, a canonical type and a version; the caller's type claim is checked rather than obeyed — [ADR-018](decisions/ADR-018-the-resolution-boundary.md). The resolution is not yet designed per resource type, and nothing resolves a name against a filesystem
 - [x] The policy request form is closed and stated — an unknown field is refused, the reader enforces the form and nothing else, and the reader's nine controls are mutation-tested — [ADR-019](decisions/ADR-019-the-policy-request-form.md)
 - [ ] The signed Operation Registry
@@ -101,10 +101,11 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] Compensation planner for `COMPENSATABLE` vs `NON_REVERSIBLE` operations — a non-reversible operation escalates to a human rather than claiming a rollback
 - [x] Fault injection: crash, lost storage, stale time, full disk, power interruption, clock rollback, corrupted artifact — crash, I/O error, stale precondition, policy-epoch change, lost audit sink, full disk, clock rollback, corrupted recovery artifact
 - [x] Transition tests for every illegal transition in the table — the table is checked for unreachable states as well as illegal ones
-- [x] 36 capsule conformance vectors, and 70 of the controls mutation-checked (34 in Rust, 36 in Python)
+- [x] 38 capsule conformance vectors, and 74 of the controls mutation-checked (36 in Rust, 38 in Python)
 - [x] A second implementation of the capsule executor, so the capsule vectors are *agreed* rather than merely self-consistent — the Python reference model in `reference/capsule_reference.py`, written from the contract rather than from the Rust
 - [x] The validity window is a boundary, not a one-time check — the clock is read before every step, a clock that moves backwards ends the transaction, and the capsule cannot be executed before it was issued ([ADR-015](decisions/ADR-015-capsule-validity-window-and-a-moving-world.md))
 - [x] The three faults the simulator did not model — full disk, clock rollback, corrupted artefact — and the four controls they turned out to be missing
+- [x] The decision names the version it was made against, and the executor refuses a decision that names none or names another one — the anchor ADR-018 carried the version for is now used ([ADR-020](decisions/ADR-020-the-decision-names-the-version.md))
 
 **Still open for Gate 2 exit:**
 
@@ -113,6 +114,7 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] The registry's `registry_epoch` is bound to the epoch in force: a decision made under a registry from another generation is refused, with a reason of its own ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
 - [ ] The registry has no validity window: nothing bounds how old the policy in force is, and the system has no way to know that a registry is stale ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md), [ADR-017](decisions/ADR-017-the-clock-is-a-boundary.md))
 - [ ] The executor drives a simulated environment; nothing here proves that a real system can be rolled back
+- [ ] The authorization is still a value the host constructs: it is not read from a document the repository defines, and the decision record carries neither the plan digest nor the approvals ([ADR-020](decisions/ADR-020-the-decision-names-the-version.md))
 - [ ] The vectors are read by two implementations of the same contract, and whoever writes the contract decides what "right" means. That is a strong check and not a proof
 
 ---

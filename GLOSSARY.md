@@ -12,6 +12,8 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 
 **Approval Record** — A signed record of a human or workflow authorization bound to an **exact action digest**. Changing the action invalidates the approval.
 
+**Authorization** — The System Control Plane's decision about a Change Capsule: it names the plan digest it permits, the version of the target the decision was made against, and the approvals that were given. The executor checks the binding; it does not re-decide. An authorization that names no version authorises no effect, because it was made before the resource was resolved. See [ADR-020](decisions/ADR-020-the-decision-names-the-version.md).
+
 **Attenuation** — The rule that a delegated (child) capability may only be *equal to or narrower* than its parent: subset resources, subset operations, subset purposes, expiry ≤ parent, budget ≤ parent, delegation depth decreased, policy epoch still acceptable. **[INV-03]**
 
 **Audit Event** — An append-only record that a privileged action was requested, decided, and/or performed, with its reason codes. Audit is never deleted by rollback. **[INV-11]**
@@ -154,7 +156,7 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 
 **Reason Code** — The stable identifier explaining a decision. See [`errors/denial-codes.json`](errors/denial-codes.json).
 
-**Resolution** — The turning of a name a caller used into the canonical identity of an object: its canonical identifier, its canonical type, and its version. The name may be an alias; the canonical identity is the truth, and it is the environment's. A name that resolves to nothing is denied rather than dereferenced, and a name that resolves to an object whose type is not the type the request claimed is denied rather than corrected. The canonical identity is what a grant is compared with and what the Operation Registry's rules are keyed by.
+**Resolution** — The turning of a name a caller used into the canonical identity of an object: its canonical identifier, its canonical type, and its version. The name may be an alias; the canonical identity is the truth, and it is the environment's. A name that resolves to nothing is denied rather than dereferenced, and a name that resolves to an object whose type is not the type the request claimed is denied rather than corrected. The canonical identity is what a grant is compared with and what the Operation Registry's rules are keyed by. The version is part of the resolution: a decision names the version it was made against, so that an executor can refuse a decision made against a version the target has left.
 
 **Recovery Actor** — A principal type authorized to perform verified recovery operations when the system is in `RECOVERY` mode.
 

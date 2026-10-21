@@ -157,6 +157,7 @@ fn a_capsule_for_another_plan_is_rejected() {
     let mut executor = executor();
     let other = senvoryn_capsule::Authorization {
         permitted_digest: DIGEST.replace('2', "3"),
+        permitted_resource_version: Some("7".to_owned()),
         approvals: authorization().approvals,
     };
     let outcome = executor.run(&other);
@@ -168,6 +169,7 @@ fn a_missing_approval_is_rejected() {
     let mut executor = executor();
     let bare = senvoryn_capsule::Authorization {
         permitted_digest: DIGEST.to_owned(),
+        permitted_resource_version: Some("7".to_owned()),
         approvals: Vec::new(),
     };
     let outcome = executor.run(&bare);

@@ -393,6 +393,38 @@
       },
       "expected_state": "REJECTED",
       "expected_reason_contains": "does not fit inside its validity window"
+    },
+    {
+      "id": "CC-037-decision-made-against-another-version",
+      "control": "A decision made against an earlier version of the target says nothing about the version in front of the executor.",
+      "authorization": {
+        "digest": "matching",
+        "version": "other",
+        "approvals": [
+          {
+            "type": "USER_CONFIRMATION",
+            "binds": "capsule"
+          }
+        ]
+      },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "was made against version"
+    },
+    {
+      "id": "CC-038-decision-that-names-no-version",
+      "control": "A decision that names no version of the target was made before the resource was resolved, and it authorises no effect.",
+      "authorization": {
+        "digest": "matching",
+        "version": "none",
+        "approvals": [
+          {
+            "type": "USER_CONFIRMATION",
+            "binds": "capsule"
+          }
+        ]
+      },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not name the version"
     }
   ]
 }
