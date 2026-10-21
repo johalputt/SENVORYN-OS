@@ -45,6 +45,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | [ADR-019](ADR-019-the-policy-request-form.md) | The policy request form: one name, two documents | Proposed | 6 |
 | [ADR-020](ADR-020-the-decision-names-the-version.md) | The decision names the version | Proposed | 2 |
 | [ADR-021](ADR-021-the-decision-record-is-the-authorization.md) | The decision record is the authorization | Proposed | 5 |
+| [ADR-022](ADR-022-a-future-policy-epoch-is-deferred.md) | A future policy epoch is deferred, not denied | Proposed | 4 |
 
 ---
 
@@ -73,6 +74,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | **019** | The policy request form is the transport layer's output and not the wire envelope; its field set is closed, so a field the node cannot account for is refused rather than ignored. |
 | **020** | The authorization names the version of the target the decision was made against, and the executor refuses a decision that names none or names another one. |
 | **021** | The decision record is the authorization: the executor reads the plan, the version and the status out of the record the policy layer wrote, and a decision that granted no authority authorises nothing. |
+| **022** | A request under a future policy epoch is deferred, not denied: only a non-destructive operation may be deferred, the deferral names the epoch it waits for, it grants nothing, and it does not outlive the request. |
 
 ---
 

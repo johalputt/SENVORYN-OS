@@ -54,6 +54,8 @@ def _operation_entry(raw):
         max_operation_count=raw.get("max_operation_count"),
         required_preconditions=frozenset(raw.get("required_preconditions", [])),
         audit_class=raw.get("audit_class", "STANDARD"),
+        reversibility=raw.get("reversibility", "UNKNOWN"),
+        external_effects=frozenset(raw.get("external_effects", [])),
     )
 
 
@@ -167,6 +169,30 @@ class ConformanceVectorTests(unittest.TestCase):
                     decision.effect_performed,
                     f"{case['id']} reported an effect",
                 )
+                # A deferral names the thing it waits for, and nothing else
+                # does. The epoch is the deferral's substance, so the two
+                # implementations have to agree about which epoch it is.
+                expected_epoch = case["expected"].get("waits_for_policy_epoch")
+                if expected_epoch is None:
+                    self.assertIsNone(
+                        decision.deferral,
+                        f"{case['id']} produced a deferral the case does not expect",
+                    )
+                else:
+                    self.assertIsNotNone(
+                        decision.deferral,
+                        f"{case['id']} produced no deferral",
+                    )
+                    self.assertEqual(
+                        decision.deferral.policy_epoch,
+                        expected_epoch,
+                        f"{case['id']} waits for the wrong policy epoch",
+                    )
+                if case["expected"]["status"] != "PERMIT":
+                    self.assertIsNone(
+                        decision.capability_id,
+                        f"{case['id']} scoped a capability it did not permit",
+                    )
 
     def test_every_attenuation_case_matches(self):
         for case in VECTORS["attenuation_cases"]:

@@ -57,7 +57,7 @@ mod resolution;
 pub use audit::{DataClassification, TrustedTimeStatus, build_audit_event};
 pub use capability::{Capability, Provenance, attenuate};
 pub use context::{AuditState, ClockState, PolicyContext, SystemMode};
-pub use decision::{Decision, DecisionStatus, RecordDetails};
+pub use decision::{Decision, DecisionStatus, Deferral, RecordDetails};
 pub use evaluator::{evaluate, registry_risk_tier};
 pub use reason::{CodeEntry, ReasonCode, registry_codes, registry_default_status, registry_entry};
 pub use record::{DecisionRecord, RecordError};

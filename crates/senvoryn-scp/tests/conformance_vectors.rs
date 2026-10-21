@@ -10,9 +10,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use senvoryn_canonical::{Value, parse};
 use senvoryn_scp::{
-    AuditState, Budget, Capability, ClockState, DecisionStatus, OperationEntry, OperationRegistry,
-    PolicyContext, Provenance, ReasonCode, RecordDetails, Request, ResolvedResource, RiskTier,
-    SystemMode, attenuate, evaluate,
+    AuditState, Budget, Capability, ClockState, DecisionStatus, Deferral, OperationEntry,
+    OperationRegistry, PolicyContext, Provenance, ReasonCode, RecordDetails, Request,
+    ResolvedResource, RiskTier, SystemMode, attenuate, evaluate,
 };
 
 const VECTORS_JSON: &str = include_str!("../../../conformance/vectors/vectors.json");
@@ -272,6 +272,23 @@ fn every_case_matches_the_expected_decision() {
             !decision.grants_authority() || expected_status == "PERMIT",
             "{id} granted authority it should not have"
         );
+
+        // A deferral names the thing it waits for, and nothing else does. The
+        // epoch is the deferral's substance, so the two implementations have
+        // to agree about which epoch it is.
+        let expected_epoch = expected.get("waits_for_policy_epoch");
+        match (expected_epoch, decision.deferral()) {
+            (None, None) => {}
+            (None, Some(deferral)) => panic!(
+                "{id} produced a deferral waiting for {} that the case does not expect",
+                deferral.required_next_step()
+            ),
+            (Some(_), None) => panic!("{id} produced no deferral"),
+            (Some(expected), Some(Deferral::PolicyEpoch(epoch))) => {
+                let expected = u64_value(expected, &format!("{id}: waits_for_policy_epoch"));
+                assert_eq!(*epoch, expected, "{id} waits for the wrong policy epoch");
+            }
+        }
     }
 }
 
@@ -427,7 +444,6 @@ fn a_decision_record_reports_that_no_effect_was_performed() {
         permitted_payload_digest: request.payload_digest.as_deref(),
         audit_ref: "audit:test:0001",
         valid_until: None,
-        required_next_step: None,
     });
     assert_eq!(
         record.get("effect_performed").and_then(Value::as_bool),
@@ -466,7 +482,6 @@ fn a_decision_record_names_the_canonical_object_and_its_version() {
         permitted_payload_digest: request.payload_digest.as_deref(),
         audit_ref: "audit:test:0002",
         valid_until: None,
-        required_next_step: None,
     });
     assert_eq!(
         record.get("target_resource_id").and_then(Value::as_str),
@@ -546,4 +561,74 @@ fn a_challenge_grants_no_partial_authority() {
     assert_eq!(decision.reason(), ReasonCode::STRONG_APPROVAL_REQUIRED);
     assert_eq!(decision.capability_id(), None);
     assert!(!decision.grants_authority());
+}
+
+#[test]
+fn a_deferral_names_the_epoch_it_waits_for() {
+    // A deferral that waits for nothing is a decision that never arrives, so
+    // the deferral names the epoch, and the record publishes it as the next
+    // step the caller has to take.
+    let document = vectors();
+    let base_request = document.get("request").expect("the vector file has a base request");
+    let base_capability =
+        document.get("capability").expect("the vector file has a base capability");
+    let base_context = document.get("context").expect("the vector file has a base context");
+    let base_registry =
+        document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
+    let mut request = request_from(base_request);
+    request.policy_epoch = 8;
+    let capability = capability_from(base_capability);
+    let context = context_from(base_context, &registry);
+
+    let decision = evaluate(&request, Some(&capability), &context);
+    assert_eq!(decision.status(), DecisionStatus::Defer);
+    assert_eq!(decision.reason(), ReasonCode::POLICY_EPOCH_NOT_YET_IN_FORCE);
+    assert_eq!(decision.deferral(), Some(&Deferral::PolicyEpoch(8)));
+    assert_eq!(decision.capability_id(), None);
+    assert!(!decision.grants_authority());
+
+    let record = decision.to_record(&RecordDetails {
+        decision_id: "decision:test:0003",
+        request_id: &request.request_id,
+        evaluated_at: "1970-01-01T00:00:00Z",
+        presented_resource_id: &request.resource_id,
+        permitted_payload_digest: request.payload_digest.as_deref(),
+        audit_ref: "audit:test:0003",
+        valid_until: None,
+    });
+    let next_step = record.get("required_next_step").and_then(Value::as_str);
+    assert!(
+        next_step.is_some_and(|step| step.contains("8")),
+        "the record published no next step naming the epoch the deferral waits for"
+    );
+}
+
+#[test]
+fn a_deferral_does_not_outlive_the_request() {
+    // The freshness gate runs before the epoch gate, so a request that has
+    // already expired is refused rather than deferred. A deferral that
+    // outlived the request it defers would be a decision that never arrives
+    // and never expires either.
+    let document = vectors();
+    let base_request = document.get("request").expect("the vector file has a base request");
+    let base_capability =
+        document.get("capability").expect("the vector file has a base capability");
+    let base_context = document.get("context").expect("the vector file has a base context");
+    let base_registry =
+        document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
+    let mut request = request_from(base_request);
+    request.policy_epoch = 8;
+    request.expires_at = 1000;
+    let capability = capability_from(base_capability);
+    let context = context_from(base_context, &registry);
+
+    let decision = evaluate(&request, Some(&capability), &context);
+    assert_eq!(
+        decision.status(),
+        DecisionStatus::Deny,
+        "a deferral outlived the request it defers"
+    );
+    assert_eq!(decision.reason(), ReasonCode::REQUEST_NOT_FRESH);
 }

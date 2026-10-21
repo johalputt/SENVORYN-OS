@@ -35,6 +35,8 @@ REGISTRY = (
         max_operation_count=1,
         required_preconditions=frozenset({"resource_exists"}),
         audit_class="STANDARD",
+        reversibility="REVERSIBLE",
+        external_effects=frozenset(),
     ),
     OperationEntry(
         operation_id="write",
@@ -46,6 +48,8 @@ REGISTRY = (
         max_operation_count=1,
         required_preconditions=frozenset({"resource_version_matches"}),
         audit_class="SENSITIVE",
+        reversibility="COMPENSATABLE",
+        external_effects=frozenset({"persistent_write"}),
     ),
     OperationEntry(
         operation_id="delete",
@@ -57,6 +61,8 @@ REGISTRY = (
         max_operation_count=1,
         required_preconditions=frozenset({"exact_target_displayed"}),
         audit_class="SECURITY_CRITICAL",
+        reversibility="NON_REVERSIBLE",
+        external_effects=frozenset({"persistent_write"}),
     ),
 )
 
@@ -226,6 +232,44 @@ class SCPReferenceTests(unittest.TestCase):
         self.assertEqual(
             evaluate(req, make_capability(), make_context()).reason, "POLICY_EPOCH_MISMATCH"
         )
+
+    def test_a_future_policy_epoch_is_deferred(self):
+        # A request under a policy epoch this node has not reached yet names
+        # a policy that does not exist yet, so the answer is neither yes nor
+        # no: it is "not yet", and the decision defers the request.
+        decision = evaluate(make_request(policy_epoch=8), make_capability(), make_context())
+        self.assertEqual(decision.status, Status.DEFER, decision.reason)
+        self.assertEqual(decision.reason, "POLICY_EPOCH_NOT_YET_IN_FORCE")
+        self.assertIsNotNone(decision.deferral)
+        self.assertEqual(decision.deferral.policy_epoch, 8)
+        self.assertIsNone(decision.capability_id, "a deferral scoped a capability")
+        self.assertFalse(decision.effect_performed)
+
+    def test_a_destructive_operation_is_not_deferred(self):
+        # A deferral is a promise of a later answer, and this project only
+        # makes that promise about an operation whose effect can be undone.
+        req = make_request(operation="delete", policy_epoch=8, risk_claim="R3")
+        cap = make_capability(operations=frozenset({"delete"}))
+        decision = evaluate(req, cap, make_context())
+        self.assertEqual(decision.status, Status.DENY, decision.reason)
+        self.assertEqual(decision.reason, "POLICY_EPOCH_MISMATCH")
+
+    def test_an_unknown_operation_is_not_deferred(self):
+        # An operation the registry does not know is not shown to be
+        # non-destructive. Absence is never protection.
+        req = make_request(operation="teleport", policy_epoch=8)
+        cap = make_capability(operations=frozenset({"teleport"}))
+        decision = evaluate(req, cap, make_context())
+        self.assertEqual(decision.status, Status.DENY, decision.reason)
+        self.assertEqual(decision.reason, "POLICY_EPOCH_MISMATCH")
+
+    def test_a_deferral_does_not_outlive_the_request(self):
+        # The freshness gate runs before the epoch gate, so a request that
+        # has already expired is refused rather than deferred.
+        req = make_request(policy_epoch=8, expires_at=20)
+        decision = evaluate(req, make_capability(), make_context())
+        self.assertEqual(decision.status, Status.DENY, decision.reason)
+        self.assertEqual(decision.reason, "REQUEST_NOT_FRESH")
 
     def test_capability_policy_epoch_mismatch_denied(self):
         cap = make_capability(policy_epoch=6)

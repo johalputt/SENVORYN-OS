@@ -71,11 +71,30 @@ class ReasonCodeRegistryTests(unittest.TestCase):
         for code, entry in registry.items():
             if code in ("FRESH_ACTION_BOUND_APPROVAL_REQUIRED", "STRONG_APPROVAL_REQUIRED"):
                 continue
+            if code == "POLICY_EPOCH_NOT_YET_IN_FORCE":
+                continue
             self.assertEqual(
                 entry["default"],
                 "DENY",
                 f"{code} should default to DENY",
             )
+
+    def test_the_deferral_code_is_the_only_one_that_postpones(self):
+        # The one code that postpones rather than refuses. A request made
+        # under a policy epoch this node has not reached yet is not "no", and
+        # a reader of the registry has to be told which it is.
+        registry = _registry_codes()
+        self.assertEqual(
+            registry["POLICY_EPOCH_NOT_YET_IN_FORCE"]["default"],
+            "DEFER",
+            "POLICY_EPOCH_NOT_YET_IN_FORCE should default to DEFER",
+        )
+        postponed = [code for code, entry in registry.items() if entry["default"] == "DEFER"]
+        self.assertEqual(
+            postponed,
+            ["POLICY_EPOCH_NOT_YET_IN_FORCE"],
+            "a code other than the deferral code postpones",
+        )
 
 
 if __name__ == "__main__":

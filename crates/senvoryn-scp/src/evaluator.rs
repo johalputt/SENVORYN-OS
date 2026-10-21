@@ -7,9 +7,9 @@
 
 use crate::capability::{Capability, Provenance};
 use crate::context::{AuditState, ClockState, PolicyContext};
-use crate::decision::Decision;
+use crate::decision::{Decision, Deferral};
 use crate::reason::ReasonCode;
-use crate::registry::{AuditClass, OperationEntry, RiskTier};
+use crate::registry::{AuditClass, OperationEntry, Reversibility, RiskTier};
 use crate::request::Request;
 use crate::resolution::ResolvedResource;
 
@@ -122,9 +122,12 @@ fn decide(
     // is a decision made under policy that is not the policy in force, and
     // the request's own epoch check cannot see it: the request and the node
     // agree about the epoch while the registry disagrees with both.
-    if request.policy_epoch != context.current_policy_epoch {
-        return Decision::deny(ReasonCode::POLICY_EPOCH_MISMATCH, epoch);
-    }
+    //
+    // The registry's own consistency is settled first. Specification §3.2
+    // says no decision may be made under a registry whose window has not
+    // opened or has closed, and a deferral is a decision — it produces a
+    // record and an audit event — so a node whose policy in force is not in
+    // force decides nothing at all, not even a postponement.
     if context.operations.epoch() != context.current_policy_epoch {
         return Decision::deny(ReasonCode::REGISTRY_EPOCH_MISMATCH, epoch);
     }
@@ -142,6 +145,28 @@ fn decide(
     }
     if context.now_wall_ms >= context.operations.valid_until_ms() {
         return Decision::deny(ReasonCode::REGISTRY_EXPIRED, epoch);
+    }
+
+    // The request's own epoch. A request under a **future** epoch names a
+    // policy that does not exist yet, so the answer is neither yes nor no:
+    // it is "not yet", and the node defers it. A request under a **stale**
+    // epoch names a policy that is gone and will not come back, so the node
+    // denies it. ADR-022.
+    //
+    // The deferral is bounded by the request itself. Gate 5 has already
+    // refused a request that has expired, so a deferred request becomes a
+    // denial once it expires: a deferral cannot outlive the request it
+    // defers, and no new state is needed to say so.
+    if request.policy_epoch != context.current_policy_epoch {
+        if request.policy_epoch > context.current_policy_epoch && is_non_destructive(entry.as_ref())
+        {
+            return Decision::defer(
+                ReasonCode::POLICY_EPOCH_NOT_YET_IN_FORCE,
+                Deferral::PolicyEpoch(request.policy_epoch),
+                epoch,
+            );
+        }
+        return Decision::deny(ReasonCode::POLICY_EPOCH_MISMATCH, epoch);
     }
 
     // Gate 10 — capability.
@@ -251,6 +276,37 @@ fn decide(
 fn requires_approval(entry: &OperationEntry) -> bool {
     !entry.approval_requirements.is_empty()
         && !entry.approval_requirements.iter().all(|requirement| requirement == "NONE")
+}
+
+/// Whether an operation may be deferred rather than denied.
+///
+/// Specification §3.3 qualifies `DEFER` with "operation is non-destructive",
+/// and a deferral is a promise of a later answer — so it is a promise this
+/// project may only make about an operation whose effect can be undone.
+///
+/// The registry in force is the only policy this node holds, so the registry
+/// in force is what answers. The registry for the future epoch does not
+/// exist — that is why the request is deferred at all — and the one it does
+/// hold is the only one it may consult. An operation the registry does not
+/// know, or one whose reversibility the registry does not state, is not
+/// shown to be non-destructive, and `UNKNOWN` is the worst case by
+/// construction.
+///
+/// An external effect settles it the other way: an operation that reaches
+/// outside the node is not undone by restoring local state, whatever the
+/// registry says about reversibility.
+fn is_non_destructive(entry: Option<&OperationEntry>) -> bool {
+    match entry {
+        // An operation the registry does not know is not shown to be
+        // non-destructive. Absence is never protection: the registry's
+        // `UNKNOWN` reversibility is the worst case by construction, and an
+        // operation it does not mention is worse than one it describes
+        // badly.
+        None => false,
+        Some(entry) => {
+            entry.reversibility == Reversibility::Reversible && entry.external_effects.is_empty()
+        }
+    }
 }
 
 /// The tier the registry assigns to an operation, if it assigns one.

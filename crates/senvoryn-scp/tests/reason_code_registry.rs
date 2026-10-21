@@ -54,6 +54,12 @@ fn the_registry_and_this_crate_agree_on_the_default_status() {
                 "{} should default to CHALLENGE",
                 code.as_str()
             ),
+            // The one code that postpones rather than refuses. A request made
+            // under a policy epoch this node has not reached yet is not "no",
+            // and a reader of the registry has to be told which it is.
+            ReasonCode::POLICY_EPOCH_NOT_YET_IN_FORCE => {
+                assert_eq!(default.as_str(), "DEFER", "{} should default to DEFER", code.as_str())
+            }
             _ => assert_eq!(default.as_str(), "DENY", "{} should default to DENY", code.as_str()),
         }
     }

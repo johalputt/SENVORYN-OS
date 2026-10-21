@@ -60,6 +60,8 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 
 **Decision Record** — The document the policy layer writes for a decision, and the only thing the capsule executor reads to learn what was permitted. It names the canonical object the decision was about, the version of it the decision was made against, the plan the request asked to run, the status, the reason codes, and the audit event. Its field set is closed: a record carrying a field the record does not define is refused rather than read, and a record claiming an effect was performed is refused because the policy layer cannot have performed one. See [ADR-021](decisions/ADR-021-the-decision-record-is-the-authorization.md).
 
+**Deferral** — A decision that postpones a request rather than refusing it, because the policy that will govern it does not exist yet. A deferral names the thing it waits for, grants no authority, and does not outlive the request it defers. Produced today for a request made under a policy epoch the node has not reached yet, provided the operation is non-destructive. See [ADR-022](decisions/ADR-022-a-future-policy-epoch-is-deferred.md).
+
 **Denial Code** — A stable, machine-readable reason for a rejection, with a class and a default decision. See [`errors/denial-codes.json`](errors/denial-codes.json).
 
 **Direct Installer** — The application-like installation path on certified host configurations that avoids user-created boot media. Must not silently disable host security, bypass firmware requirements, or repartition unrelated storage.

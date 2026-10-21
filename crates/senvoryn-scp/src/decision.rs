@@ -69,6 +69,35 @@ impl core::fmt::Display for DecisionStatus {
     }
 }
 
+/// What a deferred decision is waiting for.
+///
+/// A deferral is a decision that says "not yet", so it has to say what it is
+/// waiting for. A deferral that waits for nothing is a decision that never
+/// arrives, and the record would publish a next step that names no event.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Deferral {
+    /// The policy epoch in force must advance to this epoch.
+    ///
+    /// The request named a policy epoch this node has not reached yet, so the
+    /// policy that will govern it does not exist yet.
+    PolicyEpoch(u64),
+}
+
+impl Deferral {
+    /// The next step a caller must take, as the decision record publishes it.
+    ///
+    /// The wording belongs to this implementation; the thing it names does
+    /// not. The epoch is the deferral's substance and it is in the decision
+    /// itself, where a gate cannot disagree with it.
+    pub fn required_next_step(&self) -> String {
+        match self {
+            Self::PolicyEpoch(epoch) => {
+                format!("wait for policy epoch {epoch} to come into force")
+            }
+        }
+    }
+}
+
 /// The result of evaluating one request.
 ///
 /// The decision grants nothing by itself. Effect separation is the sixteenth
@@ -81,6 +110,7 @@ pub struct Decision {
     capability_id: Option<String>,
     policy_epoch: u64,
     resolved: Option<ResolvedResource>,
+    deferral: Option<Deferral>,
 }
 
 impl Decision {
@@ -92,6 +122,7 @@ impl Decision {
             capability_id: None,
             policy_epoch,
             resolved: None,
+            deferral: None,
         }
     }
 
@@ -103,6 +134,24 @@ impl Decision {
             capability_id: None,
             policy_epoch,
             resolved: None,
+            deferral: None,
+        }
+    }
+
+    /// A decision that waits for a policy window to open.
+    ///
+    /// The deferral names what it waits for, because a deferral that waits for
+    /// nothing is a decision that never arrives. It grants no authority: the
+    /// capability scope stays empty, and `grants_authority` is false for
+    /// every status but `PERMIT`.
+    pub fn defer(reason: ReasonCode, deferral: Deferral, policy_epoch: u64) -> Self {
+        Self {
+            status: DecisionStatus::Defer,
+            reason,
+            capability_id: None,
+            policy_epoch,
+            resolved: None,
+            deferral: Some(deferral),
         }
     }
 
@@ -114,6 +163,7 @@ impl Decision {
             capability_id: Some(capability_id),
             policy_epoch,
             resolved: None,
+            deferral: None,
         }
     }
 
@@ -153,6 +203,14 @@ impl Decision {
         self
     }
 
+    /// What the decision waits for, if it waits for anything.
+    ///
+    /// `None` for every decision that is not a deferral. It is not a
+    /// wildcard: a decision that waits for nothing is not waiting.
+    pub fn deferral(&self) -> Option<&Deferral> {
+        self.deferral.as_ref()
+    }
+
     /// Whether the decision grants any authority.
     pub fn grants_authority(&self) -> bool {
         self.status.grants_authority() && self.capability_id.is_some()
@@ -169,6 +227,14 @@ impl Decision {
     /// version of it the decision was made against. The identifier the
     /// request used is the fallback for a decision that was refused before
     /// the resource was resolved.
+    ///
+    /// The record's `required_next_step` comes from the decision itself, not
+    /// from the caller of this method. A deferral is the one status that
+    /// publishes a next step, and what it waits for is the deferral's own
+    /// substance — a value the caller could supply would be a value the
+    /// caller could disagree with, and ADR-021's rule applies to it as much
+    /// as to the plan: the authority has to arrive as the thing the
+    /// authority wrote.
     pub fn to_record(&self, details: &RecordDetails<'_>) -> Value {
         let mut record = BTreeMap::new();
         record.insert("schema".to_owned(), Value::from("senvoryn.decision-record.v1"));
@@ -223,8 +289,8 @@ impl Decision {
         );
         record.insert(
             "required_next_step".to_owned(),
-            match details.required_next_step {
-                Some(step) => Value::from(step),
+            match &self.deferral {
+                Some(deferral) => Value::from(deferral.required_next_step()),
                 None => Value::Null,
             },
         );
@@ -261,6 +327,4 @@ pub struct RecordDetails<'a> {
     pub audit_ref: &'a str,
     /// How long the granted authority lasts.
     pub valid_until: Option<&'a str>,
-    /// What the caller must do next, if anything.
-    pub required_next_step: Option<&'a str>,
 }

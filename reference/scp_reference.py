@@ -53,6 +53,11 @@ SYSTEM_MODES = (
     "OFFLINE",
 )
 
+#: Reversibilities, in ascending order of how reversible the operation is.
+#: ``UNKNOWN`` sorts last because an operation whose reversibility the
+#: registry does not state is treated as the worst case, not as the best one.
+REVERSIBILITIES = ("REVERSIBLE", "COMPENSATABLE", "NON_REVERSIBLE", "UNKNOWN")
+
 #: Every reason code this model can produce. The denial-code registry is the
 #: authority on which codes exist; ``tests/test_scp_reference.py`` checks this
 #: list against it in both directions, and the Rust suite checks its own list
@@ -70,6 +75,7 @@ ALL_REASON_CODES = frozenset(
         "UNKNOWN_OPERATION_RISK",
         "RISK_CLAIM_MISMATCH",
         "POLICY_EPOCH_MISMATCH",
+        "POLICY_EPOCH_NOT_YET_IN_FORCE",
         "REGISTRY_EPOCH_MISMATCH",
         "CLOCK_UNTRUSTED",
         "REGISTRY_NOT_YET_VALID",
@@ -196,6 +202,8 @@ class OperationEntry:
     max_operation_count: Optional[int] = None
     required_preconditions: FrozenSet[str] = frozenset()
     audit_class: str = "STANDARD"
+    reversibility: str = "UNKNOWN"
+    external_effects: FrozenSet[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -255,6 +263,22 @@ class PolicyContext:
 
 
 @dataclass(frozen=True)
+class Deferral:
+    """What a deferred decision is waiting for.
+
+    A deferral is a decision that says "not yet", so it has to say what it is
+    waiting for. A deferral that waits for nothing is a decision that never
+    arrives, and the record would publish a next step that names no event.
+    """
+
+    policy_epoch: int
+
+    def required_next_step(self) -> str:
+        """The next step a caller must take, as the decision record publishes it."""
+        return f"wait for policy epoch {self.policy_epoch} to come into force"
+
+
+@dataclass(frozen=True)
 class Decision:
     """The result of evaluating one request."""
 
@@ -263,6 +287,7 @@ class Decision:
     capability_id: Optional[str] = None
     policy_epoch: int = 0
     resolved: Optional[ResolvedResource] = None
+    deferral: Optional[Deferral] = None
 
     @property
     def effect_performed(self) -> bool:
@@ -283,12 +308,35 @@ def _challenge(reason: str, policy_epoch: int = 0) -> Decision:
     return Decision(Status.CHALLENGE, reason, None, policy_epoch)
 
 
+def _defer(reason: str, deferral: Deferral, policy_epoch: int = 0) -> Decision:
+    """A decision that waits for a policy window to open.
+
+    The deferral names what it waits for, because a deferral that waits for
+    nothing is a decision that never arrives. It grants no authority: the
+    capability scope stays empty.
+    """
+    return Decision(Status.DEFER, reason, None, policy_epoch, None, deferral)
+
+
 def _risk_rank(tier: str) -> int:
     return RISK_TIERS.index(tier)
 
 
 def _audit_rank(audit_class: str) -> int:
     return AUDIT_CLASSES.index(audit_class)
+
+
+def _reversibility_rank(reversibility: str) -> int:
+    """The rank of a reversibility.
+
+    A value this model does not know is ranked as ``UNKNOWN`` rather than
+    raising: the reversibility comes from the registry, and an operation whose
+    reversibility the registry does not state is the worst case, not an
+    error.
+    """
+    if reversibility in REVERSIBILITIES:
+        return REVERSIBILITIES.index(reversibility)
+    return REVERSIBILITIES.index("UNKNOWN")
 
 
 def _merge_entries(entries: list[OperationEntry]) -> OperationEntry:
@@ -303,15 +351,18 @@ def _merge_entries(entries: list[OperationEntry]) -> OperationEntry:
     first = entries[0]
     risk = max(entries, key=lambda entry: _risk_rank(entry.risk_tier))
     audit = max(entries, key=lambda entry: _audit_rank(entry.audit_class))
+    reversibility = max(entries, key=lambda entry: _reversibility_rank(entry.reversibility))
     allowed_modes = set(first.allowed_modes)
     resource_types: set[str] = set()
     approval_requirements: set[str] = set()
     preconditions: set[str] = set()
+    external_effects: set[str] = set()
     for entry in entries:
         allowed_modes &= set(entry.allowed_modes)
         resource_types |= set(entry.resource_types)
         approval_requirements |= set(entry.approval_requirements)
         preconditions |= set(entry.required_preconditions)
+        external_effects |= set(entry.external_effects)
     durations = [entry.max_duration_ms for entry in entries if entry.max_duration_ms is not None]
     counts = [entry.max_operation_count for entry in entries if entry.max_operation_count is not None]
     return OperationEntry(
@@ -324,7 +375,27 @@ def _merge_entries(entries: list[OperationEntry]) -> OperationEntry:
         max_operation_count=min(counts) if counts else None,
         required_preconditions=frozenset(preconditions),
         audit_class=audit.audit_class,
+        reversibility=reversibility.reversibility,
+        external_effects=frozenset(external_effects),
     )
+
+
+def _is_non_destructive(entry: Optional[OperationEntry]) -> bool:
+    """Whether an operation may be deferred rather than denied.
+
+    Specification §3.3 qualifies ``DEFER`` with "operation is non-destructive",
+    and a deferral is a promise of a later answer — so it is a promise this
+    project may only make about an operation whose effect can be undone.
+
+    The registry in force is the only policy this node holds, so the registry
+    in force is what answers. An operation it does not know is not shown to be
+    non-destructive, and an external effect settles it the other way: an
+    operation that reaches outside the node is not undone by restoring local
+    state, whatever the registry says about reversibility.
+    """
+    if entry is None:
+        return False
+    return entry.reversibility == "REVERSIBLE" and not entry.external_effects
 
 
 def evaluate(req: Request, cap: Optional[Capability], ctx: PolicyContext) -> Decision:
@@ -419,8 +490,9 @@ def _decide(
 
     # Gate 9 - policy epoch. The request's epoch, the node's epoch, and the
     # epoch of the registry that will decide it must be the same generation.
-    if req.policy_epoch != ctx.current_policy_epoch:
-        return _deny("POLICY_EPOCH_MISMATCH", epoch)
+    # The registry's own consistency is settled first: a deferral is a
+    # decision, and no decision may be made under a registry whose window has
+    # not opened or has closed.
     if ctx.registry_epoch != ctx.current_policy_epoch:
         return _deny("REGISTRY_EPOCH_MISMATCH", epoch)
     # The registry's own validity window. A registry with no window is a
@@ -432,6 +504,24 @@ def _decide(
         return _deny("REGISTRY_NOT_YET_VALID", epoch)
     if ctx.now_wall_ms >= ctx.registry_valid_until_ms:
         return _deny("REGISTRY_EXPIRED", epoch)
+
+    # The request's own epoch. A request under a **future** epoch names a
+    # policy that does not exist yet, so the answer is neither yes nor no: it
+    # is "not yet", and the node defers it. A request under a **stale** epoch
+    # names a policy that is gone and will not come back, so the node denies
+    # it. ADR-022.
+    #
+    # The deferral is bounded by the request itself: gate 5 has already
+    # refused a request that has expired, so a deferred request becomes a
+    # denial once it expires.
+    if req.policy_epoch != ctx.current_policy_epoch:
+        if req.policy_epoch > ctx.current_policy_epoch and _is_non_destructive(entry):
+            return _defer(
+                "POLICY_EPOCH_NOT_YET_IN_FORCE",
+                Deferral(policy_epoch=req.policy_epoch),
+                epoch,
+            )
+        return _deny("POLICY_EPOCH_MISMATCH", epoch)
 
     # Gate 10 - capability.
     if cap is None:

@@ -52,6 +52,13 @@ impl ReasonCode {
     pub const RISK_CLAIM_MISMATCH: Self = Self("RISK_CLAIM_MISMATCH");
     /// The request was made under a policy epoch this node does not accept.
     pub const POLICY_EPOCH_MISMATCH: Self = Self("POLICY_EPOCH_MISMATCH");
+    /// The request was made under a policy epoch this node has not reached
+    /// yet.
+    ///
+    /// The policy that will govern the request does not exist yet, so the
+    /// answer is neither yes nor no: it is "not yet", and the decision
+    /// defers the request until the epoch is in force.
+    pub const POLICY_EPOCH_NOT_YET_IN_FORCE: Self = Self("POLICY_EPOCH_NOT_YET_IN_FORCE");
     /// The operation registry in force is not the registry for the epoch this
     /// node is running.
     pub const REGISTRY_EPOCH_MISMATCH: Self = Self("REGISTRY_EPOCH_MISMATCH");
@@ -117,6 +124,7 @@ impl ReasonCode {
         Self::UNKNOWN_OPERATION_RISK,
         Self::RISK_CLAIM_MISMATCH,
         Self::POLICY_EPOCH_MISMATCH,
+        Self::POLICY_EPOCH_NOT_YET_IN_FORCE,
         Self::REGISTRY_EPOCH_MISMATCH,
         Self::CLOCK_UNTRUSTED,
         Self::REGISTRY_NOT_YET_VALID,

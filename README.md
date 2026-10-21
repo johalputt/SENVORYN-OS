@@ -166,13 +166,13 @@ SENVORYN-OS/
 |---|---|---|
 | `schemas/` | JSON Schema Draft 2020-12 for principals, resources, requests, capabilities, decisions, approvals, intents, operations, Change Capsules, Origin Capsules, audit events, artifacts, updates, system states | 14 |
 | `state-machines/` | Change Capsule lifecycle + system-mode transition tables | 2 |
-| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 32 codes |
+| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` / `DEFER` defaults) | 33 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
-| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 40 cases + 11 attenuation cases |
-| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 38 cases |
+| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 46 cases + 11 attenuation cases |
+| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 41 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 148 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 21 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 161 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 22 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -193,10 +193,10 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (114 tests)
+# Run the contract test suite (119 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (141 tests)
+# Run the Rust workspace (143 tests)
 cargo test --workspace
 
 # Prove every control has a test that fails when it is broken
@@ -206,7 +206,7 @@ python scripts/mutation-gate.py
 Expected tail of output:
 
 ```
-Ran 114 tests in 0.632s
+Ran 119 tests in 0.375s
 
 OK
 ```
@@ -432,12 +432,15 @@ Every privileged request passes **16 gates in a fixed order**. A rejection at an
 
 `PERMIT` without a finite scope is invalid. `CHALLENGE` and `DEFER` grant no partial execution authority.
 
+`DEFER` is produced by exactly one rule: a request made under a **policy epoch this node has not reached yet**, naming an operation the registry shows to be non-destructive. The deferral names the epoch it waits for, grants nothing, and does not outlive the request it defers. A **stale** epoch is a denial, not a postponement — that policy is gone and will not come back. See [ADR-022](decisions/ADR-022-a-future-policy-epoch-is-deferred.md).
+
 ### Default failure behavior
 
 | Condition | Result |
 |---|---|
 | Missing principal or capability | `DENY` |
 | Unknown/stale policy epoch for a privileged action | `DENY` or `CHALLENGE` — never a silent permit |
+| Request under a policy epoch this node has not reached yet | `DEFER` if the operation is non-destructive, otherwise `DENY` — the policy does not exist yet, so the answer is *not yet*, not *never* |
 | Revoked or expired capability | `DENY` |
 | Unknown resource | `DENY` without dereferencing an untrusted path |
 | Resource whose canonical type contradicts the caller's claim | `DENY` — the claim is checked, not corrected |
@@ -490,7 +493,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 114/114 Python tests passing · 141/141 Rust tests passing · 40/40 shared vectors agreed · 40/40 capsule vectors agreed by two implementations · 148/148 mutations killed · 2/2 state machines structurally valid · 32/32 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 119/119 Python tests passing · 143/143 Rust tests passing · 46/46 shared vectors agreed · 41/41 capsule vectors agreed by two implementations · 161/161 mutations killed · 2/2 state machines structurally valid · 33/33 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 

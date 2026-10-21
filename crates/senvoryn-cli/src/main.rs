@@ -104,7 +104,6 @@ fn run() -> Result<String, String> {
         permitted_payload_digest: request.payload_digest.as_deref(),
         audit_ref: "audit:cli:0001",
         valid_until: None,
-        required_next_step: None,
     });
     Ok(encode_to_string(&record))
 }

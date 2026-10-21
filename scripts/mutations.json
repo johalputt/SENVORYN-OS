@@ -1667,6 +1667,150 @@
       "replace": "if False:",
       "test": "tests.test_capsule_reference.DecisionRecordTests.test_a_record_that_claims_an_effect_was_performed_is_refused",
       "expect_output_contains": "test_a_record_that_claims_an_effect_was_performed_is_refused"
+    },
+    {
+      "id": "M09-future-policy-epoch-is-deferred",
+      "gate": 9,
+      "control": "A request made under a policy epoch this node has not reached yet is deferred, not denied: the policy that will govern it does not exist yet, so the answer is neither yes nor no.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "if request.policy_epoch > context.current_policy_epoch && is_non_destructive(entry.as_ref())",
+      "replace": "if request.policy_epoch > context.current_policy_epoch && false",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-a-future-policy-epoch-is-deferred",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M09-stale-policy-epoch-is-denied",
+      "gate": 9,
+      "control": "A request made under a stale policy epoch is denied, not deferred: that policy is gone and will not come back.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "if request.policy_epoch > context.current_policy_epoch && is_non_destructive(entry.as_ref())",
+      "replace": "if request.policy_epoch < context.current_policy_epoch && is_non_destructive(entry.as_ref())",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "SCP-005-policy-epoch-mismatch",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M09-irreversible-operation-is-not-deferred",
+      "gate": 9,
+      "control": "Only an operation the registry shows to be non-destructive may be deferred. An operation whose effect cannot be undone is not one this project may postpone.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "entry.reversibility == Reversibility::Reversible && entry.external_effects.is_empty()",
+      "replace": "entry.external_effects.is_empty()",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-an-irreversible-operation-is-not-deferred",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M09-external-effect-is-not-deferred",
+      "gate": 9,
+      "control": "An operation that reaches outside the node is not undone by restoring local state, whatever the registry says about reversibility, so it is not deferred.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "entry.reversibility == Reversibility::Reversible && entry.external_effects.is_empty()",
+      "replace": "entry.reversibility == Reversibility::Reversible",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-an-external-effect-is-not-deferred",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M09-unknown-operation-is-not-deferred",
+      "gate": 9,
+      "control": "An operation the registry does not know is not shown to be non-destructive, so it is denied rather than deferred. Absence is never protection.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "        None => false,",
+      "replace": "        None => true,",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-an-unknown-operation-is-not-deferred",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M09-deferral-names-the-epoch-it-waits-for",
+      "gate": 9,
+      "control": "A deferral names the epoch it waits for. A deferral that waits for nothing is a decision that never arrives.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "Deferral::PolicyEpoch(request.policy_epoch),",
+      "replace": "Deferral::PolicyEpoch(context.current_policy_epoch),",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-a-future-policy-epoch-is-deferred",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M09-deferral-does-not-outlive-the-request",
+      "gate": 9,
+      "control": "A deferral does not outlive the request it defers: the freshness gate refuses an expired request before the epoch gate is reached.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "if request.issued_at > context.now_monotonic || request.expires_at <= context.now_monotonic {",
+      "replace": "if false {",
+      "package": "senvoryn-scp",
+      "test": "a_deferral_does_not_outlive_the_request",
+      "expect_output_contains": "a deferral outlived the request it defers",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "SCP-py-future-policy-epoch-is-deferred",
+      "gate": 9,
+      "control": "The reference model defers a request made under a policy epoch this node has not reached yet, so that the two implementations agree about the difference between a future epoch and a stale one.",
+      "file": "reference/scp_reference.py",
+      "find": "if req.policy_epoch > ctx.current_policy_epoch and _is_non_destructive(entry):",
+      "replace": "if req.policy_epoch > ctx.current_policy_epoch and False:",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-a-future-policy-epoch-is-deferred"
+    },
+    {
+      "id": "SCP-py-stale-policy-epoch-is-denied",
+      "gate": 9,
+      "control": "The reference model denies a request made under a stale policy epoch, so that the two implementations agree about the difference between a future epoch and a stale one.",
+      "file": "reference/scp_reference.py",
+      "find": "if req.policy_epoch > ctx.current_policy_epoch and _is_non_destructive(entry):",
+      "replace": "if req.policy_epoch < ctx.current_policy_epoch and _is_non_destructive(entry):",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "SCP-005-policy-epoch-mismatch"
+    },
+    {
+      "id": "SCP-py-irreversible-operation-is-not-deferred",
+      "gate": 9,
+      "control": "The reference model refuses to defer an operation whose effect cannot be undone, so that the two implementations agree about which operations may be deferred.",
+      "file": "reference/scp_reference.py",
+      "find": "return entry.reversibility == \"REVERSIBLE\" and not entry.external_effects",
+      "replace": "return not entry.external_effects",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-an-irreversible-operation-is-not-deferred"
+    },
+    {
+      "id": "SCP-py-external-effect-is-not-deferred",
+      "gate": 9,
+      "control": "The reference model refuses to defer an operation that reaches outside the node, so that the two implementations agree about which operations may be deferred.",
+      "file": "reference/scp_reference.py",
+      "find": "return entry.reversibility == \"REVERSIBLE\" and not entry.external_effects",
+      "replace": "return entry.reversibility == \"REVERSIBLE\"",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-an-external-effect-is-not-deferred"
+    },
+    {
+      "id": "SCP-py-unknown-operation-is-not-deferred",
+      "gate": 9,
+      "control": "The reference model refuses to defer an operation the registry does not know, so that the two implementations agree about which operations may be deferred.",
+      "file": "reference/scp_reference.py",
+      "find": "    if entry is None:\n        return False\n    return entry.reversibility == \"REVERSIBLE\" and not entry.external_effects",
+      "replace": "    if entry is None:\n        return True\n    return entry.reversibility == \"REVERSIBLE\" and not entry.external_effects",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-an-unknown-operation-is-not-deferred"
+    },
+    {
+      "id": "SCP-py-deferral-names-the-epoch-it-waits-for",
+      "gate": 9,
+      "control": "The reference model's deferral names the epoch it waits for, so that the two implementations agree about what a deferral is waiting for.",
+      "file": "reference/scp_reference.py",
+      "find": "Deferral(policy_epoch=req.policy_epoch),",
+      "replace": "Deferral(policy_epoch=ctx.current_policy_epoch),",
+      "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
+      "expect_output_contains": "gate-09-a-future-policy-epoch-is-deferred"
     }
   ]
 }

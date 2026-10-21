@@ -458,6 +458,23 @@
       },
       "expected_state": "REJECTED",
       "expected_reason_contains": "does not name the plan"
+    },
+    {
+      "id": "CC-041-deferred-decision-authorises-nothing",
+      "control": "A decision that postponed the request authorises nothing. A deferral grants no partial execution authority, so a capsule under one is rejected before anything runs.",
+      "decision": {
+        "status": "DEFER",
+        "digest": "matching",
+        "version": "matching",
+        "approvals": [
+          {
+            "type": "USER_CONFIRMATION",
+            "binds": "capsule"
+          }
+        ]
+      },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "granted no authority"
     }
   ]
 }

@@ -217,6 +217,7 @@ def main() -> int:
             survivors.append(identifier)
             print(f"    SURVIVED — a different test went red, not {mutation['test']}.")
             print("    A mutation caught by the wrong test proves nothing.")
+            print("    " + "\n    ".join(output.splitlines()[:24]))
             continue
         if expected not in output:
             survivors.append(identifier)

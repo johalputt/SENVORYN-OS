@@ -19,8 +19,8 @@ use senvoryn_capsule::{
     FaultPoint, State,
 };
 use senvoryn_scp::{
-    Decision, DecisionRecord, DecisionStatus, OperationRegistry, ReasonCode, RecordDetails,
-    ResolvedResource,
+    Decision, DecisionRecord, DecisionStatus, Deferral, OperationRegistry, ReasonCode,
+    RecordDetails, ResolvedResource,
 };
 
 const VECTORS_JSON: &str = include_str!("../../../conformance/capsule-vectors.json");
@@ -231,8 +231,20 @@ fn build_decision_record(specification: Option<&Value>) -> DecisionRecord {
         }
         DecisionStatus::Deny => Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
         DecisionStatus::Challenge => Decision::challenge(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
-        DecisionStatus::Defer => Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
-        DecisionStatus::Quarantine => Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
+        // A deferral is a real status, and the record has to carry it. A
+        // harness that wrote a denial here would make a case about a
+        // deferred decision pass for the wrong reason — the executor would
+        // refuse a DENY, and the case would say nothing about DEFER.
+        DecisionStatus::Defer => {
+            Decision::defer(ReasonCode::POLICY_EPOCH_NOT_YET_IN_FORCE, Deferral::PolicyEpoch(8), 7)
+        }
+        // No gate produces a quarantine, so there is no decision to write.
+        // The harness refuses rather than writing a denial under this name:
+        // a case that asked for a quarantine and silently received a denial
+        // would prove nothing about either.
+        DecisionStatus::Quarantine => {
+            panic!("no decision produces a quarantine, so none can be written")
+        }
     };
     let decision = match permitted_resource_version {
         Some(version) => decision.with_resolved(ResolvedResource {
@@ -251,7 +263,6 @@ fn build_decision_record(specification: Option<&Value>) -> DecisionRecord {
         permitted_payload_digest: permitted_digest.as_deref(),
         audit_ref: "audit:vector:0001",
         valid_until: None,
-        required_next_step: None,
     });
     DecisionRecord::from_value(&record)
         .unwrap_or_else(|error| panic!("the decision record is malformed: {error}"))

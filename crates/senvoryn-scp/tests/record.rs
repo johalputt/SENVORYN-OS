@@ -31,7 +31,6 @@ fn record(permitted_payload_digest: Option<&str>) -> Value {
         permitted_payload_digest,
         audit_ref: "audit:record:0001",
         valid_until: None,
-        required_next_step: None,
     })
 }
 

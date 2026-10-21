@@ -52,6 +52,11 @@
       "default": "DENY"
     },
     {
+      "code": "POLICY_EPOCH_NOT_YET_IN_FORCE",
+      "class": "policy",
+      "default": "DEFER"
+    },
+    {
       "code": "REGISTRY_EPOCH_MISMATCH",
       "class": "policy",
       "default": "DENY"

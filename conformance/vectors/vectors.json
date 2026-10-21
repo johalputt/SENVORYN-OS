@@ -29,7 +29,9 @@
         "resource_exists",
         "capability_scope_matches"
       ],
-      "audit_class": "STANDARD"
+      "audit_class": "STANDARD",
+      "reversibility": "REVERSIBLE",
+      "external_effects": []
     },
     {
       "operation_id": "write",
@@ -51,7 +53,11 @@
         "resource_version_matches",
         "recovery_or_compensation_defined"
       ],
-      "audit_class": "SENSITIVE"
+      "audit_class": "SENSITIVE",
+      "reversibility": "COMPENSATABLE",
+      "external_effects": [
+        "persistent_write"
+      ]
     },
     {
       "operation_id": "delete",
@@ -75,7 +81,12 @@
         "exact_target_displayed",
         "backup_or_loss_acknowledged"
       ],
-      "audit_class": "SECURITY_CRITICAL"
+      "audit_class": "SECURITY_CRITICAL",
+      "reversibility": "NON_REVERSIBLE",
+      "external_effects": [
+        "persistent_write",
+        "irreversible_effect"
+      ]
     },
     {
       "operation_id": "recover",
@@ -97,7 +108,11 @@
         "recovery_artifact_verified",
         "target_generation_identified"
       ],
-      "audit_class": "SECURITY_CRITICAL"
+      "audit_class": "SECURITY_CRITICAL",
+      "reversibility": "COMPENSATABLE",
+      "external_effects": [
+        "persistent_write"
+      ]
     }
   ],
   "request": {
@@ -546,6 +561,132 @@
       "expected": {
         "status": "DENY",
         "reason": "OPERATION_BLOCKED_BY_SYSTEM_MODE"
+      }
+    },
+    {
+      "id": "gate-09-a-future-policy-epoch-is-deferred",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "request": {
+        "policy_epoch": 8
+      },
+      "expected": {
+        "status": "DEFER",
+        "reason": "POLICY_EPOCH_NOT_YET_IN_FORCE",
+        "waits_for_policy_epoch": 8
+      }
+    },
+    {
+      "id": "gate-09-a-destructive-operation-is-not-deferred",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "request": {
+        "operation": "delete",
+        "policy_epoch": 8
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "POLICY_EPOCH_MISMATCH"
+      }
+    },
+    {
+      "id": "gate-09-an-unknown-operation-is-not-deferred",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "request": {
+        "operation": "mystery.execute",
+        "policy_epoch": 8
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "POLICY_EPOCH_MISMATCH"
+      }
+    },
+    {
+      "id": "gate-09-an-irreversible-operation-is-not-deferred",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "request": {
+        "operation": "erase",
+        "policy_epoch": 8
+      },
+      "registry": [
+        {
+          "operation_id": "erase",
+          "risk_tier": "R3",
+          "approval_requirements": [
+            "NONE"
+          ],
+          "allowed_modes": [
+            "NORMAL"
+          ],
+          "resource_types": [
+            "file_object"
+          ],
+          "max_duration_ms": 30000,
+          "max_operation_count": 1,
+          "required_preconditions": [
+            "resource_exists"
+          ],
+          "audit_class": "SECURITY_CRITICAL",
+          "reversibility": "NON_REVERSIBLE",
+          "external_effects": []
+        }
+      ],
+      "expected": {
+        "status": "DENY",
+        "reason": "POLICY_EPOCH_MISMATCH"
+      }
+    },
+    {
+      "id": "gate-09-an-external-effect-is-not-deferred",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "request": {
+        "operation": "publish",
+        "policy_epoch": 8
+      },
+      "registry": [
+        {
+          "operation_id": "publish",
+          "risk_tier": "R2",
+          "approval_requirements": [
+            "NONE"
+          ],
+          "allowed_modes": [
+            "NORMAL"
+          ],
+          "resource_types": [
+            "file_object"
+          ],
+          "max_duration_ms": 30000,
+          "max_operation_count": 1,
+          "required_preconditions": [
+            "resource_exists"
+          ],
+          "audit_class": "STANDARD",
+          "reversibility": "REVERSIBLE",
+          "external_effects": [
+            "external_write"
+          ]
+        }
+      ],
+      "expected": {
+        "status": "DENY",
+        "reason": "POLICY_EPOCH_MISMATCH"
+      }
+    },
+    {
+      "id": "gate-09-a-deferral-does-not-outlive-the-request",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "request": {
+        "policy_epoch": 8,
+        "expires_at": 1000
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "REQUEST_NOT_FRESH"
       }
     },
     {
