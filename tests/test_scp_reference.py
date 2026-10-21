@@ -105,6 +105,7 @@ def make_context(**overrides):
         known_principals=frozenset({"user:alice"}),
         resolved_resources={"file:report": "v1"},
         operations=REGISTRY,
+        registry_epoch=7,
         audit_state=AuditState.READY,
         satisfied_preconditions=frozenset(
             {"resource_exists", "resource_version_matches", "exact_target_displayed"}
@@ -159,6 +160,31 @@ class SCPReferenceTests(unittest.TestCase):
     def test_revoked_capability_denied(self):
         ctx = make_context(revoked_capabilities=frozenset({"cap-00000001"}))
         self.assertEqual(evaluate(make_request(), make_capability(), ctx).reason, "CAPABILITY_REVOKED")
+
+    def test_a_registry_from_another_epoch_is_not_the_policy_in_force(self):
+        # A registry carries the policy generation it was published for. If
+        # the node is running a different generation, the risk tiers it
+        # consults come from policy that is not the policy the request was
+        # bound to, and the request's own epoch check cannot see it: the
+        # request and the node agree about the epoch while the registry
+        # disagrees with both.
+        decision = evaluate(
+            make_request(), make_capability(), make_context(registry_epoch=6)
+        )
+        self.assertEqual(
+            decision.reason,
+            "REGISTRY_EPOCH_MISMATCH",
+            "a registry from another epoch is not the policy in force, "
+            "and the reason must say so",
+        )
+        self.assertEqual(decision.status, Status.DENY)
+
+    def test_the_registry_for_the_epoch_in_force_is_the_policy_in_force(self):
+        # The other half of the rule, and the one that keeps the check
+        # honest: a registry that belongs to the epoch in force decides
+        # normally.
+        decision = evaluate(make_request(), make_capability(), make_context())
+        self.assertEqual(decision.status, Status.PERMIT, decision.reason)
 
     def test_policy_epoch_mismatch_denied(self):
         req = make_request(policy_epoch=6)

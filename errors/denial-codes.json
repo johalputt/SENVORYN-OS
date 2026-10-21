@@ -10,6 +10,7 @@
     {"code":"UNKNOWN_OPERATION_RISK","class":"policy","default":"DENY"},
     {"code":"RISK_CLAIM_MISMATCH","class":"policy","default":"DENY"},
     {"code":"POLICY_EPOCH_MISMATCH","class":"policy","default":"DENY"},
+    {"code":"REGISTRY_EPOCH_MISMATCH","class":"policy","default":"DENY"},
     {"code":"MISSING_CAPABILITY","class":"capability","default":"DENY"},
     {"code":"UNVERIFIED_CAPABILITY_ISSUER","class":"capability","default":"DENY"},
     {"code":"CAPABILITY_REVOKED","class":"capability","default":"DENY"},

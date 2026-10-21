@@ -181,6 +181,7 @@ pub struct OperationEntry {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct OperationRegistry {
     entries: Vec<OperationEntry>,
+    epoch: u64,
 }
 
 /// Why a registry document could not be read.
@@ -211,9 +212,18 @@ impl core::fmt::Display for RegistryError {
 impl std::error::Error for RegistryError {}
 
 impl OperationRegistry {
-    /// A registry holding the given entries.
-    pub fn from_entries(entries: Vec<OperationEntry>) -> Self {
-        Self { entries }
+    /// A registry holding the given entries, for the given policy epoch.
+    ///
+    /// The epoch belongs to the registry rather than to the context that
+    /// holds it, because it is a property of the document: a registry
+    /// belongs to the policy generation it was published for.
+    pub fn from_entries(entries: Vec<OperationEntry>, epoch: u64) -> Self {
+        Self { entries, epoch }
+    }
+
+    /// The policy epoch this registry belongs to.
+    pub fn epoch(&self) -> u64 {
+        self.epoch
     }
 
     /// The entries in the registry, in the order they were read.
@@ -291,11 +301,24 @@ impl OperationRegistry {
                 detail: "absent or not an array".to_owned(),
             }
         })?;
+        let epoch = document
+            .get("registry_epoch")
+            .and_then(Value::as_int)
+            .ok_or_else(|| RegistryError::Malformed {
+                field: "registry_epoch".to_owned(),
+                detail: "absent or not an integer".to_owned(),
+            })
+            .and_then(|number| {
+                u64::try_from(number).map_err(|_| RegistryError::Malformed {
+                    field: "registry_epoch".to_owned(),
+                    detail: "negative".to_owned(),
+                })
+            })?;
         let mut entries = Vec::with_capacity(operations.len());
         for operation in operations {
             entries.push(read_entry(operation)?);
         }
-        Ok(Self { entries })
+        Ok(Self { entries, epoch })
     }
 
     /// Reads a registry from JSON text.

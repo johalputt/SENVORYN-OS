@@ -93,7 +93,7 @@ def _request(raw):
     )
 
 
-def _context(raw, registry):
+def _context(raw, registry, registry_epoch):
     return PolicyContext(
         local_node_id=raw["local_node_id"],
         current_policy_epoch=raw["current_policy_epoch"],
@@ -102,6 +102,7 @@ def _context(raw, registry):
         known_principals=frozenset(raw["known_principals"]),
         resolved_resources=dict(raw["resolved_resources"]),
         operations=tuple(_operation_entry(entry) for entry in registry),
+        registry_epoch=registry_epoch,
         audit_state=AuditState(raw["audit_state"]),
         action_digest=raw.get("action_digest"),
         revoked_nonces=frozenset(raw.get("revoked_nonces", [])),
@@ -133,7 +134,10 @@ class ConformanceVectorTests(unittest.TestCase):
                     )
                 else:
                     capability = _capability(VECTORS["capability"])
-                context = _context(_merged(VECTORS["context"], case.get("context")), registry)
+                registry_epoch = case.get("registry_epoch", VECTORS["registry_epoch"])
+                context = _context(
+                    _merged(VECTORS["context"], case.get("context")), registry, registry_epoch
+                )
 
                 decision = evaluate(request, capability, context)
 

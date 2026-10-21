@@ -157,7 +157,26 @@ maximum is published so the claim can be read rather than believed.
   tests all have to move together.
 
 **What this costs:**
-- This ADR; the implementation is the next batch.
+- This ADR.
+
+**What is implemented, and what is not:**
+
+| Part | State | Where |
+|---|---|---|
+| The four reconciliation rules | done | the capsule executor, in both implementations, each with a test and a mutation |
+| The registry's epoch binding | done | the decision path, at gate 9, with a reason code of its own and a shared vector |
+| The registry's validity window | **not done** | the decision is above; the schema, the parser and the refusal are still to be written |
+
+The epoch binding is a check inside the decision path, at gate 9, because gate
+9 is the policy-epoch gate and the registry's epoch is a policy epoch: the
+request's epoch, the node's epoch and the registry's epoch are three names
+for the same generation, and they have to agree. The check is at gate 9
+rather than before gate 1 because a refusal about the *system's* state
+placed ahead of the request's own gates would report a different failure
+than the one the request actually has. A registry from another generation
+can still produce a denial of its own — the mode gate consults the registry
+before gate 9 — but it can never produce a permit, because gate 9 comes
+before every gate that can grant anything.
 
 ## Alternatives considered
 
@@ -175,14 +194,21 @@ maximum is published so the claim can be read rather than believed.
 
 ## Open items
 
-- [ ] Where the registry's epoch binding and its validity window sit in the
-      implementation — a check inside the decision path, or a refusal to load
-      a registry that cannot be used. What evidence would close it: the
-      decision path stays pure, so the check needs the clock as a parameter
-      it already receives, and a vector for each refusal.
-- [ ] The reason codes for a mismatched registry epoch and for an expired
-      registry. What evidence would close it: a decision, and the
-      registry-sync tests in both directions.
+- [x] Where the registry's epoch binding sits in the implementation — a
+      check inside the decision path, at gate 9, with a shared vector and a
+      mutation in both languages. The evidence is the vector
+      `SCP-005-registry-epoch-mismatch` and the mutations
+      `M09-registry-epoch` and `SCP-py-registry-epoch`.
+- [ ] Where the registry's *validity window* sits in the implementation. The
+      epoch binding needed no clock, because both numbers are epochs; the
+      window needs one, and the decision path's clock is the request's
+      monotonic clock, which is not a wall clock. What evidence would close
+      it: the boot-epoch strategy below, and a vector for the refusal.
+- [x] The reason code for a mismatched registry epoch —
+      `REGISTRY_EPOCH_MISMATCH`, in the policy class, with the registry-sync
+      tests checking both directions.
+- [ ] The reason code for an expired registry. What evidence would close it:
+      a decision, and the registry-sync tests in both directions.
 - [ ] Where the strict UTC timestamp parser lives so that the SCP and the
       capsule can both use it without depending on each other. What evidence
       would close it: a move into a crate both depend on, with the capsule's

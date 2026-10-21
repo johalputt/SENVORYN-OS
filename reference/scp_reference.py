@@ -69,6 +69,7 @@ ALL_REASON_CODES = frozenset(
         "UNKNOWN_OPERATION_RISK",
         "RISK_CLAIM_MISMATCH",
         "POLICY_EPOCH_MISMATCH",
+        "REGISTRY_EPOCH_MISMATCH",
         "MISSING_CAPABILITY",
         "UNVERIFIED_CAPABILITY_ISSUER",
         "CAPABILITY_REVOKED",
@@ -214,6 +215,7 @@ class PolicyContext:
     known_principals: FrozenSet[str]
     resolved_resources: Mapping[str, str]
     operations: tuple[OperationEntry, ...]
+    registry_epoch: int
     audit_state: AuditState
     action_digest: Optional[str] = None
     revoked_nonces: FrozenSet[str] = frozenset()
@@ -355,9 +357,12 @@ def evaluate(req: Request, cap: Optional[Capability], ctx: PolicyContext) -> Dec
     if entry is not None and ctx.mode not in entry.allowed_modes:
         return _deny("OPERATION_BLOCKED_BY_SYSTEM_MODE", epoch)
 
-    # Gate 9 - policy epoch.
+    # Gate 9 - policy epoch. The request's epoch, the node's epoch, and the
+    # epoch of the registry that will decide it must be the same generation.
     if req.policy_epoch != ctx.current_policy_epoch:
         return _deny("POLICY_EPOCH_MISMATCH", epoch)
+    if ctx.registry_epoch != ctx.current_policy_epoch:
+        return _deny("REGISTRY_EPOCH_MISMATCH", epoch)
 
     # Gate 10 - capability.
     if cap is None:

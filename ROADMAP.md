@@ -20,13 +20,13 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | Statement | Status |
 |---|---|
 | 14 JSON Schemas are structurally valid Draft 2020-12 | ✅ Verified |
-| 97 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
-| 117 Rust tests pass | ✅ Verified (Rust stable) |
-| 31 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
+| 99 Python contract tests pass | ✅ Verified (Python 3.12 / 3.13) |
+| 119 Rust tests pass | ✅ Verified (Rust stable) |
+| 33 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
 | 36 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
-| Every control has a test that fails when the control is broken | ✅ Verified — 93 mutations, all killed |
+| Every control has a test that fails when the control is broken | ✅ Verified — 96 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
-| 27 denial codes are unique with defined defaults | ✅ Verified |
+| 28 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
 | The decision evaluator is pure (no side effects) | ✅ Verified by test + code review |
 | A threat model for the SCP decision path exists | 🟡 First draft exists — **not independently reviewed** (Gate 0 blocker) |
@@ -80,8 +80,8 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] Property-based test suite: attenuation never broadens authority; denied requests create no effects; schema version change never silently grants new fields — seeded property tests in `crates/senvoryn-scp/tests/properties.rs`
 - [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
-- [x] Deterministic reason codes covering all 27 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 93 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
+- [x] Deterministic reason codes covering all 28 registry entries — cross-checked against the registry by both implementations
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 96 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
 - [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
 - [ ] An independent reviewer confirms the evaluator has no side effects
 
@@ -108,7 +108,8 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 
 - [x] The budget has to fit inside the validity window: a capsule whose own budget outlasts its own window contradicts itself, and it is refused at validation ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
 - [x] The registry's `max_duration_ms` and `max_operation_count` are per operation, and the capsule's budget is a total for the plan; the four rules that reconcile them are decided, implemented and tested in both implementations
-- [ ] The registry's `registry_epoch` is parsed by nothing, and the registry has no validity window: the policy in force can be older than the epoch the request is bound to, and nothing bounds how old it is ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
+- [x] The registry's `registry_epoch` is bound to the epoch in force: a decision made under a registry from another generation is refused, with a reason of its own ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
+- [ ] The registry has no validity window: nothing bounds how old the policy in force is, and the system has no way to know that a registry is stale ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
 - [ ] The executor drives a simulated environment; nothing here proves that a real system can be rolled back
 - [ ] The vectors are read by two implementations of the same contract, and whoever writes the contract decides what "right" means. That is a strong check and not a proof
 

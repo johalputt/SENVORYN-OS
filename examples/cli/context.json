@@ -1,6 +1,7 @@
 {
   "local_node_id": "node:local",
   "current_policy_epoch": 7,
+  "registry_epoch": 7,
   "now_monotonic": 500,
   "mode": "NORMAL",
   "known_principals": ["user:alice"],

@@ -1051,6 +1051,40 @@
       "replace": "if False:",
       "test": "tests.test_capsule_reference.ValidationTests.test_a_capsule_whose_budget_exceeds_the_registry_allowance_is_refused",
       "expect_output_contains": "a capsule whose budget exceeds the registry's allowance must be refused"
+    },
+    {
+      "id": "M09-registry-epoch",
+      "gate": 9,
+      "control": "The registry in force must be the registry for the epoch in force: a decision made under a registry from another generation is a decision made under policy that is not the policy in force.",
+      "file": "crates/senvoryn-scp/src/evaluator.rs",
+      "find": "    if context.operations.epoch() != context.current_policy_epoch {",
+      "replace": "    if false {",
+      "package": "senvoryn-scp",
+      "test": "every_case_matches_the_expected_decision",
+      "expect_output_contains": "SCP-005-registry-epoch-mismatch",
+      "test_file": "conformance_vectors"
+    },
+    {
+      "id": "M09-registry-epoch-is-read",
+      "gate": 9,
+      "control": "The registry's epoch is read from the document. A registry that declared its epoch and was then read as having none would be a registry that could not be bound to the policy in force.",
+      "file": "crates/senvoryn-scp/src/registry.rs",
+      "find": "            .get(\"registry_epoch\")\n            .and_then(Value::as_int)",
+      "replace": "            .get(\"registry_epoch\")\n            .and_then(Value::as_int)\n            .map(|_| 0i64)",
+      "package": "senvoryn-scp",
+      "test": "the_registry_for_the_epoch_in_force_is_the_policy_in_force",
+      "expect_output_contains": "the registry for the epoch in force must decide the request",
+      "test_file": "registry_epoch"
+    },
+    {
+      "id": "SCP-py-registry-epoch",
+      "gate": 9,
+      "control": "The reference model binds the registry to the epoch in force, so that the two implementations agree about which policy is in force.",
+      "file": "reference/scp_reference.py",
+      "find": "    if ctx.registry_epoch != ctx.current_policy_epoch:",
+      "replace": "    if False:",
+      "test": "tests.test_scp_reference.SCPReferenceTests.test_a_registry_from_another_epoch_is_not_the_policy_in_force",
+      "expect_output_contains": "a registry from another epoch is not the policy in force"
     }
   ]
 }

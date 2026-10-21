@@ -86,9 +86,17 @@ pub fn evaluate(
         }
     }
 
-    // Gate 9 — policy epoch.
+    // Gate 9 — policy epoch. The request's epoch, the node's epoch, and
+    // the epoch of the registry that will decide it must be the same
+    // generation. A decision made under a registry from another generation
+    // is a decision made under policy that is not the policy in force, and
+    // the request's own epoch check cannot see it: the request and the node
+    // agree about the epoch while the registry disagrees with both.
     if request.policy_epoch != context.current_policy_epoch {
         return Decision::deny(ReasonCode::POLICY_EPOCH_MISMATCH, epoch);
+    }
+    if context.operations.epoch() != context.current_policy_epoch {
+        return Decision::deny(ReasonCode::REGISTRY_EPOCH_MISMATCH, epoch);
     }
 
     // Gate 10 — capability.

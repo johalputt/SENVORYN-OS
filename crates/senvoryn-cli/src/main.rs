@@ -148,6 +148,7 @@ fn read_context(document: &Value) -> Result<PolicyContext, String> {
 }
 
 fn read_registry(document: &Value) -> Result<OperationRegistry, String> {
+    let epoch = required_u64(document, "registry_epoch")?;
     let operations = document
         .get("operations")
         .and_then(Value::as_array)
@@ -181,7 +182,7 @@ fn read_registry(document: &Value) -> Result<OperationRegistry, String> {
                 .unwrap_or(senvoryn_scp::AuditClass::Standard),
         });
     }
-    Ok(OperationRegistry::from_entries(entries))
+    Ok(OperationRegistry::from_entries(entries, epoch))
 }
 
 fn read_capability(document: &Value) -> Result<Capability, String> {

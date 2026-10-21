@@ -50,6 +50,9 @@ impl ReasonCode {
     pub const RISK_CLAIM_MISMATCH: Self = Self("RISK_CLAIM_MISMATCH");
     /// The request was made under a policy epoch this node does not accept.
     pub const POLICY_EPOCH_MISMATCH: Self = Self("POLICY_EPOCH_MISMATCH");
+    /// The operation registry in force is not the registry for the epoch this
+    /// node is running.
+    pub const REGISTRY_EPOCH_MISMATCH: Self = Self("REGISTRY_EPOCH_MISMATCH");
     /// No capability was presented.
     pub const MISSING_CAPABILITY: Self = Self("MISSING_CAPABILITY");
     /// The capability's issuer could not be verified.
@@ -102,6 +105,7 @@ impl ReasonCode {
         Self::UNKNOWN_OPERATION_RISK,
         Self::RISK_CLAIM_MISMATCH,
         Self::POLICY_EPOCH_MISMATCH,
+        Self::REGISTRY_EPOCH_MISMATCH,
         Self::MISSING_CAPABILITY,
         Self::UNVERIFIED_CAPABILITY_ISSUER,
         Self::CAPABILITY_REVOKED,

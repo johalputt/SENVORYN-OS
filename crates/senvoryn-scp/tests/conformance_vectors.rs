@@ -87,8 +87,22 @@ fn operation_entry(raw: &Value) -> OperationEntry {
     }
 }
 
-fn operation_registry(entries: &[Value]) -> OperationRegistry {
-    OperationRegistry::from_entries(entries.iter().map(operation_entry).collect())
+fn operation_registry(entries: &[Value], epoch: u64) -> OperationRegistry {
+    OperationRegistry::from_entries(entries.iter().map(operation_entry).collect(), epoch)
+}
+
+/// Reads an integer that is the value itself, not an object holding one.
+fn u64_value(value: &Value, what: &str) -> u64 {
+    let number = value.as_int().unwrap_or_else(|| panic!("{what} is not an integer"));
+    u64::try_from(number).unwrap_or_else(|_| panic!("{what} is negative"))
+}
+
+/// The policy epoch the vector file's registry belongs to.
+fn registry_epoch_of(document: &Value) -> u64 {
+    u64_value(
+        document.get("registry_epoch").expect("the vector file has a registry epoch"),
+        "registry_epoch",
+    )
 }
 
 fn capability_from(raw: &Value) -> Capability {
@@ -208,9 +222,13 @@ fn every_case_matches_the_expected_decision() {
 
     for case in cases {
         let id = string_field(case, "id");
+        let registry_epoch = match case.get("registry_epoch") {
+            None => registry_epoch_of(&document),
+            Some(value) => u64_value(value, &format!("{id}: registry_epoch")),
+        };
         let registry = match case.get("registry") {
-            None => operation_registry(base_registry),
-            Some(Value::Array(entries)) => operation_registry(entries),
+            None => operation_registry(base_registry, registry_epoch),
+            Some(Value::Array(entries)) => operation_registry(entries, registry_epoch),
             Some(_) => panic!("{id}: the registry override must be an array"),
         };
 
@@ -337,7 +355,7 @@ fn a_decision_record_reports_that_no_effect_was_performed() {
     let base_context = document.get("context").expect("the vector file has a base context");
     let base_registry =
         document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
-    let registry = operation_registry(base_registry);
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
     let request = request_from(base_request);
     let capability = capability_from(base_capability);
     let context = context_from(base_context, &registry);
@@ -369,7 +387,7 @@ fn a_permitted_decision_is_scoped_to_its_capability() {
     let base_context = document.get("context").expect("the vector file has a base context");
     let base_registry =
         document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
-    let registry = operation_registry(base_registry);
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
     let request = request_from(base_request);
     let capability = capability_from(base_capability);
     let context = context_from(base_context, &registry);
@@ -389,7 +407,7 @@ fn a_denied_decision_grants_nothing() {
     let base_context = document.get("context").expect("the vector file has a base context");
     let base_registry =
         document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
-    let registry = operation_registry(base_registry);
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
     let mut request = request_from(base_request);
     request.principal_id = "user:mallory".to_owned();
     let capability = capability_from(base_capability);
@@ -411,7 +429,7 @@ fn a_challenge_grants_no_partial_authority() {
     let base_context = document.get("context").expect("the vector file has a base context");
     let base_registry =
         document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
-    let registry = operation_registry(base_registry);
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
     let mut request = request_from(base_request);
     request.operation = "delete".to_owned();
     request.risk_claim = RiskTier::R3;

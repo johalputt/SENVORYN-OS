@@ -1,6 +1,7 @@
 {
   "schema": "senvoryn.conformance-vectors.v1",
   "description": "Shared conformance vectors for the Senvoryn SCP decision oracle. The Python reference model in reference/scp_reference.py and the Rust implementation in crates/senvoryn-scp both execute this file, and CI fails if they produce different decisions or reason codes. A case supplies only the fields that differ from the base; each named field replaces the base value wholesale, so there is no merge rule for the two implementations to disagree about. Times are monotonic milliseconds since boot. The vectors cover the policy layer, where a risk claim is a typed tier in Rust and a checked string in Python. A malformed risk claim is a wire-layer rejection and is tested in each implementation's own suite rather than here, because the two layers reject it in different places.",
+  "registry_epoch": 7,
   "registry": [
     {
       "operation_id": "read",
@@ -188,6 +189,13 @@
       "gate": 9,
       "request": { "policy_epoch": 6 },
       "expected": { "status": "DENY", "reason": "POLICY_EPOCH_MISMATCH" }
+    },
+    {
+      "id": "SCP-005-registry-epoch-mismatch",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "registry_epoch": 6,
+      "expected": { "status": "DENY", "reason": "REGISTRY_EPOCH_MISMATCH" }
     },
     {
       "id": "SCP-005-capability-epoch-mismatch",

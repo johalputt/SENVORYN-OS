@@ -1,7 +1,7 @@
 {
   "schema": "senvoryn.operation-registry.v1",
   "registry_id": "registry:prototype:minimal",
-  "registry_epoch": 1,
+  "registry_epoch": 7,
   "operations": [
     {
       "operation_id": "read",
