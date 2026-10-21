@@ -88,12 +88,42 @@ def _authorization():
 
 
 class TimestampTests(unittest.TestCase):
+    """The timestamp boundary.
+
+    Each guard is pinned by its own test, and each test names the guard it
+    pins. The parser has several ways to say no to a malformed timestamp,
+    and a test that only says "some refusal happened" cannot tell which of
+    them is load-bearing. Where a case could be refused by two guards, the
+    case here is chosen so that only one of them can refuse it.
+    """
+
     def test_a_utc_timestamp_is_the_expected_number_of_milliseconds(self):
         self.assertEqual(parse_utc_millis("1970-01-01T00:00:00Z"), 0)
         self.assertEqual(parse_utc_millis("1970-01-01T00:00:01Z"), 1_000)
         self.assertEqual(parse_utc_millis("1970-01-01T00:00:01.001Z"), 1_001)
-        self.assertEqual(parse_utc_millis("2024-02-29T00:00:00Z"), 1_709_164_800_000)
         self.assertEqual(parse_utc_millis("2026-01-01T00:00:00Z"), 1_767_225_600_000)
+
+    def test_a_leap_day_in_a_leap_year_is_a_real_instant(self):
+        # A refusal is reported as a failure with the guard's own words.
+        # `assertEqual` never reaches its message when the parser raises,
+        # and a test that cannot say which guard stopped the timestamp has
+        # not tested the guard.
+        for text, expected in (
+            ("2024-02-29T00:00:00Z", 1_709_164_800_000),
+            ("2000-02-29T00:00:00Z", 951_782_400_000),
+        ):
+            with self.subTest(text=text):
+                try:
+                    value = parse_utc_millis(text)
+                except CapsuleError as error:
+                    self.fail(
+                        "a leap day in a leap year is a real instant, "
+                        f"but it was refused: {error}"
+                    )
+                self.assertEqual(
+                    value, expected, "a leap day in a leap year is a real instant"
+                )
+        self.assertEqual(parse_utc_millis("2024-03-01T00:00:00Z"), 1_709_251_200_000)
 
     def test_a_timestamp_with_an_offset_is_refused_rather_than_converted(self):
         for text in (
@@ -105,6 +135,29 @@ class TimestampTests(unittest.TestCase):
                 with self.assertRaises(CapsuleError):
                     parse_utc_millis(text)
 
+    def test_a_timestamp_that_is_not_in_utc_is_refused(self):
+        # A lower-case zone marker. Everything else about this timestamp is in
+        # the strict form, so the zone marker is the only guard that can
+        # refuse it -- which is what makes the guard testable.
+        for text in ("2026-01-01T00:00:00z",):
+            with self.subTest(text=text):
+                with self.assertRaises(
+                    CapsuleError,
+                    msg="a timestamp that is not in UTC is refused rather than converted",
+                ):
+                    parse_utc_millis(text)
+
+    def test_a_malformed_fraction_is_refused(self):
+        # A fourth fractional digit is beyond the millisecond the profile
+        # carries, so the timestamp is not in the form the profile accepts.
+        for text in ("1970-01-01T00:00:01.1239Z",):
+            with self.subTest(text=text):
+                with self.assertRaises(
+                    CapsuleError,
+                    msg="a malformed fraction is refused: three digits at most",
+                ):
+                    parse_utc_millis(text)
+
     def test_a_date_that_does_not_exist_is_refused_rather_than_rolled_over(self):
         for text in (
             "2026-02-30T00:00:00Z",
@@ -113,10 +166,33 @@ class TimestampTests(unittest.TestCase):
             "1900-02-29T00:00:00Z",
             "2026-01-00T00:00:00Z",
             "2026-13-01T00:00:00Z",
-            "0000-01-01T00:00:00Z",
         ):
             with self.subTest(text=text):
-                with self.assertRaises(CapsuleError):
+                with self.assertRaises(
+                    CapsuleError,
+                    msg="a date that does not exist is refused rather than rolled over",
+                ):
+                    parse_utc_millis(text)
+
+    def test_a_time_that_does_not_exist_is_refused(self):
+        for text in (
+            "2026-01-01T24:00:00Z",
+            "2026-01-01T00:00:60Z",
+        ):
+            with self.subTest(text=text):
+                with self.assertRaises(
+                    CapsuleError,
+                    msg="a time that does not exist is refused",
+                ):
+                    parse_utc_millis(text)
+
+    def test_a_year_before_one_is_refused(self):
+        for text in ("0000-01-01T00:00:00Z",):
+            with self.subTest(text=text):
+                with self.assertRaises(
+                    CapsuleError,
+                    msg="the year must be one or later",
+                ):
                     parse_utc_millis(text)
 
     def test_a_timestamp_that_is_not_in_the_strict_form_is_refused(self):
@@ -125,18 +201,14 @@ class TimestampTests(unittest.TestCase):
             "2026-01-01 00:00:00Z",
             "2026-01-01",
             "26-01-01T00:00:00Z",
-            "2026-01-01T00:00:60Z",
-            "2026-01-01T24:00:00Z",
-            "2026-01-01T00:00:01.1239Z",
             "",
         ):
             with self.subTest(text=text):
-                with self.assertRaises(CapsuleError):
+                with self.assertRaises(
+                    CapsuleError,
+                    msg="the strict form is one form",
+                ):
                     parse_utc_millis(text)
-
-    def test_a_leap_day_is_a_real_instant(self):
-        self.assertEqual(parse_utc_millis("2000-02-29T00:00:00Z"), 951_782_400_000)
-        self.assertEqual(parse_utc_millis("2024-03-01T00:00:00Z"), 1_709_251_200_000)
 
 
 class CapsuleReaderTests(unittest.TestCase):

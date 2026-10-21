@@ -20,7 +20,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-SKIP_DIRS = {".git", "__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache", "node_modules", ".venv", "venv"}
+# Build output is not a document. The Rust workspace writes JSON into
+# `target/`, and a checker that counts those makes its own count depend on
+# whether the project has been built — which is how a number in the evidence
+# ledger becomes unreproducible without anybody noticing.
+SKIP_DIRS = {".git", "__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache", "node_modules", ".venv", "venv", "target", "dist", "build"}
 
 
 def iter_json_files() -> list[Path]:

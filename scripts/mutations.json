@@ -1085,6 +1085,172 @@
       "replace": "    if False:",
       "test": "tests.test_scp_reference.SCPReferenceTests.test_a_registry_from_another_epoch_is_not_the_policy_in_force",
       "expect_output_contains": "a registry from another epoch is not the policy in force"
+    },
+    {
+      "id": "CC-timestamp-strict-form",
+      "gate": 2,
+      "control": "The timestamp boundary accepts one form. A timestamp that is not in it is refused, not parsed.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "    if bytes[4] != b'-'\n        || bytes[7] != b'-'\n        || bytes[10] != b'T'\n        || bytes[13] != b':'\n        || bytes[16] != b':'\n    {\n        return Err(format!(\"{text:?} is not a UTC timestamp\"));\n    }\n",
+      "replace": "",
+      "package": "senvoryn-capsule",
+      "test": "a_timestamp_that_is_not_in_the_strict_form_is_refused",
+      "expect_output_contains": "the strict form is one form",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-timestamp-utc-only",
+      "gate": 2,
+      "control": "A timestamp is in UTC or it is refused. A zone marker is not converted.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "    if bytes[bytes.len() - 1] != b'Z' {\n        return Err(format!(\"{text:?} is not in UTC\"));\n    }\n",
+      "replace": "",
+      "package": "senvoryn-capsule",
+      "test": "a_timestamp_that_is_not_in_utc_is_refused",
+      "expect_output_contains": "a timestamp that is not in UTC is refused rather than converted",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-timestamp-fraction-position",
+      "gate": 2,
+      "control": "The fractional second follows a full stop. A timestamp that puts something else there is refused.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "        if bytes[19] != b'.' {\n            return Err(format!(\"{text:?} is not a UTC timestamp\"));\n        }\n",
+      "replace": "",
+      "package": "senvoryn-capsule",
+      "test": "a_malformed_fraction_is_refused",
+      "expect_output_contains": "a malformed fraction is refused: the fraction follows a full stop",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-timestamp-fraction-length",
+      "gate": 2,
+      "control": "A fractional second is at most three digits, because a millisecond is the finest the profile carries.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "    if bytes.len() < 20 || bytes.len() > 24 {",
+      "replace": "    if bytes.len() < 20 || bytes.len() > 25 {",
+      "package": "senvoryn-capsule",
+      "test": "a_malformed_fraction_is_refused",
+      "expect_output_contains": "a malformed fraction is refused: three digits at most",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-timestamp-real-date",
+      "gate": 2,
+      "control": "A date that does not exist is refused rather than rolled over into the next month.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "    if !(1..=12).contains(&month) || day < 1 || day > days_in_month(year, month) {",
+      "replace": "    if !(1..=12).contains(&month) || day < 1 {",
+      "package": "senvoryn-capsule",
+      "test": "a_date_that_does_not_exist_is_refused_rather_than_rolled_over",
+      "expect_output_contains": "a date that does not exist is refused rather than rolled over",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-timestamp-leap-year",
+      "gate": 2,
+      "control": "A leap day exists only in a leap year, by the century and four-hundred-year rules.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "    if month == 2 && is_leap_year(year) {",
+      "replace": "    if false {",
+      "package": "senvoryn-capsule",
+      "test": "a_leap_day_in_a_leap_year_is_a_real_instant",
+      "expect_output_contains": "a leap day in a leap year is a real instant",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-timestamp-real-time",
+      "gate": 2,
+      "control": "A time that does not exist is refused: an hour is 0 to 23, and there is no leap second.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "    if hour > 23 || minute > 59 || second > 59 {\n        return Err(format!(\"{text:?} is not a time\"));\n    }\n",
+      "replace": "    let (hour, minute, second) = (hour.min(23), minute.min(59), second.min(59));\n",
+      "package": "senvoryn-capsule",
+      "test": "a_time_that_does_not_exist_is_refused",
+      "expect_output_contains": "a time that does not exist is refused",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-timestamp-year-one",
+      "gate": 2,
+      "control": "The year is one or later, because the proleptic Gregorian calendar has no year zero.",
+      "file": "crates/senvoryn-capsule/src/capsule.rs",
+      "find": "    if year < 1 {\n        return Err(format!(\"{text:?} is not a date\"));\n    }\n",
+      "replace": "    let year = if year < 1 { 1 } else { year };\n",
+      "package": "senvoryn-capsule",
+      "test": "a_year_before_one_is_refused",
+      "expect_output_contains": "the year must be one or later",
+      "test_file": "timestamps"
+    },
+    {
+      "id": "CC-py-timestamp-strict-form",
+      "gate": 2,
+      "control": "The reference model accepts one timestamp form, the same one the Rust parser accepts.",
+      "file": "reference/capsule_reference.py",
+      "find": "(\\d{2})T(\\d{2})",
+      "replace": "(\\d{2})[T ](\\d{2})",
+      "test": "tests.test_capsule_reference.TimestampTests.test_a_timestamp_that_is_not_in_the_strict_form_is_refused",
+      "expect_output_contains": "the strict form is one form"
+    },
+    {
+      "id": "CC-py-timestamp-utc-only",
+      "gate": 2,
+      "control": "The reference model refuses a timestamp that is not in UTC, the same one the Rust parser refuses.",
+      "file": "reference/capsule_reference.py",
+      "find": "?Z$\"",
+      "replace": "?[Zz]$\"",
+      "test": "tests.test_capsule_reference.TimestampTests.test_a_timestamp_that_is_not_in_utc_is_refused",
+      "expect_output_contains": "a timestamp that is not in UTC is refused rather than converted"
+    },
+    {
+      "id": "CC-py-timestamp-fraction",
+      "gate": 2,
+      "control": "The reference model reads at most three fractional digits, the same bound the Rust parser applies.",
+      "file": "reference/capsule_reference.py",
+      "find": "(\\d{1,3})",
+      "replace": "(\\d{1,4})",
+      "test": "tests.test_capsule_reference.TimestampTests.test_a_malformed_fraction_is_refused",
+      "expect_output_contains": "a malformed fraction is refused: three digits at most"
+    },
+    {
+      "id": "CC-py-timestamp-real-date",
+      "gate": 2,
+      "control": "The reference model refuses a date that does not exist rather than rolling it over.",
+      "file": "reference/capsule_reference.py",
+      "find": "    if not 1 <= day <= _days_in_month(year, month):\n        raise CapsuleError(f\"{text!r} is not a date\")\n",
+      "replace": "    day = min(day, _days_in_month(year, month))\n",
+      "test": "tests.test_capsule_reference.TimestampTests.test_a_date_that_does_not_exist_is_refused_rather_than_rolled_over",
+      "expect_output_contains": "a date that does not exist is refused rather than rolled over"
+    },
+    {
+      "id": "CC-py-timestamp-leap-year",
+      "gate": 2,
+      "control": "The reference model knows a leap day, the same way the Rust parser does.",
+      "file": "reference/capsule_reference.py",
+      "find": "    if month == 2 and _is_leap_year(year):",
+      "replace": "    if month == 2 and False:",
+      "test": "tests.test_capsule_reference.TimestampTests.test_a_leap_day_in_a_leap_year_is_a_real_instant",
+      "expect_output_contains": "a leap day in a leap year is a real instant"
+    },
+    {
+      "id": "CC-py-timestamp-real-time",
+      "gate": 2,
+      "control": "The reference model refuses a time that does not exist, the same one the Rust parser refuses.",
+      "file": "reference/capsule_reference.py",
+      "find": "    if hour > 23 or minute > 59 or second > 59:\n        raise CapsuleError(f\"{text!r} is not a time\")\n",
+      "replace": "    hour, minute, second = min(hour, 23), min(minute, 59), min(second, 59)\n",
+      "test": "tests.test_capsule_reference.TimestampTests.test_a_time_that_does_not_exist_is_refused",
+      "expect_output_contains": "a time that does not exist is refused"
+    },
+    {
+      "id": "CC-py-timestamp-year-one",
+      "gate": 2,
+      "control": "The reference model refuses a year before one, the same year the Rust parser refuses.",
+      "file": "reference/capsule_reference.py",
+      "find": "    if year < 1:\n        raise CapsuleError(f\"{text!r} is not a date\")\n",
+      "replace": "    year = max(year, 1)\n",
+      "test": "tests.test_capsule_reference.TimestampTests.test_a_year_before_one_is_refused",
+      "expect_output_contains": "the year must be one or later"
     }
   ]
 }

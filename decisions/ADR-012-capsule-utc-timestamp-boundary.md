@@ -68,6 +68,20 @@ signed.
 > fixed, and both are now pinned by a test in each implementation. The
 > ambiguity was real: two readers of the same contract disagreed about a
 > security boundary. See [ADR-014](ADR-014-capsule-two-implementations.md).
+>
+> **Amended 2026-10-21, after the timestamp boundary was mutation-tested.** The
+> parser's guards had tests but no mutations, so this decision's claim was
+> tested and not mutation-tested. That matters more here than it does
+> elsewhere, because the parser has several ways to say no to a malformed
+> timestamp — the length, the separators, the zone marker, the fraction, the
+> date, the time, the year — and a guard that is only ever reached together
+> with another one can be removed and nothing would change. Each guard now
+> has a case that only it can refuse, a named test, and a mutation that
+> breaks it, in both implementations. The gate found nothing wrong with the
+> parser and one thing wrong with the tests: a Python assertion never
+> reached its message when the parser raised, so the gate could not tell
+> which guard had stopped the timestamp. That test now reports the refusal
+> itself, in the guard's own words.
 
 ## Rationale
 
@@ -76,7 +90,7 @@ validity window depend on the reader's arithmetic. Two implementations that both
 "follow RFC 3339" can disagree by hours about whether a capsule is stale, and the
 capsule whose window is shortest is the one that runs. Narrowing the accepted form
 to UTC removes the ambiguity at the point where it enters the system, so there is
-exactly one arithmetic in the codebase and one test that covers it.
+exactly one arithmetic in the codebase and one set of tests that covers it.
 
 Parsing at the boundary rather than at the point of use has a second effect: a
 malformed timestamp is a malformed *capsule*, not a malformed comparison. The
@@ -90,8 +104,8 @@ knows the instant it means, and the executor does not have to guess.
 ## Consequences
 
 **What this makes easy:**
-- One arithmetic, one test, and no way for two readers to disagree about a
-  capsule's validity window.
+- One arithmetic, one set of tests, and no way for two readers to disagree about
+  a capsule's validity window.
 - A malformed timestamp is caught with the field named, before anything runs.
 - The evidence retains the bytes that were received.
 

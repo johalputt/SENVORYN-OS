@@ -11,8 +11,8 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 99 passed, 0 failed.
-- Rust workspace tests: 119 passed, 0 failed.
+- Python contract tests: 103 passed, 0 failed.
+- Rust workspace tests: 122 passed, 0 failed.
 - Shared conformance vectors: 33 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
@@ -50,8 +50,14 @@ Checks performed
 - Denial-code registry: 28 codes, unique, each with a class and a default status. Every
   code is produced by at least one implementation and every code an implementation can
   produce is in the registry; both directions are checked by tests on both sides.
+- Change Capsule timestamp boundary: the strict-UTC parser's guards — the form, the zone
+  marker, the fraction, the date, the leap year, the time and the year — are each broken
+  in turn by the mutation gate, in the Rust executor and in the Python reference model.
+  A case that two guards could refuse is not used, because a guard that is only ever
+  reached together with another one can be removed and nothing would change.
 - JSON Schema Draft 2020-12 structural checks: 14 schemas passed.
-- JSON syntax checks: 72 JSON documents parsed.
+- JSON syntax checks: 26 JSON documents parsed. The count excludes build output, so it
+  does not depend on whether the workspace has been built.
 - Canonical JSON profile SCP-CJSON-0001: 40 conformance tests over the profile's clauses,
   plus a deterministic fuzz harness over a seed corpus (132000 mutated inputs, no panic,
   no encoding disagreement).
@@ -62,8 +68,8 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 96 controls broken in turn, each requiring a named test to go red
-  because of that break. 96 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 111 controls broken in turn, each requiring a named test to go red
+  because of that break. 111 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
 

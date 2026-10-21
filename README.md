@@ -152,7 +152,7 @@ SENVORYN-OS/
 ├── conformance/capsule-vectors.json  # Change Capsule vectors — Rust implementation only
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
-├── tests/                       # 99 executable contract tests
+├── tests/                       # 103 executable contract tests
 ├── decisions/                   # ADR-001 … ADR-017
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
@@ -171,7 +171,7 @@ SENVORYN-OS/
 | `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 33 cases + 11 attenuation cases |
 | `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 36 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 96 mutations |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 111 mutations |
 | `decisions/` | Architecture Decision Records with open questions | 17 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
@@ -193,10 +193,10 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (99 tests)
+# Run the contract test suite (103 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (119 tests)
+# Run the Rust workspace (122 tests)
 cargo test --workspace
 
 # Prove every control has a test that fails when it is broken
@@ -442,7 +442,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 99/99 Python tests passing · 119/119 Rust tests passing · 33/33 shared vectors agreed · 36/36 capsule vectors agreed by two implementations · 96/96 mutations killed · 2/2 state machines structurally valid · 28/28 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 103/103 Python tests passing · 122/122 Rust tests passing · 33/33 shared vectors agreed · 36/36 capsule vectors agreed by two implementations · 111/111 mutations killed · 2/2 state machines structurally valid · 28/28 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 
