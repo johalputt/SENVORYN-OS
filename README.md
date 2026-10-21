@@ -153,7 +153,7 @@ SENVORYN-OS/
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
 ├── tests/                       # 99 executable contract tests
-├── decisions/                   # ADR-001 … ADR-016
+├── decisions/                   # ADR-001 … ADR-017
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
 │
@@ -172,7 +172,7 @@ SENVORYN-OS/
 | `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 36 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
 | `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 96 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 16 ADRs |
+| `decisions/` | Architecture Decision Records with open questions | 17 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---

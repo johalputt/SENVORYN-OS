@@ -109,7 +109,7 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [x] The budget has to fit inside the validity window: a capsule whose own budget outlasts its own window contradicts itself, and it is refused at validation ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
 - [x] The registry's `max_duration_ms` and `max_operation_count` are per operation, and the capsule's budget is a total for the plan; the four rules that reconcile them are decided, implemented and tested in both implementations
 - [x] The registry's `registry_epoch` is bound to the epoch in force: a decision made under a registry from another generation is refused, with a reason of its own ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
-- [ ] The registry has no validity window: nothing bounds how old the policy in force is, and the system has no way to know that a registry is stale ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md))
+- [ ] The registry has no validity window: nothing bounds how old the policy in force is, and the system has no way to know that a registry is stale ([ADR-016](decisions/ADR-016-operation-registry-limits-epoch-and-freshness.md), [ADR-017](decisions/ADR-017-the-clock-is-a-boundary.md))
 - [ ] The executor drives a simulated environment; nothing here proves that a real system can be rolled back
 - [ ] The vectors are read by two implementations of the same contract, and whoever writes the contract decides what "right" means. That is a strong check and not a proof
 

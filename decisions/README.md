@@ -40,6 +40,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | [ADR-014](ADR-014-capsule-two-implementations.md) | The Change Capsule executor has two implementations | Proposed | 3 |
 | [ADR-015](ADR-015-capsule-validity-window-and-a-moving-world.md) | The capsule's validity window is a boundary, and the world moves | Proposed | 3 |
 | [ADR-016](ADR-016-operation-registry-limits-epoch-and-freshness.md) | The Operation Registry's limits, its epoch, and its freshness | Proposed | 3 |
+| [ADR-017](ADR-017-the-clock-is-a-boundary.md) | The clock is a boundary | Proposed | 3 |
 
 ---
 
@@ -63,13 +64,14 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | **014** | The Change Capsule executor is implemented twice — in Rust and in Python — and held to one shared vector file, so the vectors are an agreement rather than a transcript. |
 | **015** | The capsule's validity window is a boundary, not a one-time check: the clock is read before every step, a clock that moves backwards ends the transaction, and a capsule cannot be executed before it was issued. |
 | **016** | The registry's limits are per operation and the capsule's budget is a total for the plan; the registry must be the registry for the epoch in force, and it must carry a validity window. |
+| **017** | The monotonic clock is the session's authority; a wall clock is only a statement about a document, and it is refused when it moves backwards. |
 
 ---
 
 ## Writing a new ADR
 
 ```bash
-cp decisions/ADR-XXX-template.md decisions/ADR-017-<slug>.md
+cp decisions/ADR-XXX-template.md decisions/ADR-018-<slug>.md
 ```
 
 Fill in every section. The **Context** section is the one that matters most — it must explain what constraint makes the obvious solution wrong. An ADR without a real constraint is a design note.
