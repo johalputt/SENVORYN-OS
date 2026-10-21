@@ -155,7 +155,7 @@ Implementations MUST validate in the following order, or in an order proven equi
 6. **Object resolution gate:** resolve the resource to a canonical ID and version.
 7. **Revocation gate:** check principal, credential, capability, key, device, and policy revocations.
 8. **Mode gate:** apply the current system state (normal, degraded, read-only, recovery, quarantined, maintenance, offline).
-9. **Policy epoch gate:** require an acceptable policy version; stale high-risk requests are denied.
+9. **Policy epoch gate:** require an acceptable policy version; stale high-risk requests are denied. The registry in force must be the registry for that epoch, and it must carry a validity window; no decision may be made under a registry whose window has not opened or has closed, and a wall clock the environment will not vouch for must be refused rather than believed, because a clock that moves backwards is the one way an expired document can look current.
 10. **Capability gate:** verify signature/authority provenance and all scope dimensions.
 11. **Risk/consent gate:** confirm required approvals are authentic, fresh, and bound to this exact action digest.
 12. **Budget gate:** confirm CPU, memory, I/O, network, duration, and monetary/resource budgets are within policy.

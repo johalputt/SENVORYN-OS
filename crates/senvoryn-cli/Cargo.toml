@@ -10,6 +10,7 @@ authors.workspace = true
 
 [dependencies]
 senvoryn-canonical = { workspace = true }
+senvoryn-instant = { workspace = true }
 senvoryn-scp = { workspace = true }
 
 [lints]

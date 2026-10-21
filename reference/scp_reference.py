@@ -70,6 +70,9 @@ ALL_REASON_CODES = frozenset(
         "RISK_CLAIM_MISMATCH",
         "POLICY_EPOCH_MISMATCH",
         "REGISTRY_EPOCH_MISMATCH",
+    "CLOCK_UNTRUSTED",
+    "REGISTRY_NOT_YET_VALID",
+    "REGISTRY_EXPIRED",
         "MISSING_CAPABILITY",
         "UNVERIFIED_CAPABILITY_ISSUER",
         "CAPABILITY_REVOKED",
@@ -211,11 +214,15 @@ class PolicyContext:
     local_node_id: str
     current_policy_epoch: int
     now_monotonic: int
+    now_wall_ms: int
+    clock_state: str
     mode: str
     known_principals: FrozenSet[str]
     resolved_resources: Mapping[str, str]
     operations: tuple[OperationEntry, ...]
     registry_epoch: int
+    registry_valid_from_ms: int
+    registry_valid_until_ms: int
     audit_state: AuditState
     action_digest: Optional[str] = None
     revoked_nonces: FrozenSet[str] = frozenset()
@@ -363,6 +370,15 @@ def evaluate(req: Request, cap: Optional[Capability], ctx: PolicyContext) -> Dec
         return _deny("POLICY_EPOCH_MISMATCH", epoch)
     if ctx.registry_epoch != ctx.current_policy_epoch:
         return _deny("REGISTRY_EPOCH_MISMATCH", epoch)
+    # The registry's own validity window. A registry with no window is a
+    # policy that never expires, and a wall clock that has moved backwards
+    # would make an expired registry look current.
+    if ctx.clock_state != "TRUSTED":
+        return _deny("CLOCK_UNTRUSTED", epoch)
+    if ctx.now_wall_ms < ctx.registry_valid_from_ms:
+        return _deny("REGISTRY_NOT_YET_VALID", epoch)
+    if ctx.now_wall_ms >= ctx.registry_valid_until_ms:
+        return _deny("REGISTRY_EXPIRED", epoch)
 
     # Gate 10 - capability.
     if cap is None:

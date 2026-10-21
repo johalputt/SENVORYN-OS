@@ -24,9 +24,9 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 | 122 Rust tests pass | ✅ Verified (Rust stable) |
 | 33 shared conformance vectors are agreed by both implementations | ✅ Verified — CI fails on a disagreement |
 | 36 Change Capsule vectors are agreed by both implementations | ✅ Verified — the Rust executor and the Python reference model, CI fails on a disagreement |
-| Every control has a test that fails when the control is broken | ✅ Verified — 111 mutations, all killed |
+| Every control has a test that fails when the control is broken | ✅ Verified — 117 mutations, all killed |
 | 2 state machines have valid endpoints and invariants | ✅ Verified |
-| 28 denial codes are unique with defined defaults | ✅ Verified |
+| 31 denial codes are unique with defined defaults | ✅ Verified |
 | Every denial code is cross-checked against both implementations | ✅ Verified — registry-sync tests on both sides |
 | The decision evaluator is pure (no side effects) | ✅ Verified by test + code review |
 | A threat model for the SCP decision path exists | 🟡 First draft exists — **not independently reviewed** (Gate 0 blocker) |
@@ -81,7 +81,7 @@ This repository *is* the Gate 0 deliverable: the constitutional baseline, the co
 - [ ] Fuzz harness for the request envelope parser (malformed, truncated, oversized, duplicate-key, deeply nested) — the canonical parser is fuzzed; the envelope→request mapping is not
 - [x] Audit-event builder emitting `schemas/audit-event.schema.json` records — `crates/senvoryn-scp/src/audit.rs`
 - [x] Deterministic reason codes covering all 28 registry entries — cross-checked against the registry by both implementations
-- [x] Mutation gate — `scripts/mutation-gate.py` breaks 111 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
+- [x] Mutation gate — `scripts/mutation-gate.py` breaks 117 controls in turn and requires a named test to go red for each. It runs tests in two languages, and it clears the Python bytecode cache before each run, because a cached `.pyc` can shadow a mutated source
 - [ ] The signed Operation Registry, and the resolution boundary that gate 6 needs
 - [ ] An independent reviewer confirms the evaluator has no side effects
 

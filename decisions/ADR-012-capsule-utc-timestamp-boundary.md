@@ -140,6 +140,24 @@ knows the instant it means, and the executor does not have to guess.
       well, to reject a capsule issued in the future — what evidence would close it:
       a specification statement about clock skew tolerance for issuance.
 
+## Amendment — the parser's home
+
+The parser this decision introduced lived inside `senvoryn-capsule`, because the
+capsule was the only layer that read a timestamp. The policy layer now reads one
+too: the Operation Registry carries the validity window that bounds how old the
+policy in force may be, and the SCP judges that window against the wall clock.
+
+Two layers that each parse a timestamp are two layers that can disagree about
+what it means, which is the failure this decision exists to prevent. The parser
+therefore moved into a crate of its own — `senvoryn-instant` — which both
+`senvoryn-capsule` and `senvoryn-scp` depend on. The capsule's timestamp
+boundary tests moved with it, unchanged, and the mutation set followed the code
+to its new home.
+
+The parser is part of the trusted core, and the TCB inventory in
+`ARCHITECTURE.md` now names it: a compromise of it would let one document's
+window be read two ways.
+
 ## References
 
 - [`schemas/change-capsule.schema.json`](../schemas/change-capsule.schema.json)

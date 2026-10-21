@@ -21,7 +21,7 @@
 //! are separate implementations of the same contract, so a case added here
 //! should be added there too.
 
-use senvoryn_capsule::capsule::parse_utc_millis;
+use senvoryn_instant::parse_utc_millis;
 
 #[test]
 fn a_utc_timestamp_is_the_expected_number_of_milliseconds() {

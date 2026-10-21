@@ -9,6 +9,7 @@
 use std::collections::BTreeSet;
 
 use senvoryn_canonical::{Value, parse};
+use senvoryn_instant::parse_utc_millis;
 
 /// The sample Operation Registry, embedded at compile time.
 ///
@@ -182,6 +183,8 @@ pub struct OperationEntry {
 pub struct OperationRegistry {
     entries: Vec<OperationEntry>,
     epoch: u64,
+    valid_from_ms: i64,
+    valid_until_ms: i64,
 }
 
 /// Why a registry document could not be read.
@@ -212,18 +215,40 @@ impl core::fmt::Display for RegistryError {
 impl std::error::Error for RegistryError {}
 
 impl OperationRegistry {
-    /// A registry holding the given entries, for the given policy epoch.
+    /// A registry holding the given entries, for the given policy epoch and
+    /// the given validity window.
     ///
     /// The epoch belongs to the registry rather than to the context that
     /// holds it, because it is a property of the document: a registry
-    /// belongs to the policy generation it was published for.
-    pub fn from_entries(entries: Vec<OperationEntry>, epoch: u64) -> Self {
-        Self { entries, epoch }
+    /// belongs to the policy generation it was published for. The window
+    /// belongs to it for the same reason.
+    pub fn from_entries(
+        entries: Vec<OperationEntry>,
+        epoch: u64,
+        valid_from_ms: i64,
+        valid_until_ms: i64,
+    ) -> Self {
+        Self { entries, epoch, valid_from_ms, valid_until_ms }
     }
 
     /// The policy epoch this registry belongs to.
     pub fn epoch(&self) -> u64 {
         self.epoch
+    }
+
+    /// The instant this registry becomes the policy in force, in milliseconds
+    /// since the Unix epoch.
+    pub fn valid_from_ms(&self) -> i64 {
+        self.valid_from_ms
+    }
+
+    /// The instant this registry stops being the policy in force, in
+    /// milliseconds since the Unix epoch.
+    ///
+    /// The window closes at this instant: a registry is valid while
+    /// `valid_from_ms <= now < valid_until_ms`.
+    pub fn valid_until_ms(&self) -> i64 {
+        self.valid_until_ms
     }
 
     /// The entries in the registry, in the order they were read.
@@ -314,11 +339,19 @@ impl OperationRegistry {
                     detail: "negative".to_owned(),
                 })
             })?;
+        let valid_from_ms = read_instant(document, "issued_at")?;
+        let valid_until_ms = read_instant(document, "expires_at")?;
+        if valid_until_ms <= valid_from_ms {
+            return Err(RegistryError::Malformed {
+                field: "expires_at".to_owned(),
+                detail: "the window closes before it opens".to_owned(),
+            });
+        }
         let mut entries = Vec::with_capacity(operations.len());
         for operation in operations {
             entries.push(read_entry(operation)?);
         }
-        Ok(Self { entries, epoch })
+        Ok(Self { entries, epoch, valid_from_ms, valid_until_ms })
     }
 
     /// Reads a registry from JSON text.
@@ -335,6 +368,17 @@ impl OperationRegistry {
     pub fn sample() -> Result<Self, RegistryError> {
         Self::from_json(SAMPLE_REGISTRY_JSON)
     }
+}
+
+/// Reads an instant from a registry document, in the strict UTC form.
+fn read_instant(document: &Value, field: &str) -> Result<i64, RegistryError> {
+    let text =
+        document.get(field).and_then(Value::as_str).ok_or_else(|| RegistryError::Malformed {
+            field: field.to_owned(),
+            detail: "absent or not a string".to_owned(),
+        })?;
+    parse_utc_millis(text)
+        .map_err(|detail| RegistryError::Malformed { field: field.to_owned(), detail })
 }
 
 fn min_option(left: Option<u64>, right: Option<u64>) -> Option<u64> {

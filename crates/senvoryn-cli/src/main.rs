@@ -13,9 +13,10 @@ use std::collections::BTreeSet;
 use std::process::ExitCode;
 
 use senvoryn_canonical::{Value, encode_to_string, parse};
+use senvoryn_instant::parse_utc_millis;
 use senvoryn_scp::{
-    AuditState, Capability, OperationEntry, OperationRegistry, PolicyContext, Provenance,
-    RecordDetails, Request, SystemMode, evaluate,
+    AuditState, Capability, ClockState, OperationEntry, OperationRegistry, PolicyContext,
+    Provenance, RecordDetails, Request, SystemMode, evaluate,
 };
 
 const USAGE: &str = "\
@@ -119,6 +120,9 @@ fn read_context(document: &Value) -> Result<PolicyContext, String> {
         local_node_id: required_string(document, "local_node_id")?,
         current_policy_epoch: required_u64(document, "current_policy_epoch")?,
         now_monotonic: required_u64(document, "now_monotonic")?,
+        now_wall_ms: required_i64(document, "now_wall_ms")?,
+        clock_state: ClockState::parse(&required_string(document, "clock_state")?)
+            .ok_or_else(|| "the context names a clock state that does not exist".to_owned())?,
         mode: SystemMode::parse(&required_string(document, "mode")?)
             .ok_or_else(|| "the context names a system mode that does not exist".to_owned())?,
         known_principals: string_set(document, "known_principals"),
@@ -149,6 +153,8 @@ fn read_context(document: &Value) -> Result<PolicyContext, String> {
 
 fn read_registry(document: &Value) -> Result<OperationRegistry, String> {
     let epoch = required_u64(document, "registry_epoch")?;
+    let valid_from_ms = required_instant(document, "issued_at")?;
+    let valid_until_ms = required_instant(document, "expires_at")?;
     let operations = document
         .get("operations")
         .and_then(Value::as_array)
@@ -182,7 +188,7 @@ fn read_registry(document: &Value) -> Result<OperationRegistry, String> {
                 .unwrap_or(senvoryn_scp::AuditClass::Standard),
         });
     }
-    Ok(OperationRegistry::from_entries(entries, epoch))
+    Ok(OperationRegistry::from_entries(entries, epoch, valid_from_ms, valid_until_ms))
 }
 
 fn read_capability(document: &Value) -> Result<Capability, String> {
@@ -221,6 +227,19 @@ fn optional_string(document: &Value, field: &str) -> Option<String> {
         Some(Value::String(text)) => Some(text.clone()),
         Some(_) => None,
     }
+}
+
+fn required_instant(document: &Value, field: &str) -> Result<i64, String> {
+    let text = required_string(document, field)?;
+    parse_utc_millis(&text)
+        .map_err(|detail| format!("the field {field:?} is not a strict UTC timestamp: {detail}"))
+}
+
+fn required_i64(document: &Value, field: &str) -> Result<i64, String> {
+    document
+        .get(field)
+        .and_then(Value::as_int)
+        .ok_or_else(|| format!("the field {field:?} is missing or is not an integer"))
 }
 
 fn required_u64(document: &Value, field: &str) -> Result<u64, String> {

@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use senvoryn_canonical::{Value, parse};
 use senvoryn_scp::{
-    AuditState, Budget, Capability, DecisionStatus, OperationEntry, OperationRegistry,
+    AuditState, Budget, Capability, ClockState, DecisionStatus, OperationEntry, OperationRegistry,
     PolicyContext, Provenance, ReasonCode, RecordDetails, Request, RiskTier, SystemMode, attenuate,
     evaluate,
 };
@@ -88,7 +88,12 @@ fn operation_entry(raw: &Value) -> OperationEntry {
 }
 
 fn operation_registry(entries: &[Value], epoch: u64) -> OperationRegistry {
-    OperationRegistry::from_entries(entries.iter().map(operation_entry).collect(), epoch)
+    OperationRegistry::from_entries(
+        entries.iter().map(operation_entry).collect(),
+        epoch,
+        1_767_225_600_000,
+        1_767_225_600_000 + 86_400_000,
+    )
 }
 
 /// Reads an integer that is the value itself, not an object holding one.
@@ -158,6 +163,9 @@ fn context_from(raw: &Value, registry: &OperationRegistry) -> PolicyContext {
         local_node_id: string_field(raw, "local_node_id"),
         current_policy_epoch: u64_field(raw, "current_policy_epoch"),
         now_monotonic: u64_field(raw, "now_monotonic"),
+        now_wall_ms: u64_field(raw, "now_wall_ms") as i64,
+        clock_state: ClockState::parse(&string_field(raw, "clock_state"))
+            .unwrap_or_else(|| panic!("bad clock state in the vector file")),
         mode: SystemMode::parse(&string_field(raw, "mode"))
             .unwrap_or_else(|| panic!("bad mode in the vector file")),
         known_principals: string_set(raw, "known_principals"),

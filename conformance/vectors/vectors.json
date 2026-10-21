@@ -2,49 +2,101 @@
   "schema": "senvoryn.conformance-vectors.v1",
   "description": "Shared conformance vectors for the Senvoryn SCP decision oracle. The Python reference model in reference/scp_reference.py and the Rust implementation in crates/senvoryn-scp both execute this file, and CI fails if they produce different decisions or reason codes. A case supplies only the fields that differ from the base; each named field replaces the base value wholesale, so there is no merge rule for the two implementations to disagree about. Times are monotonic milliseconds since boot. The vectors cover the policy layer, where a risk claim is a typed tier in Rust and a checked string in Python. A malformed risk claim is a wire-layer rejection and is tested in each implementation's own suite rather than here, because the two layers reject it in different places.",
   "registry_epoch": 7,
+  "registry_valid_from_ms": 1767225600000,
+  "registry_valid_until_ms": 1767312000000,
   "registry": [
     {
       "operation_id": "read",
       "risk_tier": "R0",
-      "approval_requirements": ["NONE"],
-      "allowed_modes": ["NORMAL", "DEGRADED", "READ_ONLY", "RECOVERY", "MAINTENANCE", "OFFLINE"],
-      "resource_types": ["file_object", "data_object"],
+      "approval_requirements": [
+        "NONE"
+      ],
+      "allowed_modes": [
+        "NORMAL",
+        "DEGRADED",
+        "READ_ONLY",
+        "RECOVERY",
+        "MAINTENANCE",
+        "OFFLINE"
+      ],
+      "resource_types": [
+        "file_object",
+        "data_object"
+      ],
       "max_duration_ms": 30000,
       "max_operation_count": 1,
-      "required_preconditions": ["resource_exists", "capability_scope_matches"],
+      "required_preconditions": [
+        "resource_exists",
+        "capability_scope_matches"
+      ],
       "audit_class": "STANDARD"
     },
     {
       "operation_id": "write",
       "risk_tier": "R2",
-      "approval_requirements": ["USER_CONFIRMATION"],
-      "allowed_modes": ["NORMAL", "MAINTENANCE"],
-      "resource_types": ["file_object", "data_object"],
+      "approval_requirements": [
+        "USER_CONFIRMATION"
+      ],
+      "allowed_modes": [
+        "NORMAL",
+        "MAINTENANCE"
+      ],
+      "resource_types": [
+        "file_object",
+        "data_object"
+      ],
       "max_duration_ms": 60000,
       "max_operation_count": 1,
-      "required_preconditions": ["resource_version_matches", "recovery_or_compensation_defined"],
+      "required_preconditions": [
+        "resource_version_matches",
+        "recovery_or_compensation_defined"
+      ],
       "audit_class": "SENSITIVE"
     },
     {
       "operation_id": "delete",
       "risk_tier": "R3",
-      "approval_requirements": ["STRONG_AUTH", "USER_CONFIRMATION"],
-      "allowed_modes": ["NORMAL", "MAINTENANCE"],
-      "resource_types": ["file_object", "data_object", "storage_volume"],
+      "approval_requirements": [
+        "STRONG_AUTH",
+        "USER_CONFIRMATION"
+      ],
+      "allowed_modes": [
+        "NORMAL",
+        "MAINTENANCE"
+      ],
+      "resource_types": [
+        "file_object",
+        "data_object",
+        "storage_volume"
+      ],
       "max_duration_ms": 60000,
       "max_operation_count": 1,
-      "required_preconditions": ["exact_target_displayed", "backup_or_loss_acknowledged"],
+      "required_preconditions": [
+        "exact_target_displayed",
+        "backup_or_loss_acknowledged"
+      ],
       "audit_class": "SECURITY_CRITICAL"
     },
     {
       "operation_id": "recover",
       "risk_tier": "R2",
-      "approval_requirements": ["STRONG_AUTH"],
-      "allowed_modes": ["RECOVERY", "MAINTENANCE"],
-      "resource_types": ["system_state", "artifact"],
+      "approval_requirements": [
+        "STRONG_AUTH"
+      ],
+      "allowed_modes": [
+        "RECOVERY",
+        "MAINTENANCE"
+      ],
+      "resource_types": [
+        "system_state",
+        "artifact"
+      ],
       "max_duration_ms": 600000,
       "max_operation_count": 10,
-      "required_preconditions": ["recovery_artifact_verified", "target_generation_identified"],
+      "required_preconditions": [
+        "recovery_artifact_verified",
+        "target_generation_identified"
+      ],
       "audit_class": "SECURITY_CRITICAL"
     }
   ],
@@ -69,8 +121,12 @@
     "subject_id": "user:alice",
     "resource_id": "file:report",
     "resource_type": "file_object",
-    "operations": ["read"],
-    "purposes": ["user-requested-view"],
+    "operations": [
+      "read"
+    ],
+    "purposes": [
+      "user-requested-view"
+    ],
     "not_before": 800,
     "expires_at": 1200,
     "policy_epoch": 7,
@@ -82,8 +138,12 @@
     "local_node_id": "node:local",
     "current_policy_epoch": 7,
     "now_monotonic": 1000,
+    "now_wall_ms": 1767225600000,
+    "clock_state": "TRUSTED",
     "mode": "NORMAL",
-    "known_principals": ["user:alice"],
+    "known_principals": [
+      "user:alice"
+    ],
     "resolved_resources": {
       "file:report": "v1",
       "file:other": "v1",
@@ -110,210 +170,406 @@
       "id": "permit-read",
       "requirement": "SCP-007",
       "gate": 15,
-      "expected": { "status": "PERMIT", "reason": "ALL_POLICY_GATES_PASSED" }
+      "expected": {
+        "status": "PERMIT",
+        "reason": "ALL_POLICY_GATES_PASSED"
+      }
     },
     {
       "id": "SCP-001-unknown-principal",
       "requirement": "SCP-001",
       "gate": 4,
-      "request": { "principal_id": "user:mallory" },
-      "expected": { "status": "DENY", "reason": "UNKNOWN_PRINCIPAL" }
+      "request": {
+        "principal_id": "user:mallory"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "UNKNOWN_PRINCIPAL"
+      }
     },
     {
       "id": "SCP-002-missing-capability",
       "requirement": "SCP-002",
       "gate": 10,
       "capability": null,
-      "expected": { "status": "DENY", "reason": "MISSING_CAPABILITY" }
+      "expected": {
+        "status": "DENY",
+        "reason": "MISSING_CAPABILITY"
+      }
     },
     {
       "id": "SCP-003-expired-capability",
       "requirement": "SCP-003",
       "gate": 10,
-      "capability": { "expires_at": 1000 },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_NOT_CURRENT" }
+      "capability": {
+        "expires_at": 1000
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_NOT_CURRENT"
+      }
     },
     {
       "id": "SCP-003-capability-not-yet-valid",
       "requirement": "SCP-003",
       "gate": 10,
-      "capability": { "not_before": 1100 },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_NOT_CURRENT" }
+      "capability": {
+        "not_before": 1100
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_NOT_CURRENT"
+      }
     },
     {
       "id": "SCP-003-revoked-capability",
       "requirement": "SCP-003",
       "gate": 7,
-      "context": { "revoked_capabilities": ["cap:example:0001"] },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_REVOKED" }
+      "context": {
+        "revoked_capabilities": [
+          "cap:example:0001"
+        ]
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_REVOKED"
+      }
     },
     {
       "id": "SCP-004-subject-mismatch",
       "requirement": "SCP-004",
       "gate": 10,
-      "capability": { "subject_id": "user:bob" },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_SUBJECT_MISMATCH" }
+      "capability": {
+        "subject_id": "user:bob"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_SUBJECT_MISMATCH"
+      }
     },
     {
       "id": "SCP-004-resource-id-mismatch",
       "requirement": "SCP-004",
       "gate": 10,
-      "capability": { "resource_id": "file:other" },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_RESOURCE_MISMATCH" }
+      "capability": {
+        "resource_id": "file:other"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_RESOURCE_MISMATCH"
+      }
     },
     {
       "id": "SCP-004-resource-type-mismatch",
       "requirement": "SCP-004",
       "gate": 10,
-      "capability": { "resource_type": "data_object" },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_RESOURCE_MISMATCH" }
+      "capability": {
+        "resource_type": "data_object"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_RESOURCE_MISMATCH"
+      }
     },
     {
       "id": "SCP-004-operation-mismatch",
       "requirement": "SCP-004",
       "gate": 10,
-      "request": { "operation": "write", "risk_claim": "R2" },
-      "capability": { "operations": ["read"] },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_OPERATION_MISMATCH" }
+      "request": {
+        "operation": "write",
+        "risk_claim": "R2"
+      },
+      "capability": {
+        "operations": [
+          "read"
+        ]
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_OPERATION_MISMATCH"
+      }
     },
     {
       "id": "SCP-004-purpose-mismatch",
       "requirement": "SCP-004",
       "gate": 10,
-      "request": { "purpose": "model-training" },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_PURPOSE_MISMATCH" }
+      "request": {
+        "purpose": "model-training"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_PURPOSE_MISMATCH"
+      }
     },
     {
       "id": "SCP-005-policy-epoch-mismatch",
       "requirement": "SCP-005",
       "gate": 9,
-      "request": { "policy_epoch": 6 },
-      "expected": { "status": "DENY", "reason": "POLICY_EPOCH_MISMATCH" }
+      "request": {
+        "policy_epoch": 6
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "POLICY_EPOCH_MISMATCH"
+      }
     },
     {
       "id": "SCP-005-registry-epoch-mismatch",
       "requirement": "SCP-005",
       "gate": 9,
       "registry_epoch": 6,
-      "expected": { "status": "DENY", "reason": "REGISTRY_EPOCH_MISMATCH" }
+      "expected": {
+        "status": "DENY",
+        "reason": "REGISTRY_EPOCH_MISMATCH"
+      }
     },
     {
       "id": "SCP-005-capability-epoch-mismatch",
       "requirement": "SCP-005",
       "gate": 10,
-      "capability": { "policy_epoch": 6 },
-      "expected": { "status": "DENY", "reason": "CAPABILITY_POLICY_EPOCH_MISMATCH" }
+      "capability": {
+        "policy_epoch": 6
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CAPABILITY_POLICY_EPOCH_MISMATCH"
+      }
     },
     {
       "id": "SCP-006-approval-not-bound-to-action",
       "requirement": "SCP-006",
       "gate": 11,
-      "request": { "operation": "write", "risk_claim": "R2", "approval_digest": "digest-aaaa" },
-      "capability": { "operations": ["write"] },
-      "context": { "action_digest": "digest-bbbb" },
-      "expected": { "status": "CHALLENGE", "reason": "FRESH_ACTION_BOUND_APPROVAL_REQUIRED" }
+      "request": {
+        "operation": "write",
+        "risk_claim": "R2",
+        "approval_digest": "digest-aaaa"
+      },
+      "capability": {
+        "operations": [
+          "write"
+        ]
+      },
+      "context": {
+        "action_digest": "digest-bbbb"
+      },
+      "expected": {
+        "status": "CHALLENGE",
+        "reason": "FRESH_ACTION_BOUND_APPROVAL_REQUIRED"
+      }
     },
     {
       "id": "SCP-008-audit-unavailable-blocks-sensitive-action",
       "requirement": "SCP-008",
       "gate": 14,
-      "request": { "operation": "write", "risk_claim": "R2", "approval_digest": "digest-aaaa" },
-      "capability": { "operations": ["write"] },
-      "context": { "audit_state": "UNAVAILABLE", "action_digest": "digest-aaaa" },
-      "expected": { "status": "DENY", "reason": "AUDIT_UNAVAILABLE_FOR_SENSITIVE_ACTION" }
+      "request": {
+        "operation": "write",
+        "risk_claim": "R2",
+        "approval_digest": "digest-aaaa"
+      },
+      "capability": {
+        "operations": [
+          "write"
+        ]
+      },
+      "context": {
+        "audit_state": "UNAVAILABLE",
+        "action_digest": "digest-aaaa"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "AUDIT_UNAVAILABLE_FOR_SENSITIVE_ACTION"
+      }
     },
     {
       "id": "gate-02-missing-identity",
       "requirement": "INV-01",
       "gate": 2,
-      "request": { "request_id": "" },
-      "expected": { "status": "DENY", "reason": "MALFORMED_OR_MISSING_IDENTITY" }
+      "request": {
+        "request_id": ""
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "MALFORMED_OR_MISSING_IDENTITY"
+      }
     },
     {
       "id": "gate-03-wrong-recipient",
       "requirement": "INV-01",
       "gate": 3,
-      "request": { "recipient_id": "node:other" },
-      "expected": { "status": "DENY", "reason": "WRONG_RECIPIENT" }
+      "request": {
+        "recipient_id": "node:other"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "WRONG_RECIPIENT"
+      }
     },
     {
       "id": "gate-05-request-expired",
       "requirement": "SCP-005",
       "gate": 5,
-      "request": { "expires_at": 1000 },
-      "expected": { "status": "DENY", "reason": "REQUEST_NOT_FRESH" }
+      "request": {
+        "expires_at": 1000
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "REQUEST_NOT_FRESH"
+      }
     },
     {
       "id": "gate-05-request-not-yet-valid",
       "requirement": "SCP-005",
       "gate": 5,
-      "request": { "issued_at": 1001 },
-      "expected": { "status": "DENY", "reason": "REQUEST_NOT_FRESH" }
+      "request": {
+        "issued_at": 1001
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "REQUEST_NOT_FRESH"
+      }
     },
     {
       "id": "gate-05-replayed-nonce",
       "requirement": "SCP-006",
       "gate": 5,
-      "context": { "revoked_nonces": ["nonce-example-000000000001"] },
-      "expected": { "status": "DENY", "reason": "REPLAY_OR_REVOKED_NONCE" }
+      "context": {
+        "revoked_nonces": [
+          "nonce-example-000000000001"
+        ]
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "REPLAY_OR_REVOKED_NONCE"
+      }
     },
     {
       "id": "gate-06-resource-unresolvable",
       "requirement": "INV-01",
       "gate": 6,
-      "request": { "resource_id": "file:missing" },
-      "expected": { "status": "DENY", "reason": "RESOURCE_UNRESOLVABLE" }
+      "request": {
+        "resource_id": "file:missing"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "RESOURCE_UNRESOLVABLE"
+      }
     },
     {
       "id": "gate-08-operation-blocked-in-read-only-mode",
       "requirement": "INV-01",
       "gate": 8,
-      "request": { "operation": "write", "risk_claim": "R2" },
-      "capability": { "operations": ["write"] },
-      "context": { "mode": "READ_ONLY" },
-      "expected": { "status": "DENY", "reason": "OPERATION_BLOCKED_BY_SYSTEM_MODE" }
+      "request": {
+        "operation": "write",
+        "risk_claim": "R2"
+      },
+      "capability": {
+        "operations": [
+          "write"
+        ]
+      },
+      "context": {
+        "mode": "READ_ONLY"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "OPERATION_BLOCKED_BY_SYSTEM_MODE"
+      }
     },
     {
       "id": "gate-11-unknown-operation",
       "requirement": "INV-01",
       "gate": 11,
-      "request": { "operation": "mystery.execute" },
-      "capability": { "operations": ["mystery.execute"] },
-      "expected": { "status": "DENY", "reason": "UNKNOWN_OPERATION_RISK" }
+      "request": {
+        "operation": "mystery.execute"
+      },
+      "capability": {
+        "operations": [
+          "mystery.execute"
+        ]
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "UNKNOWN_OPERATION_RISK"
+      }
     },
     {
       "id": "gate-11-operation-not-defined-for-resource-type",
       "requirement": "INV-01",
       "gate": 11,
-      "request": { "resource_id": "dev:0", "resource_type": "device" },
-      "capability": { "resource_id": "dev:0", "resource_type": "device" },
-      "expected": { "status": "DENY", "reason": "UNKNOWN_OPERATION_RISK" }
+      "request": {
+        "resource_id": "dev:0",
+        "resource_type": "device"
+      },
+      "capability": {
+        "resource_id": "dev:0",
+        "resource_type": "device"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "UNKNOWN_OPERATION_RISK"
+      }
     },
     {
       "id": "gate-11-caller-cannot-downgrade-risk",
       "requirement": "INV-01",
       "gate": 11,
-      "request": { "operation": "write", "risk_claim": "R0" },
-      "capability": { "operations": ["write"] },
-      "expected": { "status": "DENY", "reason": "RISK_CLAIM_MISMATCH" }
+      "request": {
+        "operation": "write",
+        "risk_claim": "R0"
+      },
+      "capability": {
+        "operations": [
+          "write"
+        ]
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "RISK_CLAIM_MISMATCH"
+      }
     },
     {
       "id": "gate-11-caller-cannot-escalate-by-over-claiming",
       "requirement": "INV-01",
       "gate": 11,
-      "request": { "operation": "write", "risk_claim": "R3", "approval_digest": "digest-aaaa" },
-      "capability": { "operations": ["write"] },
-      "context": { "action_digest": "digest-aaaa" },
-      "expected": { "status": "PERMIT", "reason": "ALL_POLICY_GATES_PASSED" }
+      "request": {
+        "operation": "write",
+        "risk_claim": "R3",
+        "approval_digest": "digest-aaaa"
+      },
+      "capability": {
+        "operations": [
+          "write"
+        ]
+      },
+      "context": {
+        "action_digest": "digest-aaaa"
+      },
+      "expected": {
+        "status": "PERMIT",
+        "reason": "ALL_POLICY_GATES_PASSED"
+      }
     },
     {
       "id": "gate-11-strong-approval-required",
       "requirement": "SCP-006",
       "gate": 11,
-      "request": { "operation": "delete", "risk_claim": "R3", "approval_digest": "digest-aaaa" },
-      "capability": { "operations": ["delete"] },
-      "context": { "action_digest": "digest-aaaa" },
-      "expected": { "status": "CHALLENGE", "reason": "STRONG_APPROVAL_REQUIRED" }
+      "request": {
+        "operation": "delete",
+        "risk_claim": "R3",
+        "approval_digest": "digest-aaaa"
+      },
+      "capability": {
+        "operations": [
+          "delete"
+        ]
+      },
+      "context": {
+        "action_digest": "digest-aaaa"
+      },
+      "expected": {
+        "status": "CHALLENGE",
+        "reason": "STRONG_APPROVAL_REQUIRED"
+      }
     },
     {
       "id": "gate-11-most-restrictive-rule-wins",
@@ -323,9 +579,15 @@
         {
           "operation_id": "read",
           "risk_tier": "R0",
-          "approval_requirements": ["NONE"],
-          "allowed_modes": ["NORMAL"],
-          "resource_types": ["file_object"],
+          "approval_requirements": [
+            "NONE"
+          ],
+          "allowed_modes": [
+            "NORMAL"
+          ],
+          "resource_types": [
+            "file_object"
+          ],
           "max_duration_ms": 30000,
           "max_operation_count": 1,
           "required_preconditions": [],
@@ -334,16 +596,25 @@
         {
           "operation_id": "read",
           "risk_tier": "R2",
-          "approval_requirements": ["NONE"],
-          "allowed_modes": ["NORMAL"],
-          "resource_types": ["file_object"],
+          "approval_requirements": [
+            "NONE"
+          ],
+          "allowed_modes": [
+            "NORMAL"
+          ],
+          "resource_types": [
+            "file_object"
+          ],
           "max_duration_ms": 30000,
           "max_operation_count": 1,
           "required_preconditions": [],
           "audit_class": "STANDARD"
         }
       ],
-      "expected": { "status": "DENY", "reason": "RISK_CLAIM_MISMATCH" }
+      "expected": {
+        "status": "DENY",
+        "reason": "RISK_CLAIM_MISMATCH"
+      }
     },
     {
       "id": "gate-12-budget-exceeded",
@@ -353,37 +624,108 @@
         "operation": "write",
         "risk_claim": "R2",
         "approval_digest": "digest-aaaa",
-        "budget": { "duration_ms": 60001, "operation_count": 1 }
+        "budget": {
+          "duration_ms": 60001,
+          "operation_count": 1
+        }
       },
-      "capability": { "operations": ["write"] },
-      "context": { "action_digest": "digest-aaaa" },
-      "expected": { "status": "DENY", "reason": "RESOURCE_BUDGET_EXCEEDED" }
+      "capability": {
+        "operations": [
+          "write"
+        ]
+      },
+      "context": {
+        "action_digest": "digest-aaaa"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "RESOURCE_BUDGET_EXCEEDED"
+      }
     },
     {
       "id": "gate-13-precondition-failed",
       "requirement": "INV-01",
       "gate": 13,
-      "request": { "operation": "write", "risk_claim": "R2", "approval_digest": "digest-aaaa" },
-      "capability": { "operations": ["write"] },
+      "request": {
+        "operation": "write",
+        "risk_claim": "R2",
+        "approval_digest": "digest-aaaa"
+      },
+      "capability": {
+        "operations": [
+          "write"
+        ]
+      },
       "context": {
         "action_digest": "digest-aaaa",
-        "satisfied_preconditions": ["resource_exists"]
+        "satisfied_preconditions": [
+          "resource_exists"
+        ]
       },
-      "expected": { "status": "DENY", "reason": "PRECONDITION_FAILED" }
+      "expected": {
+        "status": "DENY",
+        "reason": "PRECONDITION_FAILED"
+      }
     },
     {
       "id": "gate-10-unverified-capability-issuer",
       "requirement": "SCP-002",
       "gate": 10,
-      "capability": { "provenance": "UNCHECKED" },
-      "expected": { "status": "DENY", "reason": "UNVERIFIED_CAPABILITY_ISSUER" }
+      "capability": {
+        "provenance": "UNCHECKED"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "UNVERIFIED_CAPABILITY_ISSUER"
+      }
     },
     {
       "id": "gate-10-invalid-capability-signature",
       "requirement": "SCP-002",
       "gate": 10,
-      "capability": { "provenance": "INVALID" },
-      "expected": { "status": "DENY", "reason": "SIGNATURE_INVALID" }
+      "capability": {
+        "provenance": "INVALID"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "SIGNATURE_INVALID"
+      }
+    },
+    {
+      "id": "SCP-005-registry-not-yet-valid",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "context": {
+        "now_wall_ms": 1767225599999
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "REGISTRY_NOT_YET_VALID"
+      }
+    },
+    {
+      "id": "SCP-005-registry-expired",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "context": {
+        "now_wall_ms": 1767312000000
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "REGISTRY_EXPIRED"
+      }
+    },
+    {
+      "id": "SCP-005-clock-untrusted",
+      "requirement": "SCP-005",
+      "gate": 9,
+      "context": {
+        "clock_state": "UNTRUSTED"
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "CLOCK_UNTRUSTED"
+      }
     }
   ],
   "attenuation_cases": [
@@ -391,77 +733,118 @@
       "id": "CAP-001-narrower-child-accepted",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "not_before": 900, "expires_at": 1100, "delegation_depth": 2 },
+      "child": {
+        "not_before": 900,
+        "expires_at": 1100,
+        "delegation_depth": 2
+      },
       "expected": true
     },
     {
       "id": "CAP-001-broader-operations-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "operations": ["read", "write"], "delegation_depth": 2 },
+      "child": {
+        "operations": [
+          "read",
+          "write"
+        ],
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-broader-purposes-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "purposes": ["user-requested-view", "model-training"], "delegation_depth": 2 },
+      "child": {
+        "purposes": [
+          "user-requested-view",
+          "model-training"
+        ],
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-longer-expiry-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "expires_at": 1300, "delegation_depth": 2 },
+      "child": {
+        "expires_at": 1300,
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-earlier-not-before-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "not_before": 700, "delegation_depth": 2 },
+      "child": {
+        "not_before": 700,
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-stale-epoch-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "policy_epoch": 6, "delegation_depth": 2 },
+      "child": {
+        "policy_epoch": 6,
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-greater-uses-rejected",
       "requirement": "CAP-001",
-      "parent": { "max_uses": 5 },
-      "child": { "max_uses": 6, "delegation_depth": 2 },
+      "parent": {
+        "max_uses": 5
+      },
+      "child": {
+        "max_uses": 6,
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-deeper-delegation-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "delegation_depth": 4 },
+      "child": {
+        "delegation_depth": 4
+      },
       "expected": false
     },
     {
       "id": "CAP-001-different-subject-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "subject_id": "user:bob", "delegation_depth": 2 },
+      "child": {
+        "subject_id": "user:bob",
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-different-resource-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "resource_id": "file:other", "delegation_depth": 2 },
+      "child": {
+        "resource_id": "file:other",
+        "delegation_depth": 2
+      },
       "expected": false
     },
     {
       "id": "CAP-001-different-resource-type-rejected",
       "requirement": "CAP-001",
       "parent": {},
-      "child": { "resource_type": "data_object", "delegation_depth": 2 },
+      "child": {
+        "resource_type": "data_object",
+        "delegation_depth": 2
+      },
       "expected": false
     }
   ]

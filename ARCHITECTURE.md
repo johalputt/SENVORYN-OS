@@ -95,6 +95,7 @@ Every release MUST publish a TCB inventory identifying all components whose comp
 | Capability enforcement (L2) | Forged or widened authority | Unforgeable handles, attenuation enforced at issue time |
 | Policy evaluator (L3) | Wrong decisions on every request | Pure function, no side effects, deterministic reason codes |
 | Canonical JSON parser | Two byte sequences for one value, or an unbounded allocation | Strict grammar, limits checked before allocation, no third-party code ([ADR-009](decisions/ADR-009-zero-dependency-trusted-core.md)) |
+| Strict UTC instant parser | Two readings of one timestamp, or a document's window judged wrongly | One form accepted, one arithmetic, used by every layer that reads a time ([ADR-012](decisions/ADR-012-capsule-utc-timestamp-boundary.md)) |
 | Key-handling boundaries | Forged signatures, forged identity | Role-separated keys, rotation, revocation, ceremony |
 | Update verifier | Persistent malicious code | Authenticated metadata, content addressing, anti-rollback |
 | Capsule isolation mechanisms | Host compromise from a guest | Explicit, typed, revocable bridges; no implicit host paths |

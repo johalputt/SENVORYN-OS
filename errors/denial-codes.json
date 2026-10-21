@@ -1,33 +1,160 @@
 {
   "schema": "senvoryn.denial-codes.v1",
   "codes": [
-    {"code":"MALFORMED_OR_MISSING_IDENTITY","class":"protocol","default":"DENY"},
-    {"code":"WRONG_RECIPIENT","class":"routing","default":"DENY"},
-    {"code":"UNKNOWN_PRINCIPAL","class":"identity","default":"DENY"},
-    {"code":"REQUEST_NOT_FRESH","class":"freshness","default":"DENY"},
-    {"code":"REPLAY_OR_REVOKED_NONCE","class":"replay","default":"DENY"},
-    {"code":"RESOURCE_UNRESOLVABLE","class":"resolution","default":"DENY"},
-    {"code":"UNKNOWN_OPERATION_RISK","class":"policy","default":"DENY"},
-    {"code":"RISK_CLAIM_MISMATCH","class":"policy","default":"DENY"},
-    {"code":"POLICY_EPOCH_MISMATCH","class":"policy","default":"DENY"},
-    {"code":"REGISTRY_EPOCH_MISMATCH","class":"policy","default":"DENY"},
-    {"code":"MISSING_CAPABILITY","class":"capability","default":"DENY"},
-    {"code":"UNVERIFIED_CAPABILITY_ISSUER","class":"capability","default":"DENY"},
-    {"code":"CAPABILITY_REVOKED","class":"capability","default":"DENY"},
-    {"code":"CAPABILITY_SUBJECT_MISMATCH","class":"capability","default":"DENY"},
-    {"code":"CAPABILITY_RESOURCE_MISMATCH","class":"capability","default":"DENY"},
-    {"code":"CAPABILITY_OPERATION_MISMATCH","class":"capability","default":"DENY"},
-    {"code":"CAPABILITY_PURPOSE_MISMATCH","class":"capability","default":"DENY"},
-    {"code":"CAPABILITY_NOT_CURRENT","class":"capability","default":"DENY"},
-    {"code":"CAPABILITY_POLICY_EPOCH_MISMATCH","class":"capability","default":"DENY"},
-    {"code":"OPERATION_BLOCKED_BY_SYSTEM_MODE","class":"state","default":"DENY"},
-    {"code":"FRESH_ACTION_BOUND_APPROVAL_REQUIRED","class":"approval","default":"CHALLENGE"},
-    {"code":"STRONG_APPROVAL_REQUIRED","class":"approval","default":"CHALLENGE"},
-    {"code":"AUDIT_UNAVAILABLE_FOR_SENSITIVE_ACTION","class":"audit","default":"DENY"},
-    {"code":"RESOURCE_BUDGET_EXCEEDED","class":"resource","default":"DENY"},
-    {"code":"PRECONDITION_FAILED","class":"transaction","default":"DENY"},
-    {"code":"UNSUPPORTED_CRITICAL_SCHEMA","class":"protocol","default":"DENY"},
-    {"code":"SIGNATURE_INVALID","class":"provenance","default":"DENY"},
-    {"code":"ANTI_ROLLBACK_VIOLATION","class":"update","default":"DENY"}
+    {
+      "code": "MALFORMED_OR_MISSING_IDENTITY",
+      "class": "protocol",
+      "default": "DENY"
+    },
+    {
+      "code": "WRONG_RECIPIENT",
+      "class": "routing",
+      "default": "DENY"
+    },
+    {
+      "code": "UNKNOWN_PRINCIPAL",
+      "class": "identity",
+      "default": "DENY"
+    },
+    {
+      "code": "REQUEST_NOT_FRESH",
+      "class": "freshness",
+      "default": "DENY"
+    },
+    {
+      "code": "REPLAY_OR_REVOKED_NONCE",
+      "class": "replay",
+      "default": "DENY"
+    },
+    {
+      "code": "RESOURCE_UNRESOLVABLE",
+      "class": "resolution",
+      "default": "DENY"
+    },
+    {
+      "code": "UNKNOWN_OPERATION_RISK",
+      "class": "policy",
+      "default": "DENY"
+    },
+    {
+      "code": "RISK_CLAIM_MISMATCH",
+      "class": "policy",
+      "default": "DENY"
+    },
+    {
+      "code": "POLICY_EPOCH_MISMATCH",
+      "class": "policy",
+      "default": "DENY"
+    },
+    {
+      "code": "REGISTRY_EPOCH_MISMATCH",
+      "class": "policy",
+      "default": "DENY"
+    },
+    {
+      "code": "MISSING_CAPABILITY",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "UNVERIFIED_CAPABILITY_ISSUER",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "CAPABILITY_REVOKED",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "CAPABILITY_SUBJECT_MISMATCH",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "CAPABILITY_RESOURCE_MISMATCH",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "CAPABILITY_OPERATION_MISMATCH",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "CAPABILITY_PURPOSE_MISMATCH",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "CAPABILITY_NOT_CURRENT",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "CAPABILITY_POLICY_EPOCH_MISMATCH",
+      "class": "capability",
+      "default": "DENY"
+    },
+    {
+      "code": "OPERATION_BLOCKED_BY_SYSTEM_MODE",
+      "class": "state",
+      "default": "DENY"
+    },
+    {
+      "code": "FRESH_ACTION_BOUND_APPROVAL_REQUIRED",
+      "class": "approval",
+      "default": "CHALLENGE"
+    },
+    {
+      "code": "STRONG_APPROVAL_REQUIRED",
+      "class": "approval",
+      "default": "CHALLENGE"
+    },
+    {
+      "code": "AUDIT_UNAVAILABLE_FOR_SENSITIVE_ACTION",
+      "class": "audit",
+      "default": "DENY"
+    },
+    {
+      "code": "RESOURCE_BUDGET_EXCEEDED",
+      "class": "resource",
+      "default": "DENY"
+    },
+    {
+      "code": "PRECONDITION_FAILED",
+      "class": "transaction",
+      "default": "DENY"
+    },
+    {
+      "code": "UNSUPPORTED_CRITICAL_SCHEMA",
+      "class": "protocol",
+      "default": "DENY"
+    },
+    {
+      "code": "SIGNATURE_INVALID",
+      "class": "provenance",
+      "default": "DENY"
+    },
+    {
+      "code": "ANTI_ROLLBACK_VIOLATION",
+      "class": "update",
+      "default": "DENY"
+    },
+    {
+      "code": "CLOCK_UNTRUSTED",
+      "class": "policy",
+      "default": "DENY"
+    },
+    {
+      "code": "REGISTRY_NOT_YET_VALID",
+      "class": "policy",
+      "default": "DENY"
+    },
+    {
+      "code": "REGISTRY_EXPIRED",
+      "class": "policy",
+      "default": "DENY"
+    }
   ]
 }

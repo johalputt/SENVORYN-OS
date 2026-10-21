@@ -166,12 +166,12 @@ SENVORYN-OS/
 |---|---|---|
 | `schemas/` | JSON Schema Draft 2020-12 for principals, resources, requests, capabilities, decisions, approvals, intents, operations, Change Capsules, Origin Capsules, audit events, artifacts, updates, system states | 14 |
 | `state-machines/` | Change Capsule lifecycle + system-mode transition tables | 2 |
-| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 28 codes |
+| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` defaults) | 31 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
 | `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 33 cases + 11 attenuation cases |
 | `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 36 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 111 mutations |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 117 mutations |
 | `decisions/` | Architecture Decision Records with open questions | 17 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
@@ -223,6 +223,7 @@ python -m unittest discover -s tests -v
 | Crate | What it is | What it is not |
 |---|---|---|
 | `senvoryn-canonical` | The Senvoryn Canonical JSON Profile `SCP-CJSON-0001`: parser, encoder, limits | Not a general JSON library — it rejects what the profile rejects |
+| `senvoryn-instant` | The strict UTC instant the system's documents use: one parser, so two readers cannot disagree on what a timestamp means | Not a date library — it accepts one form, and refuses the rest |
 | `senvoryn-scp` | The SCP decision oracle: the sixteen validation gates, the capability model, the audit-event builder | **Not an SCP.** It verifies no signature, resolves no resource against a filesystem, and writes no audit record |
 | `senvoryn-capsule` | The Change Capsule executor simulator: the state machine, the idempotency ledger, the compensation and fault-injection model | **Not an executor.** It acts on a simulated environment, performs no effect, and decides no policy — it checks that the SCP's decision binds the capsule's own digest |
 | `senvoryn-cli` | A development tool that drives the oracle from files | **Not an SCP**, and not deployable as one |
@@ -442,7 +443,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 103/103 Python tests passing · 122/122 Rust tests passing · 33/33 shared vectors agreed · 36/36 capsule vectors agreed by two implementations · 111/111 mutations killed · 2/2 state machines structurally valid · 28/28 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 103/103 Python tests passing · 122/122 Rust tests passing · 36/36 shared vectors agreed · 36/36 capsule vectors agreed by two implementations · 117/117 mutations killed · 2/2 state machines structurally valid · 31/31 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 

@@ -57,6 +57,8 @@ fn context(operations: OperationRegistry) -> PolicyContext {
         local_node_id: "node:local".to_owned(),
         current_policy_epoch: EPOCH,
         now_monotonic: 500,
+        now_wall_ms: 1_767_225_600_000,
+        clock_state: senvoryn_scp::ClockState::Trusted,
         mode: SystemMode::Normal,
         known_principals: ["user:alice".to_owned()].into_iter().collect(),
         resolved_resources: [("file:report".to_owned(), "v1".to_owned())].into_iter().collect(),
@@ -81,7 +83,12 @@ fn context(operations: OperationRegistry) -> PolicyContext {
 /// only thing that differs from the sample is the epoch.
 fn registry_at(epoch: u64) -> OperationRegistry {
     let sample = OperationRegistry::sample().expect("the embedded sample registry parses");
-    OperationRegistry::from_entries(sample.entries().to_vec(), epoch)
+    OperationRegistry::from_entries(
+        sample.entries().to_vec(),
+        epoch,
+        1_767_225_600_000,
+        1_767_225_600_000 + 86_400_000,
+    )
 }
 
 #[test]

@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+senvoryn-instant = { workspace = true }
 senvoryn-canonical = { workspace = true }
 
 [lints]

@@ -53,6 +53,15 @@ impl ReasonCode {
     /// The operation registry in force is not the registry for the epoch this
     /// node is running.
     pub const REGISTRY_EPOCH_MISMATCH: Self = Self("REGISTRY_EPOCH_MISMATCH");
+    /// The wall clock has moved backwards, or cannot be read, so the
+    /// registry's validity window cannot be judged.
+    pub const CLOCK_UNTRUSTED: Self = Self("CLOCK_UNTRUSTED");
+    /// The operation registry in force is not yet the policy in force: its
+    /// validity window has not opened.
+    pub const REGISTRY_NOT_YET_VALID: Self = Self("REGISTRY_NOT_YET_VALID");
+    /// The operation registry in force has expired: its validity window has
+    /// closed.
+    pub const REGISTRY_EXPIRED: Self = Self("REGISTRY_EXPIRED");
     /// No capability was presented.
     pub const MISSING_CAPABILITY: Self = Self("MISSING_CAPABILITY");
     /// The capability's issuer could not be verified.
@@ -106,6 +115,9 @@ impl ReasonCode {
         Self::RISK_CLAIM_MISMATCH,
         Self::POLICY_EPOCH_MISMATCH,
         Self::REGISTRY_EPOCH_MISMATCH,
+        Self::CLOCK_UNTRUSTED,
+        Self::REGISTRY_NOT_YET_VALID,
+        Self::REGISTRY_EXPIRED,
         Self::MISSING_CAPABILITY,
         Self::UNVERIFIED_CAPABILITY_ISSUER,
         Self::CAPABILITY_REVOKED,

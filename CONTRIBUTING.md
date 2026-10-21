@@ -156,7 +156,7 @@ nothing. The mutation gate breaks each control in turn and requires a
 **named** test to go red:
 
 ```bash
-python scripts/mutation-gate.py                    # all 111 controls
+python scripts/mutation-gate.py                    # all 117 controls
 python scripts/mutation-gate.py M11-risk-downgrade # one control
 python scripts/mutation-gate.py --list
 ```

@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/senvoryn-canonical",
+    "crates/senvoryn-instant",
     "crates/senvoryn-scp",
     "crates/senvoryn-capsule",
     "crates/senvoryn-cli",
@@ -17,6 +18,7 @@ authors = ["The Senvoryn OS contributors"]
 
 [workspace.dependencies]
 senvoryn-canonical = { path = "crates/senvoryn-canonical", version = "0.1.0" }
+senvoryn-instant = { path = "crates/senvoryn-instant", version = "0.1.0" }
 senvoryn-scp = { path = "crates/senvoryn-scp", version = "0.1.0" }
 senvoryn-capsule = { path = "crates/senvoryn-capsule", version = "0.1.0" }
 
@@ -24,8 +26,9 @@ senvoryn-capsule = { path = "crates/senvoryn-capsule", version = "0.1.0" }
 #
 # The decision path is the trusted core: every crate it pulls in is code that
 # can influence an authorization decision. A hand-rolled canonical JSON parser
-# is already part of that surface, so the surface is kept to code this project
-# writes, reads, and tests. It also makes CI hermetic — no registry fetch, no
+# and a hand-rolled strict-UTC timestamp parser are already part of that
+# surface, so the surface is kept to code this project writes, reads, and
+# tests. It also makes CI hermetic — no registry fetch, no
 # version drift between a local run and a CI run.
 #
 # The one thing deliberately NOT implemented here is a cryptographic digest.

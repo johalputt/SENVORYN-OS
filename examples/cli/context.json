@@ -2,9 +2,15 @@
   "local_node_id": "node:local",
   "current_policy_epoch": 7,
   "registry_epoch": 7,
+  "issued_at": "2026-01-01T00:00:00Z",
+  "expires_at": "2026-01-02T00:00:00Z",
   "now_monotonic": 500,
+  "now_wall_ms": 1767225600000,
+  "clock_state": "TRUSTED",
   "mode": "NORMAL",
-  "known_principals": ["user:alice"],
+  "known_principals": [
+    "user:alice"
+  ],
   "resolved_resources": {
     "file:report": "v1"
   },
@@ -18,9 +24,18 @@
     {
       "operation_id": "read",
       "risk_tier": "R0",
-      "approval_requirements": ["NONE"],
-      "allowed_modes": ["NORMAL", "DEGRADED", "READ_ONLY", "RECOVERY"],
-      "resource_types": ["file_object"],
+      "approval_requirements": [
+        "NONE"
+      ],
+      "allowed_modes": [
+        "NORMAL",
+        "DEGRADED",
+        "READ_ONLY",
+        "RECOVERY"
+      ],
+      "resource_types": [
+        "file_object"
+      ],
       "max_duration_ms": 30000,
       "max_operation_count": 1,
       "required_preconditions": [],

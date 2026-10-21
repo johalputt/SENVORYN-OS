@@ -57,7 +57,12 @@ fn strict() -> OperationEntry {
 
 #[test]
 fn the_merge_takes_the_most_restrictive_rule_on_every_axis() {
-    let registry = OperationRegistry::from_entries(vec![lax(), strict()], 7);
+    let registry = OperationRegistry::from_entries(
+        vec![lax(), strict()],
+        7,
+        1_767_225_600_000,
+        1_767_225_600_000 + 86_400_000,
+    );
     let merged = registry.effective("write").expect("the operation has a rule");
 
     assert_eq!(merged.risk_tier, RiskTier::R3, "the highest risk tier wins");
@@ -83,6 +88,11 @@ fn the_merge_takes_the_most_restrictive_rule_on_every_axis() {
 
 #[test]
 fn an_operation_the_registry_does_not_contain_has_no_rule() {
-    let registry = OperationRegistry::from_entries(vec![lax()], 7);
+    let registry = OperationRegistry::from_entries(
+        vec![lax()],
+        7,
+        1_767_225_600_000,
+        1_767_225_600_000 + 86_400_000,
+    );
     assert!(registry.effective("teleport").is_none());
 }

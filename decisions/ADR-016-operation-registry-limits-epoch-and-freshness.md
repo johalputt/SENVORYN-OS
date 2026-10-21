@@ -207,18 +207,54 @@ before every gate that can grant anything.
 - [x] The reason code for a mismatched registry epoch —
       `REGISTRY_EPOCH_MISMATCH`, in the policy class, with the registry-sync
       tests checking both directions.
-- [ ] The reason code for an expired registry. What evidence would close it:
-      a decision, and the registry-sync tests in both directions.
-- [ ] Where the strict UTC timestamp parser lives so that the SCP and the
-      capsule can both use it without depending on each other. What evidence
-      would close it: a move into a crate both depend on, with the capsule's
-      timestamp boundary tests running against it.
+- [x] The reason code for an expired registry. Closed: `REGISTRY_EXPIRED`,
+      with `REGISTRY_NOT_YET_VALID` for a window that has not opened and
+      `CLOCK_UNTRUSTED` for a wall clock that cannot be believed. A decision
+      and a reason code are the only things an expired registry may produce.
+- [x] Where the strict UTC timestamp parser lives so that the SCP and the
+      capsule can both use it without depending on each other. Closed: the
+      parser moved into the `senvoryn-instant` crate, which both depend on,
+      and the capsule's timestamp boundary tests now run against it.
 - [ ] The boot-epoch strategy that makes the registry's wall-clock window
       comparable with the monotonic clock the policy layer works in. This is
       the same open item the capability's own validity window has.
 - [ ] The maximum staleness, and the review cadence that sets it. What
       evidence would close it: a published number and the deployment
       configuration that carries it.
+
+## Amendment — the registry's validity window, implemented
+
+The registry now carries the window the decision above asked for.
+
+- The document gains `issued_at` and `expires_at`, in the strict UTC form
+  `YYYY-MM-DDTHH:MM:SS[.fff]Z`, and the schema requires both. The window is
+  half-open: a registry is the policy in force while
+  `issued_at <= now < expires_at`. The capsule's own window closes the same
+  way, so the two layers read a time in one manner.
+- The `OperationRegistry` holds the window, and `from_value` refuses a
+  document whose window closes before it opens.
+- The policy context states `now_wall_ms` and `clock_state`. The wall clock
+  is a statement about a document, not an authority: the monotonic clock
+  remains the session's authority, and the wall clock is read only to judge
+  a published document's window.
+- Gate 9 refuses three ways, each with its own reason code, so that each is
+  separately testable: `CLOCK_UNTRUSTED` when the environment will not
+  vouch for the wall clock, `REGISTRY_NOT_YET_VALID` when the window has not
+  opened, and `REGISTRY_EXPIRED` when it has closed. A registry from another
+  epoch is still refused first, as `REGISTRY_EPOCH_MISMATCH`, because a stale
+  registry can never produce a permit whatever the clock says.
+- The window is judged fail-closed. A clock that has moved backwards is
+  refused rather than believed, because a clock that moves backwards is the
+  one way an expired document can look current.
+- The evidence is three shared conformance vectors — `SCP-005-registry-expired`,
+  `SCP-005-registry-not-yet-valid` and `SCP-005-clock-untrusted` — executed
+  by both implementations, and six mutations that break each of the three
+  checks in each language.
+
+The maximum staleness, and the review cadence that sets it, remain open: a
+window of any length is better than no window, but the number that bounds
+how old the policy in force may be is a deployment decision, and this
+decision has not yet made it.
 
 ## References
 

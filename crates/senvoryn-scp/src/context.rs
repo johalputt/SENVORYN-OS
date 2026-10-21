@@ -83,6 +83,39 @@ impl AuditState {
     }
 }
 
+/// Whether the wall clock may be believed.
+///
+/// A wall clock that has moved backwards is refused rather than believed: it
+/// would make an expired document look current, which is the one way a clock
+/// can grant authority. The environment states its own trust here, the same
+/// way it states whether the audit sink is up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClockState {
+    /// The wall clock has not moved backwards since the last reading.
+    Trusted,
+    /// The wall clock has moved backwards, or cannot be read.
+    Untrusted,
+}
+
+impl ClockState {
+    /// The state as it appears in a serialized context.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Trusted => "TRUSTED",
+            Self::Untrusted => "UNTRUSTED",
+        }
+    }
+
+    /// Reads a state from its serialized form.
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "TRUSTED" => Some(Self::Trusted),
+            "UNTRUSTED" => Some(Self::Untrusted),
+            _ => None,
+        }
+    }
+}
+
 /// Everything the policy environment knows.
 ///
 /// Every field here is something the environment *knows*, never something the
@@ -98,6 +131,15 @@ pub struct PolicyContext {
     pub current_policy_epoch: u64,
     /// The current time, in monotonic milliseconds since boot.
     pub now_monotonic: u64,
+    /// The current wall-clock time, in milliseconds since the Unix epoch.
+    ///
+    /// The monotonic clock is the session's authority and is what the
+    /// request's freshness and the capability's window are measured with. The
+    /// wall clock is read only to judge a published document's validity
+    /// window, and only while `clock_state` says it may be believed.
+    pub now_wall_ms: i64,
+    /// Whether the wall clock may be believed.
+    pub clock_state: ClockState,
     /// The system state the node is in.
     pub mode: SystemMode,
     /// The principals this node knows.

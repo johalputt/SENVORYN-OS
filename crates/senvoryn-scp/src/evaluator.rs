@@ -6,7 +6,7 @@
 //! about expiry can be tested at all.
 
 use crate::capability::{Capability, Provenance};
-use crate::context::{AuditState, PolicyContext};
+use crate::context::{AuditState, ClockState, PolicyContext};
 use crate::decision::Decision;
 use crate::reason::ReasonCode;
 use crate::registry::{AuditClass, OperationEntry, RiskTier};
@@ -97,6 +97,21 @@ pub fn evaluate(
     }
     if context.operations.epoch() != context.current_policy_epoch {
         return Decision::deny(ReasonCode::REGISTRY_EPOCH_MISMATCH, epoch);
+    }
+    // The registry's own validity window. A registry with no window is a
+    // policy that never expires, so nothing would bound how old the policy
+    // in force is; and a wall clock that has moved backwards would make an
+    // expired registry look current, which is the one way a clock grants
+    // authority. So the window is judged against the wall clock, and a clock
+    // the environment will not vouch for is refused before it is used.
+    if context.clock_state == ClockState::Untrusted {
+        return Decision::deny(ReasonCode::CLOCK_UNTRUSTED, epoch);
+    }
+    if context.now_wall_ms < context.operations.valid_from_ms() {
+        return Decision::deny(ReasonCode::REGISTRY_NOT_YET_VALID, epoch);
+    }
+    if context.now_wall_ms >= context.operations.valid_until_ms() {
+        return Decision::deny(ReasonCode::REGISTRY_EXPIRED, epoch);
     }
 
     // Gate 10 — capability.

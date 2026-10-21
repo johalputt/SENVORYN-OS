@@ -2,65 +2,132 @@
   "schema": "senvoryn.operation-registry.v1",
   "registry_id": "registry:prototype:minimal",
   "registry_epoch": 7,
+  "issued_at": "2026-01-01T00:00:00Z",
+  "expires_at": "2026-01-02T00:00:00Z",
   "operations": [
     {
       "operation_id": "read",
-      "resource_types": ["file_object", "data_object"],
+      "resource_types": [
+        "file_object",
+        "data_object"
+      ],
       "risk_tier": "R0",
       "reversibility": "REVERSIBLE",
-      "approval_requirements": ["NONE"],
+      "approval_requirements": [
+        "NONE"
+      ],
       "external_effects": [],
-      "allowed_modes": ["NORMAL", "DEGRADED", "READ_ONLY", "RECOVERY", "MAINTENANCE", "OFFLINE"],
+      "allowed_modes": [
+        "NORMAL",
+        "DEGRADED",
+        "READ_ONLY",
+        "RECOVERY",
+        "MAINTENANCE",
+        "OFFLINE"
+      ],
       "idempotent": true,
       "max_duration_ms": 30000,
       "max_operation_count": 1,
-      "required_preconditions": ["resource_exists", "capability_scope_matches"],
-      "required_postconditions": ["read_result_within_granted_scope"],
+      "required_preconditions": [
+        "resource_exists",
+        "capability_scope_matches"
+      ],
+      "required_postconditions": [
+        "read_result_within_granted_scope"
+      ],
       "audit_class": "STANDARD"
     },
     {
       "operation_id": "write",
-      "resource_types": ["file_object", "data_object"],
+      "resource_types": [
+        "file_object",
+        "data_object"
+      ],
       "risk_tier": "R2",
       "reversibility": "COMPENSATABLE",
-      "approval_requirements": ["USER_CONFIRMATION"],
-      "external_effects": ["persistent_write"],
-      "allowed_modes": ["NORMAL", "MAINTENANCE"],
+      "approval_requirements": [
+        "USER_CONFIRMATION"
+      ],
+      "external_effects": [
+        "persistent_write"
+      ],
+      "allowed_modes": [
+        "NORMAL",
+        "MAINTENANCE"
+      ],
       "idempotent": false,
       "max_duration_ms": 60000,
       "max_operation_count": 1,
-      "required_preconditions": ["resource_version_matches", "recovery_or_compensation_defined"],
-      "required_postconditions": ["written_version_verified"],
+      "required_preconditions": [
+        "resource_version_matches",
+        "recovery_or_compensation_defined"
+      ],
+      "required_postconditions": [
+        "written_version_verified"
+      ],
       "audit_class": "SENSITIVE"
     },
     {
       "operation_id": "delete",
-      "resource_types": ["file_object", "data_object", "storage_volume"],
+      "resource_types": [
+        "file_object",
+        "data_object",
+        "storage_volume"
+      ],
       "risk_tier": "R3",
       "reversibility": "NON_REVERSIBLE",
-      "approval_requirements": ["STRONG_AUTH", "USER_CONFIRMATION"],
-      "external_effects": ["persistent_write", "irreversible_effect"],
-      "allowed_modes": ["NORMAL", "MAINTENANCE"],
+      "approval_requirements": [
+        "STRONG_AUTH",
+        "USER_CONFIRMATION"
+      ],
+      "external_effects": [
+        "persistent_write",
+        "irreversible_effect"
+      ],
+      "allowed_modes": [
+        "NORMAL",
+        "MAINTENANCE"
+      ],
       "idempotent": false,
       "max_duration_ms": 60000,
       "max_operation_count": 1,
-      "required_preconditions": ["exact_target_displayed", "backup_or_loss_acknowledged"],
-      "required_postconditions": ["deletion_scope_verified"],
+      "required_preconditions": [
+        "exact_target_displayed",
+        "backup_or_loss_acknowledged"
+      ],
+      "required_postconditions": [
+        "deletion_scope_verified"
+      ],
       "audit_class": "SECURITY_CRITICAL"
     },
     {
       "operation_id": "recover",
-      "resource_types": ["system_state", "artifact"],
+      "resource_types": [
+        "system_state",
+        "artifact"
+      ],
       "risk_tier": "R2",
       "reversibility": "COMPENSATABLE",
-      "approval_requirements": ["STRONG_AUTH"],
-      "external_effects": ["persistent_write"],
-      "allowed_modes": ["RECOVERY", "MAINTENANCE"],
+      "approval_requirements": [
+        "STRONG_AUTH"
+      ],
+      "external_effects": [
+        "persistent_write"
+      ],
+      "allowed_modes": [
+        "RECOVERY",
+        "MAINTENANCE"
+      ],
       "idempotent": true,
       "max_duration_ms": 600000,
       "max_operation_count": 10,
-      "required_preconditions": ["recovery_artifact_verified", "target_generation_identified"],
-      "required_postconditions": ["required_integrity_checks_pass"],
+      "required_preconditions": [
+        "recovery_artifact_verified",
+        "target_generation_identified"
+      ],
+      "required_postconditions": [
+        "required_integrity_checks_pass"
+      ],
       "audit_class": "SECURITY_CRITICAL"
     }
   ],

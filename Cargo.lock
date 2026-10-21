@@ -11,6 +11,7 @@ name = "senvoryn-capsule"
 version = "0.1.0"
 dependencies = [
  "senvoryn-canonical",
+ "senvoryn-instant",
  "senvoryn-scp",
 ]
 
@@ -19,12 +20,18 @@ name = "senvoryn-cli"
 version = "0.1.0"
 dependencies = [
  "senvoryn-canonical",
+ "senvoryn-instant",
  "senvoryn-scp",
 ]
+
+[[package]]
+name = "senvoryn-instant"
+version = "0.1.0"
 
 [[package]]
 name = "senvoryn-scp"
 version = "0.1.0"
 dependencies = [
  "senvoryn-canonical",
+ "senvoryn-instant",
 ]

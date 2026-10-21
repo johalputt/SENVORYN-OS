@@ -13,7 +13,7 @@ Validation environment
 Checks performed
 - Python contract tests: 103 passed, 0 failed.
 - Rust workspace tests: 122 passed, 0 failed.
-- Shared conformance vectors: 33 decision cases and 11 attenuation cases executed by the
+- Shared conformance vectors: 36 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
   prototype and the implementation from becoming two authorities on the same question.
@@ -47,7 +47,7 @@ Checks performed
   reversible of two conflicting rules, the timestamp parser refused every timestamp with
   fractional seconds, and the timestamp parser rolled a date that does not exist into the
   next month. All three are fixed and pinned by a test in each implementation.
-- Denial-code registry: 28 codes, unique, each with a class and a default status. Every
+- Denial-code registry: 31 codes, unique, each with a class and a default status. Every
   code is produced by at least one implementation and every code an implementation can
   produce is in the registry; both directions are checked by tests on both sides.
 - Change Capsule timestamp boundary: the strict-UTC parser's guards — the form, the zone
@@ -68,8 +68,8 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 111 controls broken in turn, each requiring a named test to go red
-  because of that break. 111 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 117 controls broken in turn, each requiring a named test to go red
+  because of that break. 117 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
 

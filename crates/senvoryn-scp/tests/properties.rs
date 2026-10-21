@@ -99,6 +99,8 @@ fn context(registry: OperationRegistry) -> PolicyContext {
         local_node_id: "node:local".to_owned(),
         current_policy_epoch: 7,
         now_monotonic: 500,
+        now_wall_ms: 1_767_225_600_000,
+        clock_state: senvoryn_scp::ClockState::Trusted,
         mode: SystemMode::Normal,
         known_principals: ["user:alice".to_owned()].into_iter().collect(),
         resolved_resources: [("file:report".to_owned(), "v1".to_owned())].into_iter().collect(),

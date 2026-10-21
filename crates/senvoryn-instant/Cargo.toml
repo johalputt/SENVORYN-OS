@@ -1,0 +1,12 @@
+[package]
+name = "senvoryn-instant"
+description = "The strict UTC instant form the system's documents use - one arithmetic, so two readers cannot disagree"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
