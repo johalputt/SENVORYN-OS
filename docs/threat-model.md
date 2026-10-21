@@ -286,9 +286,9 @@ Each abuse case names the gate that must hold, the spec rule that requires it, a
 **Adversary:** ADV-1, ADV-2
 **Attack:** Change the resource, version, or policy between the decision and the effect.
 **Gate:** Effect separation (#16) — executor re-checks.
-**Required controls:** The evaluator MUST be side-effect free. The executor independently rechecks authorization and transaction preconditions immediately before acting. Object resolution must be resistant to aliasing, link traversal, namespace confusion, and TOCTOU races. Before each capsule step, target preconditions and policy epoch are rechecked. The artefact that authorises an effect names the canonical identifier of the object and the version the decision was made against, so that the recheck has something to compare against that the caller cannot change. **The executor compares the version the decision was made against with the version it is about to act on, and refuses a decision that names no version at all** (ADR-020).
+**Required controls:** The evaluator MUST be side-effect free. The executor independently rechecks authorization and transaction preconditions immediately before acting. Object resolution must be resistant to aliasing, link traversal, namespace confusion, and TOCTOU races. Before each capsule step, target preconditions and policy epoch are rechecked. The artefact that authorises an effect names the canonical identifier of the object and the version the decision was made against, so that the recheck has something to compare against that the caller cannot change. **The executor compares the version the decision was made against with the version it is about to act on, and refuses a decision that names no version at all** (ADR-020). **The authorisation it compares against is the policy layer's decision record, read through a closed reader, and not a value the host assembles** (ADR-021).
 **Failure mode:** Authorized-for-A effect applied to B.
-**Tests:** `SCP-007`, `CC-003`, `CC-VERSION`.
+**Tests:** `SCP-007`, `CC-003`, `CC-VERSION`, `SCP-RECORD`.
 
 ### AS-20 · Aliasing and path confusion
 
@@ -322,7 +322,7 @@ Ranked by **(impact × likelihood)** given the current implementation state. "Li
 | 4 | AS-9 / AS-10 AI escalation & injection | Critical | Medium | Broker not implemented — **open risk** |
 | 5 | AS-16 Compromised pipeline | Critical | Low–Medium | Signing ceremony undefined — **open risk** |
 | 6 | AS-13 Audit evasion | High | Medium | Depends on audit sink durability — **open risk** |
-| 7 | AS-19 / AS-20 TOCTOU & aliasing | High | Medium | Resolution boundary specified and implemented: the canonical identity governs the later gates, and the executor refuses a decision that names no version of the target or names another one (ADR-020). The per-resource-type resolution design and the alias-revocation rule are still open — **open risk** |
+| 7 | AS-19 / AS-20 TOCTOU & aliasing | High | Medium | Resolution boundary specified and implemented: the canonical identity governs the later gates, the executor refuses a decision that names no version of the target or names another one (ADR-020), and the authorisation it compares against is the policy layer's decision record rather than a value the host assembles (ADR-021). The per-resource-type resolution design and the alias-revocation rule are still open — **open risk** |
 | 8 | AS-3 Approval substitution | High | Medium | Digest binding specified; implementation pending |
 | 9 | AS-8 Remote command escalation | High | Medium | Local re-authorization specified; federation unimplemented |
 | 10 | AS-7 Mode bypass | High | Low | Mode table specified; enforcement unimplemented |

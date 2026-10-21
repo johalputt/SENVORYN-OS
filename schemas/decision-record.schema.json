@@ -65,6 +65,12 @@
         "null"
       ]
     },
+    "permitted_payload_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "capability_scope_ref": {
       "type": [
         "string",

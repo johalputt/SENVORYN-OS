@@ -101,6 +101,7 @@ fn run() -> Result<String, String> {
         request_id: &request.request_id,
         evaluated_at: "1970-01-01T00:00:00Z",
         presented_resource_id: &request.resource_id,
+        permitted_payload_digest: request.payload_digest.as_deref(),
         audit_ref: "audit:cli:0001",
         valid_until: None,
         required_next_step: None,

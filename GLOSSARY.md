@@ -12,7 +12,7 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 
 **Approval Record** — A signed record of a human or workflow authorization bound to an **exact action digest**. Changing the action invalidates the approval.
 
-**Authorization** — The System Control Plane's decision about a Change Capsule: it names the plan digest it permits, the version of the target the decision was made against, and the approvals that were given. The executor checks the binding; it does not re-decide. An authorization that names no version authorises no effect, because it was made before the resource was resolved. See [ADR-020](decisions/ADR-020-the-decision-names-the-version.md).
+**Authorization** — The System Control Plane's decision about a Change Capsule, read out of the **decision record** the policy layer wrote: the plan digest it permits, the version of the target the decision was made against, the status it carried, and the approvals that were given. The executor checks the binding; it does not re-decide. An authorization that names no version authorises no effect, because it was made before the resource was resolved; one that names no plan authorises no plan; and one that granted no authority authorises nothing at all. See [ADR-020](decisions/ADR-020-the-decision-names-the-version.md) and [ADR-021](decisions/ADR-021-the-decision-record-is-the-authorization.md).
 
 **Attenuation** — The rule that a delegated (child) capability may only be *equal to or narrower* than its parent: subset resources, subset operations, subset purposes, expiry ≤ parent, budget ≤ parent, delegation depth decreased, policy epoch still acceptable. **[INV-03]**
 
@@ -57,6 +57,8 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 **Data Class / Data Label** — The sensitivity classification governing allowed storage, logging, export, remote processing, and retention: `PUBLIC`, `INTERNAL`, `PERSONAL`, `SENSITIVE`, `SECRET`, `SECURITY_EVIDENCE`. Classification is conservative when unknown. An app cannot downgrade a label by copying data into another container.
 
 **Decision** — The deterministic result of evaluating a request against a defined policy snapshot and evidence set: `PERMIT`, `DENY`, `CHALLENGE`, `DEFER`, or `QUARANTINE`. Every decision carries `decision_id`, `request_id`, reason codes, policy epoch, evaluated target/version, required next step, capability scope if permitted, expiry, and audit-event reference.
+
+**Decision Record** — The document the policy layer writes for a decision, and the only thing the capsule executor reads to learn what was permitted. It names the canonical object the decision was about, the version of it the decision was made against, the plan the request asked to run, the status, the reason codes, and the audit event. Its field set is closed: a record carrying a field the record does not define is refused rather than read, and a record claiming an effect was performed is refused because the policy layer cannot have performed one. See [ADR-021](decisions/ADR-021-the-decision-record-is-the-authorization.md).
 
 **Denial Code** — A stable, machine-readable reason for a rejection, with a class and a default decision. See [`errors/denial-codes.json`](errors/denial-codes.json).
 

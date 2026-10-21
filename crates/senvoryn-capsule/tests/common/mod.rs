@@ -13,9 +13,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use senvoryn_canonical::parse;
+use senvoryn_canonical::{Value, parse};
 use senvoryn_capsule::{Approval, Authorization, ChangeCapsule, Environment, Executor};
-use senvoryn_scp::OperationRegistry;
+use senvoryn_scp::{DecisionRecord, OperationRegistry};
 
 const CAPSULE_JSON: &str = include_str!("../../../../examples/capsule.sample.json");
 
@@ -86,15 +86,58 @@ pub fn environment() -> Environment {
 }
 
 /// An authorization that permits the sample capsule.
+///
+/// It is read out of a decision record, the way the executor reads it in
+/// production: the plan and the version come from the decision, not from
+/// the value the test assembled.
 pub fn authorization() -> Authorization {
-    Authorization {
-        permitted_digest: DIGEST.to_owned(),
-        permitted_resource_version: Some("7".to_owned()),
-        approvals: vec![Approval {
+    Authorization::from_record(
+        &decision_record(DIGEST.to_owned(), Some("7".to_owned()), "PERMIT"),
+        vec![Approval {
             approval_type: "USER_CONFIRMATION".to_owned(),
             binds_digest: DIGEST.to_owned(),
         }],
-    }
+    )
+}
+
+/// A decision record that permits the given plan and version.
+pub fn decision_record(
+    permitted_digest: String,
+    permitted_resource_version: Option<String>,
+    status: &str,
+) -> DecisionRecord {
+    let mut record = BTreeMap::new();
+    record.insert("schema".to_owned(), Value::from("senvoryn.decision-record.v1"));
+    record.insert("decision_id".to_owned(), Value::from("decision-0001"));
+    record.insert("request_id".to_owned(), Value::from("request-0001"));
+    record.insert("status".to_owned(), Value::from(status));
+    record.insert(
+        "reason_codes".to_owned(),
+        Value::Array(vec![Value::from("ALL_POLICY_GATES_PASSED")]),
+    );
+    record.insert("policy_epoch".to_owned(), Value::Int(7));
+    record.insert("evaluated_at".to_owned(), Value::from("2026-01-01T00:00:00Z"));
+    record.insert("target_resource_id".to_owned(), Value::from("file:///srv/data/report.csv"));
+    record.insert(
+        "target_resource_version".to_owned(),
+        match permitted_resource_version {
+            Some(version) => Value::from(version),
+            None => Value::Null,
+        },
+    );
+    record.insert(
+        "permitted_payload_digest".to_owned(),
+        match permitted_digest.is_empty() {
+            true => Value::Null,
+            false => Value::from(permitted_digest),
+        },
+    );
+    record.insert("capability_scope_ref".to_owned(), Value::from("capability-0001"));
+    record.insert("valid_until".to_owned(), Value::Null);
+    record.insert("required_next_step".to_owned(), Value::Null);
+    record.insert("effect_performed".to_owned(), Value::Bool(false));
+    record.insert("audit_ref".to_owned(), Value::from("audit-0001"));
+    DecisionRecord::from_value(&Value::Object(record)).expect("the decision record is well formed")
 }
 
 /// An executor for the sample capsule, in an environment where it may run.

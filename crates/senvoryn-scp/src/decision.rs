@@ -44,6 +44,23 @@ impl DecisionStatus {
     pub fn grants_authority(&self) -> bool {
         matches!(self, Self::Permit)
     }
+
+    /// The status a decision record names, if it names one this node knows.
+    ///
+    /// The vocabulary is closed, so an unknown status is a refusal to read
+    /// the record rather than a status to be treated as `DENY`: a record
+    /// that says something this node does not understand is a record this
+    /// node cannot act on.
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "PERMIT" => Some(Self::Permit),
+            "DENY" => Some(Self::Deny),
+            "CHALLENGE" => Some(Self::Challenge),
+            "DEFER" => Some(Self::Defer),
+            "QUARANTINE" => Some(Self::Quarantine),
+            _ => None,
+        }
+    }
 }
 
 impl core::fmt::Display for DecisionStatus {
@@ -181,6 +198,13 @@ impl Decision {
                 None => Value::Null,
             },
         );
+        record.insert(
+            "permitted_payload_digest".to_owned(),
+            match details.permitted_payload_digest {
+                Some(digest) => Value::from(digest),
+                None => Value::Null,
+            },
+        );
         record.insert("effect_performed".to_owned(), Value::Bool(false));
         record.insert("audit_ref".to_owned(), Value::from(details.audit_ref));
         record.insert(
@@ -226,6 +250,13 @@ pub struct RecordDetails<'a> {
     /// one; this is the fallback for a decision that was refused before the
     /// resource was resolved.
     pub presented_resource_id: &'a str,
+    /// The digest of the plan the request named.
+    ///
+    /// The record carries the request's claim about the plan it asked to
+    /// run, and the executor compares it with the plan it was handed. A
+    /// request that named no plan leaves it null, and a null permits no
+    /// plan: it is a decision about an operation, not about a plan.
+    pub permitted_payload_digest: Option<&'a str>,
     /// The audit event that records this decision.
     pub audit_ref: &'a str,
     /// How long the granted authority lasts.

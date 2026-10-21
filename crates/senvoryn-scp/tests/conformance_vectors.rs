@@ -148,6 +148,7 @@ fn request_from(raw: &Value) -> Request {
         risk_claim: RiskTier::parse(&string_field(raw, "risk_claim"))
             .unwrap_or_else(|| panic!("bad risk claim in the vector file")),
         approval_digest: optional_string(raw, "approval_digest"),
+        payload_digest: optional_string(raw, "payload_digest"),
         budget: match raw.get("budget") {
             None | Some(Value::Null) => None,
             Some(budget) => Some(Budget {
@@ -423,6 +424,7 @@ fn a_decision_record_reports_that_no_effect_was_performed() {
         request_id: &request.request_id,
         evaluated_at: "1970-01-01T00:00:00Z",
         presented_resource_id: &request.resource_id,
+        permitted_payload_digest: request.payload_digest.as_deref(),
         audit_ref: "audit:test:0001",
         valid_until: None,
         required_next_step: None,
@@ -461,6 +463,7 @@ fn a_decision_record_names_the_canonical_object_and_its_version() {
         request_id: &request.request_id,
         evaluated_at: "1970-01-01T00:00:00Z",
         presented_resource_id: &request.resource_id,
+        permitted_payload_digest: request.payload_digest.as_deref(),
         audit_ref: "audit:test:0002",
         valid_until: None,
         required_next_step: None,

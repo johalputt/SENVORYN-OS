@@ -120,8 +120,9 @@ field to compare.
 | The version in the authorization | done | `Authorization::permitted_resource_version`, both implementations |
 | The refusal of a decision that names no version | done | `AuthorizationError::TargetVersionNotNamed`, shared vector `CC-038` |
 | The refusal of a decision made against another version | done | `AuthorizationError::TargetVersionMismatch`, shared vector `CC-037` |
-| The authorization read from a document the repository defines | **not done** | the authorization is still a value the host constructs |
-| The plan digest and the approvals in the decision record | **not done** | the record carries neither |
+| The authorization read from a document the repository defines | done | [ADR-021](ADR-021-the-decision-record-is-the-authorization.md): the executor reads the decision record |
+| The plan digest in the decision record | done | [ADR-021](ADR-021-the-decision-record-is-the-authorization.md): `permitted_payload_digest` |
+| The approvals in the decision record | **not done** | the record carries none; the policy layer is given the approval's digest |
 
 ## Alternatives considered
 
@@ -130,23 +131,27 @@ field to compare.
 | Compare the canonical identifier as well as the version | The capsule's target name may be an alias and the decision's is canonical. Comparing them refuses every alias, and the two are not even the same kind of thing. |
 | Treat a decision that names no version as authorising any version | That is a wildcard on the one field the decision exists to pin, and it would make the least-informed decision the most permissive one. |
 | Put the check in the executor's validation, next to the environment's version check | The environment's check asks whether the target is still where the capsule expects it; this asks whether the decision was made about that version. Two questions, two answers — and putting them together would make one of them unreachable, which is how a control stops being a control. |
-| Let the executor read the decision record and take the version from it | The decision record carries neither the plan digest nor the approvals, so an executor that read the record could not do the digest binding it already does. Reading the record is an open item, not part of this decision. |
+| Let the executor read the decision record and take the version from it | At the time of this decision the record carried neither the plan digest nor the approvals, so an executor that read the record could not do the digest binding it already does. Reading the record needed the record to carry the plan first, which is what [ADR-021](ADR-021-the-decision-record-is-the-authorization.md) added. |
 | Re-resolve the target in the executor and compare the resolved version | The executor drives a simulated environment and resolves nothing, and re-resolving would make it a second authority on identity — the failure the two-implementation vectors exist to prevent. |
 | Compare the version only when the decision names one | The comparison is then optional, and the case where the decision names none is exactly the case where the decision knows least. |
 
 ## Open items
 
-- [ ] The authorization is still a value the host constructs. It is not read
-      from a document the repository defines, and the reader that pretended
-      otherwise has been deleted. What would close it: a schema for the
-      authorization, and a producer of it.
-- [ ] The decision record carries neither the plan digest nor the approvals,
-      so the digest binding still depends on the host passing the right value
-      into the right field.
+- [x] The authorization was a value the host constructs. It is now read from
+      the decision record — a document the repository defines and the policy
+      layer produces. Closed by
+      [ADR-021](ADR-021-the-decision-record-is-the-authorization.md).
+- [x] The decision record carried neither the plan digest nor the approvals.
+      It now carries the plan digest. Closed by
+      [ADR-021](ADR-021-the-decision-record-is-the-authorization.md).
+- [ ] The approvals are still passed to the executor beside the record. The
+      policy layer is given the approval's digest, not the approval, so the
+      record cannot carry them. Tracked in ADR-021.
 - [ ] The request carries no target version (ADR-018's open item), so the
       decision's version comes from the resolution and the capsule's expected
       version comes from the capsule. Nothing yet ties the request to the
-      plan: the plan digest is that tie, and it is the item above.
+      plan: the plan digest is that tie, and ADR-021 adds it to the request
+      and the record.
 
 ## References
 

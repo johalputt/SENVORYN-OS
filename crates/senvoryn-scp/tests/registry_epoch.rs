@@ -31,6 +31,7 @@ fn request() -> Request {
         nonce: "nonce:epoch:0001".to_owned(),
         risk_claim: RiskTier::R0,
         approval_digest: None,
+        payload_digest: None,
         budget: None,
     }
 }

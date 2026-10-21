@@ -69,6 +69,15 @@ pub struct Request {
     pub risk_claim: RiskTier,
     /// The digest of the action the approval is bound to.
     pub approval_digest: Option<String>,
+    /// The digest of the plan the request asks to run.
+    ///
+    /// A request that names a plan says which plan it is about; a request
+    /// that names none asks for a single operation. The digest is the
+    /// caller's claim about the plan — the policy layer does not compute it
+    /// (ADR-002) and does not judge it — but it is the thread the decision
+    /// record carries, so that the executor can compare the plan it was
+    /// handed with the plan the decision was made about.
+    pub payload_digest: Option<String>,
     /// The budget the request asks for.
     pub budget: Option<Budget>,
 }
@@ -96,6 +105,7 @@ const FIELDS: &[&str] = &[
     "nonce",
     "risk_claim",
     "approval_digest",
+    "payload_digest",
     "budget",
 ];
 
@@ -186,6 +196,7 @@ impl Request {
             })?;
 
         let approval_digest = optional_string(document, "approval_digest")?;
+        let payload_digest = optional_string(document, "payload_digest")?;
         let budget = match document.get("budget") {
             None | Some(Value::Null) => None,
             Some(value) => {
@@ -211,6 +222,7 @@ impl Request {
             nonce,
             risk_claim,
             approval_digest,
+            payload_digest,
             budget,
         })
     }

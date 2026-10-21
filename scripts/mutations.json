@@ -395,7 +395,7 @@
       "gate": 2,
       "control": "The decision must permit the capsule's own digest, not another plan's.",
       "file": "crates/senvoryn-capsule/src/authorization.rs",
-      "find": "if authorization.permitted_digest != capsule.payload_digest {",
+      "find": "if permitted_digest != &capsule.payload_digest {",
       "replace": "if false {",
       "package": "senvoryn-capsule",
       "test": "every_vector_reaches_the_state_it_names",
@@ -1567,6 +1567,106 @@
       "replace": "    if False:\n",
       "test": "tests.test_conformance_vectors.ConformanceVectorTests.test_every_case_matches_the_expected_decision",
       "expect_output_contains": "gate-11-operation-not-defined-for-resource-type"
+    },
+    {
+      "id": "CC-executor-decision-grants-no-authority",
+      "gate": 2,
+      "control": "A decision that granted no authority authorises nothing, whatever plan it names.",
+      "file": "crates/senvoryn-capsule/src/authorization.rs",
+      "find": "if !authorization.decision_status.grants_authority() {",
+      "replace": "if false {",
+      "package": "senvoryn-capsule",
+      "test": "every_vector_reaches_the_state_it_names",
+      "test_file": "conformance_vectors",
+      "expect_output_contains": "CC-039-decision-that-granted-no-authority"
+    },
+    {
+      "id": "CC-executor-plan-not-named",
+      "gate": 2,
+      "control": "A decision about an operation rather than about a plan authorises no plan.",
+      "file": "crates/senvoryn-capsule/src/authorization.rs",
+      "find": "let Some(permitted_digest) = &authorization.permitted_digest else {\n        return Err(AuthorizationError::PlanNotNamed);\n    };",
+      "replace": "let Some(permitted_digest) = &authorization.permitted_digest else {\n        return Ok(());\n    };",
+      "package": "senvoryn-capsule",
+      "test": "every_vector_reaches_the_state_it_names",
+      "test_file": "conformance_vectors",
+      "expect_output_contains": "CC-040-decision-that-names-no-plan"
+    },
+    {
+      "id": "CC-py-decision-grants-no-authority",
+      "gate": 2,
+      "control": "A decision that granted no authority authorises nothing, whatever plan it names.",
+      "file": "reference/capsule_reference.py",
+      "find": "if authorization.decision_status not in AUTHORITY_GRANTING_STATUSES:",
+      "replace": "if False:",
+      "test": "tests.test_capsule_vectors.CapsuleVectorTests.test_every_vector_reaches_the_state_it_names",
+      "expect_output_contains": "CC-039-decision-that-granted-no-authority"
+    },
+    {
+      "id": "CC-py-plan-not-named",
+      "gate": 2,
+      "control": "A decision about an operation rather than about a plan authorises no plan.",
+      "file": "reference/capsule_reference.py",
+      "find": "if authorization.permitted_digest is None:\n        return \"the decision does not name the plan it was made about\"",
+      "replace": "if authorization.permitted_digest is None:\n        return None",
+      "test": "tests.test_capsule_vectors.CapsuleVectorTests.test_every_vector_reaches_the_state_it_names",
+      "expect_output_contains": "CC-040-decision-that-names-no-plan"
+    },
+    {
+      "id": "SCP-record-closed-form",
+      "gate": 2,
+      "control": "The decision-record reader is closed: a record carrying a field the record does not define is refused rather than read.",
+      "file": "crates/senvoryn-scp/src/record.rs",
+      "find": "if !FIELDS.contains(&key.as_str()) {",
+      "replace": "if false {",
+      "package": "senvoryn-scp",
+      "test": "a_record_with_a_field_the_record_does_not_define_is_refused",
+      "test_file": "record",
+      "expect_output_contains": "a_record_with_a_field_the_record_does_not_define_is_refused"
+    },
+    {
+      "id": "SCP-record-effect-claim",
+      "gate": 16,
+      "control": "A record that claims an effect was performed is refused: the policy layer cannot have performed one.",
+      "file": "crates/senvoryn-scp/src/record.rs",
+      "find": "if effect_performed {",
+      "replace": "if false {",
+      "package": "senvoryn-scp",
+      "test": "a_record_that_claims_an_effect_was_performed_is_refused",
+      "test_file": "record",
+      "expect_output_contains": "a_record_that_claims_an_effect_was_performed_is_refused"
+    },
+    {
+      "id": "SCP-record-names-the-plan",
+      "gate": 2,
+      "control": "The decision record names the plan the request asked to run, so that the executor can compare it with the plan it was handed.",
+      "file": "crates/senvoryn-scp/src/decision.rs",
+      "find": "record.insert(\n            \"permitted_payload_digest\".to_owned(),\n            match details.permitted_payload_digest {\n                Some(digest) => Value::from(digest),\n                None => Value::Null,\n            },\n        );",
+      "replace": "record.insert(\"permitted_payload_digest\".to_owned(), Value::Null);",
+      "package": "senvoryn-scp",
+      "test": "a_record_carries_the_plan_the_request_named",
+      "test_file": "record",
+      "expect_output_contains": "a_record_carries_the_plan_the_request_named"
+    },
+    {
+      "id": "SCP-py-record-closed-form",
+      "gate": 2,
+      "control": "The reference model's decision-record reader is closed, so that the two implementations agree.",
+      "file": "reference/capsule_reference.py",
+      "find": "    if unknown:\n",
+      "replace": "    if False:\n",
+      "test": "tests.test_capsule_reference.DecisionRecordTests.test_a_record_with_a_field_the_record_does_not_define_is_refused",
+      "expect_output_contains": "test_a_record_with_a_field_the_record_does_not_define_is_refused"
+    },
+    {
+      "id": "SCP-py-record-effect-claim",
+      "gate": 16,
+      "control": "The reference model refuses a record that claims an effect was performed, so that the two implementations agree.",
+      "file": "reference/capsule_reference.py",
+      "find": "if document.get(\"effect_performed\") is not False:",
+      "replace": "if False:",
+      "test": "tests.test_capsule_reference.DecisionRecordTests.test_a_record_that_claims_an_effect_was_performed_is_refused",
+      "expect_output_contains": "test_a_record_that_claims_an_effect_was_performed_is_refused"
     }
   ]
 }

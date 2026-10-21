@@ -30,6 +30,8 @@
 //! * [`reason`] — the reason codes, checked against the denial-code registry
 //!   that is their authority.
 //! * [`audit`] — the audit-event builder.
+//! * [`record`] — the decision-record reader, the other end of the boundary
+//!   the decision record is written across.
 //!
 //! # Keeping in step with the prototype
 //!
@@ -47,6 +49,7 @@ mod context;
 mod decision;
 mod evaluator;
 mod reason;
+pub mod record;
 mod registry;
 mod request;
 mod resolution;
@@ -57,6 +60,7 @@ pub use context::{AuditState, ClockState, PolicyContext, SystemMode};
 pub use decision::{Decision, DecisionStatus, RecordDetails};
 pub use evaluator::{evaluate, registry_risk_tier};
 pub use reason::{CodeEntry, ReasonCode, registry_codes, registry_default_status, registry_entry};
+pub use record::{DecisionRecord, RecordError};
 pub use registry::{
     AuditClass, OperationEntry, OperationRegistry, RegistryError, Reversibility, RiskTier,
 };

@@ -37,6 +37,7 @@ from capsule_reference import (
     load_registry,
     load_state_machine,
     parse_utc_millis,
+    read_decision_record,
 )
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -80,11 +81,45 @@ def _base_environment():
     )
 
 
+def _decision_record_document(
+    permitted_digest=BASE_DIGEST, permitted_resource_version="7", status="PERMIT"
+):
+    """The document a decision record is."""
+    return {
+        "schema": "senvoryn.decision-record.v1",
+        "decision_id": "decision-0001",
+        "request_id": "request-0001",
+        "status": status,
+        "reason_codes": ["ALL_POLICY_GATES_PASSED"],
+        "policy_epoch": 7,
+        "evaluated_at": "2026-01-01T00:00:00Z",
+        "target_resource_id": "file:///srv/data/report.csv",
+        "target_resource_version": permitted_resource_version,
+        "permitted_payload_digest": permitted_digest,
+        "capability_scope_ref": "capability-0001",
+        "valid_until": None,
+        "required_next_step": None,
+        "effect_performed": False,
+        "audit_ref": "audit-0001",
+    }
+
+
+def _decision_record(permitted_digest=BASE_DIGEST, permitted_resource_version="7", status="PERMIT"):
+    """Builds a decision record and reads it back through the model's reader."""
+    return read_decision_record(
+        _decision_record_document(permitted_digest, permitted_resource_version, status)
+    )
+
+
 def _authorization():
-    return Authorization(
-        permitted_digest=BASE_DIGEST,
-        permitted_resource_version="7",
-        approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
+    """The authorization that permits the sample capsule.
+
+    It is read out of a decision record, the way the executor reads it in
+    production: the plan and the version come from the decision, not from
+    the value the test assembled.
+    """
+    return Authorization.from_record(
+        _decision_record(), (Approval("USER_CONFIRMATION", BASE_DIGEST),)
     )
 
 
@@ -229,6 +264,43 @@ class CapsuleReaderTests(unittest.TestCase):
         capsule = _base_capsule()
         self.assertEqual(capsule.expires_at, "2026-01-01T01:00:00Z")
         self.assertEqual(capsule.expires_at_ms, 1_767_229_200_000)
+
+
+class DecisionRecordTests(unittest.TestCase):
+    """The decision record, read.
+
+    The reader is a boundary, so it is closed: a record carrying a field it
+    does not define is refused rather than read, and a record that claims an
+    effect was performed is refused because the policy layer cannot have
+    performed one.
+    """
+
+    def test_a_record_the_policy_layer_wrote_is_read_back(self):
+        record = read_decision_record(_decision_record_document())
+        self.assertEqual(record.status, "PERMIT")
+        self.assertEqual(record.request_id, "request-0001")
+        self.assertEqual(record.policy_epoch, 7)
+        self.assertEqual(record.target_resource_version, "7")
+        self.assertEqual(record.permitted_payload_digest, BASE_DIGEST)
+        self.assertEqual(record.audit_ref, "audit-0001")
+
+    def test_a_record_with_a_field_the_record_does_not_define_is_refused(self):
+        document = _decision_record_document()
+        document["effect_confirmed"] = True
+        with self.assertRaises(ValueError):
+            read_decision_record(document)
+
+    def test_a_record_that_claims_an_effect_was_performed_is_refused(self):
+        document = _decision_record_document()
+        document["effect_performed"] = True
+        with self.assertRaises(ValueError):
+            read_decision_record(document)
+
+    def test_a_record_with_another_schema_is_refused(self):
+        document = _decision_record_document()
+        document["schema"] = "senvoryn.decision-record.v2"
+        with self.assertRaises(ValueError):
+            read_decision_record(document)
 
 
 class RegistryTests(unittest.TestCase):
@@ -460,10 +532,11 @@ class ExecutorTests(unittest.TestCase):
             _base_capsule(), load_registry(), _base_environment(), machine=load_state_machine()
         )
         outcome = executor.run(
-            Authorization(
-                permitted_digest="0000000000000000000000000000000000000000000000000000000000000009",
-                permitted_resource_version="7",
-                approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
+            Authorization.from_record(
+                _decision_record(
+                    permitted_digest="0000000000000000000000000000000000000000000000000000000000000009"
+                ),
+                (Approval("USER_CONFIRMATION", BASE_DIGEST),),
             )
         )
         self.assertEqual(outcome.final_state, State.REJECTED)
@@ -477,10 +550,9 @@ class ExecutorTests(unittest.TestCase):
             _base_capsule(), load_registry(), _base_environment(), machine=load_state_machine()
         )
         outcome = executor.run(
-            Authorization(
-                permitted_digest=BASE_DIGEST,
-                permitted_resource_version="6",
-                approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
+            Authorization.from_record(
+                _decision_record(permitted_resource_version="6"),
+                (Approval("USER_CONFIRMATION", BASE_DIGEST),),
             )
         )
         self.assertEqual(outcome.final_state, State.REJECTED)
@@ -493,14 +565,43 @@ class ExecutorTests(unittest.TestCase):
             _base_capsule(), load_registry(), _base_environment(), machine=load_state_machine()
         )
         outcome = executor.run(
-            Authorization(
-                permitted_digest=BASE_DIGEST,
-                permitted_resource_version=None,
-                approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
+            Authorization.from_record(
+                _decision_record(permitted_resource_version=None),
+                (Approval("USER_CONFIRMATION", BASE_DIGEST),),
             )
         )
         self.assertEqual(outcome.final_state, State.REJECTED)
         self.assertIn("does not name the version", outcome.reason)
+
+    def test_a_decision_that_granted_no_authority_permits_nothing(self):
+        # A decision that refused the request authorises nothing, whatever
+        # plan and version it names.
+        executor = Executor(
+            _base_capsule(), load_registry(), _base_environment(), machine=load_state_machine()
+        )
+        outcome = executor.run(
+            Authorization.from_record(
+                _decision_record(status="DENY"), (Approval("USER_CONFIRMATION", BASE_DIGEST),)
+            )
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+        self.assertIn("granted no authority", outcome.reason)
+
+    def test_a_decision_that_names_no_plan_permits_nothing(self):
+        # A request that named no plan produced a decision about an
+        # operation rather than about a plan. That is a refusal, not a
+        # wildcard.
+        executor = Executor(
+            _base_capsule(), load_registry(), _base_environment(), machine=load_state_machine()
+        )
+        outcome = executor.run(
+            Authorization.from_record(
+                _decision_record(permitted_digest=None),
+                (Approval("USER_CONFIRMATION", BASE_DIGEST),),
+            )
+        )
+        self.assertEqual(outcome.final_state, State.REJECTED)
+        self.assertIn("does not name the plan", outcome.reason)
 
 
 class ValidationTests(unittest.TestCase):

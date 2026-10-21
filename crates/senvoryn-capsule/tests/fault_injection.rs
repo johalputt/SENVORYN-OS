@@ -8,7 +8,7 @@
 
 mod common;
 
-use common::{DIGEST, authorization, capsule, environment, executor, registry};
+use common::{DIGEST, authorization, capsule, decision_record, environment, executor, registry};
 use senvoryn_capsule::{Fault, FaultInjector, FaultPoint, State};
 
 /// Every point at which a fault can be injected.
@@ -155,11 +155,10 @@ fn a_capsule_for_another_plan_is_rejected() {
     // The decision permits a digest. If the digest is not this capsule's, the
     // decision is about a different plan and permits nothing here.
     let mut executor = executor();
-    let other = senvoryn_capsule::Authorization {
-        permitted_digest: DIGEST.replace('2', "3"),
-        permitted_resource_version: Some("7".to_owned()),
-        approvals: authorization().approvals,
-    };
+    let other = senvoryn_capsule::Authorization::from_record(
+        &decision_record(DIGEST.replace('2', "3"), Some("7".to_owned()), "PERMIT"),
+        authorization().approvals,
+    );
     let outcome = executor.run(&other);
     assert_eq!(outcome.final_state, State::Rejected, "{}", outcome.reason);
 }
@@ -167,11 +166,10 @@ fn a_capsule_for_another_plan_is_rejected() {
 #[test]
 fn a_missing_approval_is_rejected() {
     let mut executor = executor();
-    let bare = senvoryn_capsule::Authorization {
-        permitted_digest: DIGEST.to_owned(),
-        permitted_resource_version: Some("7".to_owned()),
-        approvals: Vec::new(),
-    };
+    let bare = senvoryn_capsule::Authorization::from_record(
+        &decision_record(DIGEST.to_owned(), Some("7".to_owned()), "PERMIT"),
+        Vec::new(),
+    );
     let outcome = executor.run(&bare);
     assert_eq!(outcome.final_state, State::Rejected, "{}", outcome.reason);
 }

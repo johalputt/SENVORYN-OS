@@ -18,7 +18,10 @@ use senvoryn_capsule::{
     Approval, Authorization, ChangeCapsule, Environment, Executor, Fault, FaultInjector,
     FaultPoint, State,
 };
-use senvoryn_scp::OperationRegistry;
+use senvoryn_scp::{
+    Decision, DecisionRecord, DecisionStatus, OperationRegistry, ReasonCode, RecordDetails,
+    ResolvedResource,
+};
 
 const VECTORS_JSON: &str = include_str!("../../../conformance/capsule-vectors.json");
 const BASE_CAPSULE_JSON: &str = include_str!("../../../examples/capsule.sample.json");
@@ -178,52 +181,116 @@ fn apply_environment(environment: &mut Environment, overrides: Option<&Value>) {
     }
 }
 
-/// Builds the authorization of a case.
-fn build_authorization(specification: Option<&Value>) -> Authorization {
-    let Some(specification) = specification.and_then(Value::as_object) else {
-        return Authorization {
-            permitted_digest: BASE_DIGEST.to_owned(),
-            permitted_resource_version: Some(BASE_VERSION.to_owned()),
-            approvals: vec![Approval {
-                approval_type: "USER_CONFIRMATION".to_owned(),
-                binds_digest: BASE_DIGEST.to_owned(),
-            }],
-        };
-    };
-    let permitted_digest = match specification.get("digest").and_then(Value::as_str) {
-        Some("matching") => BASE_DIGEST.to_owned(),
-        Some("other") => OTHER_DIGEST.to_owned(),
+/// Builds the decision record a case is decided under.
+///
+/// The record is written by the policy layer's own writer and read back
+/// through its own reader, so every case exercises both ends of the boundary
+/// and the two cannot drift apart: a field the writer stops writing is a
+/// field the reader stops finding, and the case that expects a commit fails.
+///
+/// The executor is handed the authorization it reads out of that record —
+/// not a value the harness assembles — which is the point: the plan and the
+/// version the executor checks come from the decision.
+fn build_decision_record(specification: Option<&Value>) -> DecisionRecord {
+    let permitted_digest = match specification
+        .and_then(|specification| specification.get("digest"))
+        .and_then(Value::as_str)
+    {
+        Some("matching") => Some(BASE_DIGEST.to_owned()),
+        Some("other") => Some(OTHER_DIGEST.to_owned()),
+        Some("none") => None,
+        None => Some(BASE_DIGEST.to_owned()),
         other => panic!("{other:?} is not a digest selector"),
     };
-    let permitted_resource_version = match specification.get("version").and_then(Value::as_str) {
+    let permitted_resource_version = match specification
+        .and_then(|specification| specification.get("version"))
+        .and_then(Value::as_str)
+    {
         Some("matching") => Some(BASE_VERSION.to_owned()),
         Some("other") => Some(OTHER_VERSION.to_owned()),
         Some("none") => None,
         None => Some(BASE_VERSION.to_owned()),
         other => panic!("{other:?} is not a version selector"),
     };
-    let approvals = specification
-        .get("approvals")
+    let status = match specification
+        .and_then(|specification| specification.get("status"))
+        .and_then(Value::as_str)
+    {
+        Some("PERMIT") => DecisionStatus::Permit,
+        Some("DENY") => DecisionStatus::Deny,
+        Some("CHALLENGE") => DecisionStatus::Challenge,
+        Some("DEFER") => DecisionStatus::Defer,
+        Some("QUARANTINE") => DecisionStatus::Quarantine,
+        None => DecisionStatus::Permit,
+        other => panic!("{other:?} is not a decision status"),
+    };
+
+    let decision = match status {
+        DecisionStatus::Permit => {
+            Decision::permit(ReasonCode::ALL_POLICY_GATES_PASSED, "capability-0001".to_owned(), 7)
+        }
+        DecisionStatus::Deny => Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
+        DecisionStatus::Challenge => Decision::challenge(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
+        DecisionStatus::Defer => Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
+        DecisionStatus::Quarantine => Decision::deny(ReasonCode::UNKNOWN_OPERATION_RISK, 7),
+    };
+    let decision = match permitted_resource_version {
+        Some(version) => decision.with_resolved(ResolvedResource {
+            canonical_id: "file:///srv/data/report.csv".to_owned(),
+            resource_type: "file_object".to_owned(),
+            version,
+        }),
+        None => decision,
+    };
+
+    let record = decision.to_record(&RecordDetails {
+        decision_id: "decision:vector:0001",
+        request_id: "request:vector:0001",
+        evaluated_at: "2026-01-01T00:00:00Z",
+        presented_resource_id: "file:///srv/data/report.csv",
+        permitted_payload_digest: permitted_digest.as_deref(),
+        audit_ref: "audit:vector:0001",
+        valid_until: None,
+        required_next_step: None,
+    });
+    DecisionRecord::from_value(&record)
+        .unwrap_or_else(|error| panic!("the decision record is malformed: {error}"))
+}
+
+/// Builds the authorization a case is executed under.
+///
+/// A case that says nothing about the decision is judged under the decision
+/// the sample capsule needs: the plan, the version and the one approval the
+/// sample capsule requires. A case that says something about the decision
+/// says everything about it, because a case that changed the approval while
+/// testing the digest would pass for the wrong reason.
+fn build_authorization(specification: Option<&Value>) -> Authorization {
+    let record = build_decision_record(specification);
+    let approvals = match specification
+        .and_then(|specification| specification.get("approvals"))
         .and_then(Value::as_array)
-        .map(|entries| {
-            entries
-                .iter()
-                .map(|entry| Approval {
-                    approval_type: entry
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .expect("an approval has a type")
-                        .to_owned(),
-                    binds_digest: match entry.get("binds").and_then(Value::as_str) {
-                        Some("capsule") => BASE_DIGEST.to_owned(),
-                        Some("other") => OTHER_DIGEST.to_owned(),
-                        other => panic!("{other:?} is not a binding selector"),
-                    },
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    Authorization { permitted_digest, permitted_resource_version, approvals }
+    {
+        Some(entries) => entries
+            .iter()
+            .map(|entry| Approval {
+                approval_type: entry
+                    .get("type")
+                    .and_then(Value::as_str)
+                    .expect("an approval has a type")
+                    .to_owned(),
+                binds_digest: match entry.get("binds").and_then(Value::as_str) {
+                    Some("capsule") => BASE_DIGEST.to_owned(),
+                    Some("other") => OTHER_DIGEST.to_owned(),
+                    other => panic!("{other:?} is not a binding selector"),
+                },
+            })
+            .collect(),
+        None => vec![Approval {
+            approval_type: "USER_CONFIRMATION".to_owned(),
+            binds_digest: BASE_DIGEST.to_owned(),
+        }],
+    };
+    Authorization::from_record(&record, approvals)
 }
 
 #[test]
@@ -251,7 +318,7 @@ fn every_vector_reaches_the_state_it_names() {
         let mut environment = base_environment();
         apply_environment(&mut environment, case.get("environment_overrides"));
 
-        let authorization = build_authorization(case.get("authorization"));
+        let authorization = build_authorization(case.get("decision"));
 
         let mut executor = Executor::new(capsule, registry.clone(), environment)
             .unwrap_or_else(|error| panic!("{identifier}: the executor does not build: {error}"));
@@ -314,7 +381,7 @@ fn no_vector_reports_a_commit_it_did_not_earn() {
             ChangeCapsule::from_value(&capsule_document).expect("the capsule is well formed");
         let mut environment = base_environment();
         apply_environment(&mut environment, case.get("environment_overrides"));
-        let authorization = build_authorization(case.get("authorization"));
+        let authorization = build_authorization(case.get("decision"));
         let mut executor =
             Executor::new(capsule, registry.clone(), environment).expect("the executor builds");
         if let Some(specification) = case.get("fault").and_then(Value::as_object) {

@@ -66,7 +66,7 @@
     {
       "id": "CC-007-digest-mismatch",
       "control": "A decision that permits a different plan permits nothing here.",
-      "authorization": {
+      "decision": {
         "digest": "other",
         "approvals": [
           {
@@ -81,7 +81,7 @@
     {
       "id": "CC-008-missing-approval",
       "control": "A decision without the approval the capsule requires permits nothing.",
-      "authorization": {
+      "decision": {
         "digest": "matching",
         "approvals": []
       },
@@ -91,7 +91,7 @@
     {
       "id": "CC-009-approval-bound-elsewhere",
       "control": "An approval that binds a different plan is not an approval for this one.",
-      "authorization": {
+      "decision": {
         "digest": "matching",
         "approvals": [
           {
@@ -287,7 +287,7 @@
           }
         ]
       },
-      "authorization": {
+      "decision": {
         "digest": "matching",
         "approvals": [
           {
@@ -397,7 +397,7 @@
     {
       "id": "CC-037-decision-made-against-another-version",
       "control": "A decision made against an earlier version of the target says nothing about the version in front of the executor.",
-      "authorization": {
+      "decision": {
         "digest": "matching",
         "version": "other",
         "approvals": [
@@ -413,7 +413,7 @@
     {
       "id": "CC-038-decision-that-names-no-version",
       "control": "A decision that names no version of the target was made before the resource was resolved, and it authorises no effect.",
-      "authorization": {
+      "decision": {
         "digest": "matching",
         "version": "none",
         "approvals": [
@@ -425,6 +425,39 @@
       },
       "expected_state": "REJECTED",
       "expected_reason_contains": "does not name the version"
+    },
+    {
+      "id": "CC-039-decision-that-granted-no-authority",
+      "control": "A decision that refused the request authorises nothing, whatever plan it names.",
+      "decision": {
+        "status": "DENY",
+        "digest": "matching",
+        "version": "matching",
+        "approvals": [
+          {
+            "type": "USER_CONFIRMATION",
+            "binds": "capsule"
+          }
+        ]
+      },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "granted no authority"
+    },
+    {
+      "id": "CC-040-decision-that-names-no-plan",
+      "control": "A decision about an operation rather than about a plan authorises no plan.",
+      "decision": {
+        "digest": "none",
+        "version": "matching",
+        "approvals": [
+          {
+            "type": "USER_CONFIRMATION",
+            "binds": "capsule"
+          }
+        ]
+      },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "does not name the plan"
     }
   ]
 }

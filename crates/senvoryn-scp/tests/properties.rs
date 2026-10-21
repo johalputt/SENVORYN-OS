@@ -90,6 +90,7 @@ fn random_request(rng: &mut Rng) -> Request {
         nonce: "nonce-property-0001".to_owned(),
         risk_claim: RiskTier::R0,
         approval_digest: None,
+        payload_digest: None,
         budget: None,
     }
 }

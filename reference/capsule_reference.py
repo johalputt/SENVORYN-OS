@@ -775,20 +775,148 @@ class Approval:
     binds_digest: str
 
 
+#: The fields a decision record defines. The form is closed: a record that
+#: carries a field this list does not name is refused rather than read, for
+#: the same reason the policy request form is closed (ADR-019).
+DECISION_RECORD_FIELDS = frozenset(
+    {
+        "schema",
+        "decision_id",
+        "request_id",
+        "status",
+        "reason_codes",
+        "policy_epoch",
+        "evaluated_at",
+        "target_resource_id",
+        "target_resource_version",
+        "permitted_payload_digest",
+        "capability_scope_ref",
+        "valid_until",
+        "required_next_step",
+        "effect_performed",
+        "audit_ref",
+    }
+)
+
+#: The decision statuses that grant authority. Only ``PERMIT`` does.
+AUTHORITY_GRANTING_STATUSES = frozenset({"PERMIT"})
+
+
+@dataclass(frozen=True)
+class DecisionRecord:
+    """A decision record, read.
+
+    The record is the policy layer's own output. The executor is handed one
+    of these rather than a value the host assembled, so that the plan the
+    decision was made about and the version of the target it was made
+    against come from the decision instead of from the caller.
+    """
+
+    decision_id: str
+    request_id: str
+    status: str
+    reason_codes: tuple[str, ...]
+    policy_epoch: int
+    evaluated_at: str
+    target_resource_id: str
+    target_resource_version: Optional[str]
+    permitted_payload_digest: Optional[str]
+    capability_scope_ref: Optional[str]
+    valid_until: Optional[str]
+    required_next_step: Optional[str]
+    audit_ref: str
+
+
+def read_decision_record(document: dict) -> DecisionRecord:
+    """Read a decision record, or raise ``ValueError``.
+
+    The reader enforces the form and nothing else. It refuses a field the
+    record does not define, a record that declares a schema this node does
+    not support, and a record that claims an effect was performed: the
+    record's schema fixes ``effect_performed`` to false, and the policy layer
+    cannot have performed one.
+    """
+    if not isinstance(document, dict):
+        raise ValueError(f"expected a decision record object, found {type(document).__name__}")
+    unknown = sorted(set(document) - DECISION_RECORD_FIELDS)
+    if unknown:
+        raise ValueError(f"the decision record carries a field it does not define: {unknown[0]!r}")
+    schema = document.get("schema")
+    if schema != "senvoryn.decision-record.v1":
+        raise ValueError(f"the decision record declares an unsupported schema: {schema!r}")
+    if document.get("effect_performed") is not False:
+        raise ValueError("the decision record claims an effect was performed")
+    status = document.get("status")
+    if status not in AUTHORITY_GRANTING_STATUSES and not isinstance(status, str):
+        raise ValueError(f"the decision record's status is not a string: {status!r}")
+
+    def required_text(field: str) -> str:
+        value = document.get(field)
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"the decision record's {field!r} is absent or not a string")
+        return value
+
+    def optional_text(field: str) -> Optional[str]:
+        value = document.get(field)
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"the decision record's {field!r} is not a non-empty string")
+        return value
+
+    reason_codes = document.get("reason_codes")
+    if not isinstance(reason_codes, list) or not all(
+        isinstance(code, str) for code in reason_codes
+    ):
+        raise ValueError("the decision record's 'reason_codes' is absent or not a list of strings")
+    policy_epoch = document.get("policy_epoch")
+    if not isinstance(policy_epoch, int) or isinstance(policy_epoch, bool) or policy_epoch < 0:
+        raise ValueError("the decision record's 'policy_epoch' is absent or not an integer")
+
+    return DecisionRecord(
+        decision_id=required_text("decision_id"),
+        request_id=required_text("request_id"),
+        status=status,
+        reason_codes=tuple(reason_codes),
+        policy_epoch=policy_epoch,
+        evaluated_at=required_text("evaluated_at"),
+        target_resource_id=required_text("target_resource_id"),
+        target_resource_version=optional_text("target_resource_version"),
+        permitted_payload_digest=optional_text("permitted_payload_digest"),
+        capability_scope_ref=optional_text("capability_scope_ref"),
+        valid_until=optional_text("valid_until"),
+        required_next_step=optional_text("required_next_step"),
+        audit_ref=required_text("audit_ref"),
+    )
+
+
 @dataclass(frozen=True)
 class Authorization:
     """The System Control Plane's decision about a capsule.
 
-    The SCP is the authority on whether a capsule may run. This model takes
-    its decision as an input and checks the thing the decision has to bind —
-    the exact digest of the plan that was authorized, and the version of the
+    The SCP is the authority on whether a capsule may run. This model reads
+    the decision it made and checks the thing the decision has to bind — the
+    exact digest of the plan that was authorized, and the version of the
     target the decision was made against — plus the approvals the capsule
     asked for. It does not decide policy.
     """
 
-    permitted_digest: str
+    decision_status: str
+    permitted_digest: Optional[str]
     permitted_resource_version: Optional[str]
     approvals: tuple[Approval, ...]
+
+    @classmethod
+    def from_record(
+        cls, record: DecisionRecord, approvals: tuple[Approval, ...]
+    ) -> "Authorization":
+        """Read the authorization out of a decision record."""
+        return cls(
+            decision_status=record.status,
+            permitted_digest=record.permitted_payload_digest,
+            permitted_resource_version=record.target_resource_version,
+            approvals=approvals,
+        )
 
 
 def check_authorization(
@@ -796,12 +924,21 @@ def check_authorization(
 ) -> Optional[str]:
     """The reason the authorization does not permit the capsule, or ``None``.
 
-    The digest check comes first because it is the one that cannot be worked
+    The status comes first: a decision that granted no authority authorises
+    nothing, and no amount of matching digests makes a refusal into a grant.
+    The digest check comes next because it is the one that cannot be worked
     around: an approval for a different plan is not an approval for this
-    one, however many there are of them. The version check comes next: a
+    one, however many there are of them. The version check comes after it: a
     decision names the version of the target it was made against, and the
     target may have moved since (ADR-018, threat model AS-19).
     """
+    if authorization.decision_status not in AUTHORITY_GRANTING_STATUSES:
+        return (
+            f"the decision granted no authority: its status is "
+            f"{authorization.decision_status}"
+        )
+    if authorization.permitted_digest is None:
+        return "the decision does not name the plan it was made about"
     if authorization.permitted_digest != capsule.payload_digest:
         return (
             f"the decision permits digest {authorization.permitted_digest!r}, "

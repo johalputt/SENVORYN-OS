@@ -132,7 +132,7 @@ $env:PYTHONPATH = "reference"
 python -m unittest discover -s tests -v
 ```
 
-Expected: `Ran 108 tests ... OK`.
+Expected: `Ran 114 tests ... OK`.
 
 Run a single module or test:
 
@@ -156,7 +156,7 @@ nothing. The mutation gate breaks each control in turn and requires a
 **named** test to go red:
 
 ```bash
-python scripts/mutation-gate.py                    # all 139 controls
+python scripts/mutation-gate.py                    # all 148 controls
 python scripts/mutation-gate.py M11-risk-downgrade # one control
 python scripts/mutation-gate.py --list
 ```

@@ -11,20 +11,20 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 108 passed, 0 failed.
-- Rust workspace tests: 135 passed, 0 failed.
+- Python contract tests: 114 passed, 0 failed.
+- Rust workspace tests: 141 passed, 0 failed.
 - Shared conformance vectors: 40 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
   prototype and the implementation from becoming two authorities on the same question.
-- Change Capsule vectors: 38 cases executed by the Rust implementation AND by the Python
+- Change Capsule vectors: 40 cases executed by the Rust implementation AND by the Python
   reference model, covering the registry's authority over risk and approval
   requirements, the digest binding of the decision and its approvals, the version the
-  decision was made against, the version and epoch checks, the preconditions, the budget,
-  the mandatory postconditions, the durability of the evidence, the compensation planner,
-  every injected fault, and the five cases in which the world moves under the
-  transaction. Both implementations reach the state each case names, and CI fails on a
-  disagreement.
+  decision was made against, the status the decision carried, the plan the request named,
+  the version and epoch checks, the preconditions, the budget, the mandatory
+  postconditions, the durability of the evidence, the compensation planner, every injected
+  fault, and the five cases in which the world moves under the transaction. Both
+  implementations reach the state each case names, and CI fails on a disagreement.
 - Change Capsule validity window: the clock is read before every step, the simulated
   clock advances by each step's own timeout, a clock that moves backwards ends the
   transaction rather than being believed, and a capsule cannot be executed before it
@@ -108,10 +108,18 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 139 controls broken in turn, each requiring a named test to go red
-  because of that break. 139 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 148 controls broken in turn, each requiring a named test to go red
+  because of that break. 148 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
+- Decision-record boundary: the policy layer writes the decision record and the capsule
+  executor reads it, through a closed reader that refuses a record carrying a field the
+  record does not define and a record that claims an effect was performed. The request
+  may name the plan it asks to run, the record carries that plan, and the executor reads
+  the plan, the version and the status out of the record: a decision that refused a
+  request authorises nothing, and a decision that names no plan authorises no plan. The
+  capsule's vector harness writes the record through the policy layer's own writer and
+  reads it through the policy layer's own reader, so the two ends cannot drift apart.
 
 Limitations
 This report validates a documentation/specification package, a pure reference policy model,
@@ -137,11 +145,13 @@ implementations read the same vector file, and whoever writes that file decides 
 The resolution boundary is specified but not finished. The environment's resolution
 table is supplied to the oracle; nothing in this repository resolves a name against a
 filesystem, decides which resource types need a richer identity than an identifier, a
-type and a version, or says who may define an alias and how one is revoked. The
-authorization the executor checks is still a value the host constructs: it is not read
-from a document the repository defines, and the decision record carries neither the plan
-digest nor the approvals, so the digest binding still depends on the host passing the
-right value into the right field.
+type and a version, or says who may define an alias and how one is revoked. The plan
+and the version the executor checks now come from the decision record the policy layer
+wrote, but the approvals are still passed to the executor beside it, because the policy
+layer is given the approval's digest and not the approval; the record's validity window
+and its capability scope are read and not compared; and the record is not signed, so it
+is trusted because the policy layer wrote it inside the trust boundary and not because
+it is proved.
 
 The Operation Registry used by the tests is the unsigned sample. Capability provenance is
 stated by the caller and checked for consistency, not proven: there is no signature

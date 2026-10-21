@@ -32,6 +32,7 @@ from capsule_reference import (
     load_capsule,
     load_registry,
     load_state_machine,
+    read_decision_record,
 )
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -110,22 +111,24 @@ def _apply_environment(environment, overrides):
             raise AssertionError(f"{key!r} is not an environment field")
 
 
-def _authorization(specification):
-    """Builds the authorization of a case."""
-    if specification is None:
-        return Authorization(
-            permitted_digest=BASE_DIGEST,
-            permitted_resource_version=BASE_VERSION,
-            approvals=(Approval("USER_CONFIRMATION", BASE_DIGEST),),
-        )
-    digest = specification.get("digest")
+def _decision_record(specification):
+    """Builds the decision record a case is decided under.
+
+    The record is built as a document and read back through the reference
+    model's own reader, so every case exercises the reader as well as the
+    executor. The executor is handed the authorization read out of that
+    record, not a value the harness assembles.
+    """
+    digest = (specification or {}).get("digest", "matching")
     if digest == "matching":
         permitted = BASE_DIGEST
     elif digest == "other":
         permitted = OTHER_DIGEST
+    elif digest == "none":
+        permitted = None
     else:
         raise AssertionError(f"{digest!r} is not a digest selector")
-    version = specification.get("version", "matching")
+    version = (specification or {}).get("version", "matching")
     if version == "matching":
         permitted_version = BASE_VERSION
     elif version == "other":
@@ -134,21 +137,53 @@ def _authorization(specification):
         permitted_version = None
     else:
         raise AssertionError(f"{version!r} is not a version selector")
-    approvals = []
-    for entry in specification.get("approvals", []):
-        binding = entry.get("binds")
-        if binding == "capsule":
-            binds = BASE_DIGEST
-        elif binding == "other":
-            binds = OTHER_DIGEST
-        else:
-            raise AssertionError(f"{binding!r} is not a binding selector")
-        approvals.append(Approval(entry["type"], binds))
-    return Authorization(
-        permitted_digest=permitted,
-        permitted_resource_version=permitted_version,
-        approvals=tuple(approvals),
+    status = (specification or {}).get("status", "PERMIT")
+    if status not in {"PERMIT", "DENY", "CHALLENGE", "DEFER", "QUARANTINE"}:
+        raise AssertionError(f"{status!r} is not a decision status")
+    return read_decision_record(
+        {
+            "schema": "senvoryn.decision-record.v1",
+            "decision_id": "decision-0001",
+            "request_id": "request-0001",
+            "status": status,
+            "reason_codes": ["ALL_POLICY_GATES_PASSED"],
+            "policy_epoch": 7,
+            "evaluated_at": "2026-01-01T00:00:00Z",
+            "target_resource_id": "file:///srv/data/report.csv",
+            "target_resource_version": permitted_version,
+            "permitted_payload_digest": permitted,
+            "capability_scope_ref": "capability-0001",
+            "valid_until": None,
+            "required_next_step": None,
+            "effect_performed": False,
+            "audit_ref": "audit-0001",
+        }
     )
+
+
+def _authorization(specification):
+    """Builds the authorization a case is executed under.
+
+    A case that says nothing about the decision is judged under the decision
+    the sample capsule needs: the plan, the version and the one approval the
+    sample capsule requires. A case that says something about the decision
+    says everything about it, because a case that changed the approval while
+    testing the digest would pass for the wrong reason.
+    """
+    if specification is None:
+        approvals = (Approval("USER_CONFIRMATION", BASE_DIGEST),)
+    else:
+        approvals = []
+        for entry in specification.get("approvals", []):
+            binding = entry.get("binds")
+            if binding == "capsule":
+                binds = BASE_DIGEST
+            elif binding == "other":
+                binds = OTHER_DIGEST
+            else:
+                raise AssertionError(f"{binding!r} is not a binding selector")
+            approvals.append(Approval(entry["type"], binds))
+    return Authorization.from_record(_decision_record(specification), tuple(approvals))
 
 
 def _fault_injector(specification):
@@ -178,7 +213,7 @@ def _run_case(case, registry, machine):
         ledger=IdempotencyLedger(),
         faults=_fault_injector(case.get("fault")),
     )
-    return executor.run(_authorization(case.get("authorization")))
+    return executor.run(_authorization(case.get("decision")))
 
 
 class CapsuleVectorTests(unittest.TestCase):

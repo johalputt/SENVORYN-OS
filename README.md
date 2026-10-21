@@ -152,7 +152,7 @@ SENVORYN-OS/
 ├── conformance/capsule-vectors.json  # Change Capsule vectors — Rust implementation only
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
-├── tests/                       # 108 executable contract tests
+├── tests/                       # 114 executable contract tests
 ├── decisions/                   # ADR-001 … ADR-018
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
@@ -171,8 +171,8 @@ SENVORYN-OS/
 | `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 40 cases + 11 attenuation cases |
 | `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 38 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 139 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 20 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 148 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 21 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -193,10 +193,10 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (108 tests)
+# Run the contract test suite (114 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (135 tests)
+# Run the Rust workspace (141 tests)
 cargo test --workspace
 
 # Prove every control has a test that fails when it is broken
@@ -206,7 +206,7 @@ python scripts/mutation-gate.py
 Expected tail of output:
 
 ```
-Ran 108 tests in 0.644s
+Ran 114 tests in 0.632s
 
 OK
 ```
@@ -291,6 +291,16 @@ answers "is this the plan I judged?" and the version binding answers "was the
 object in the state I judged it in?". See
 [ADR-020](decisions/ADR-020-the-decision-names-the-version.md).
 
+Then the authorization itself stopped being a value the host assembles. The
+executor was handed a digest and a version and checked them against the
+capsule — a check of a pair the host had built, and consistency is not
+authority. The decision record is now the authorization: the request may name
+the plan it asks to run, the record carries that plan, and the executor reads
+the plan, the version and the status out of the record through a closed
+reader. A decision that refused a request authorises nothing, and a decision
+that names no plan authorises no plan. See
+[ADR-021](decisions/ADR-021-the-decision-record-is-the-authorization.md).
+
 ### The mutation gate
 
 A control that has never been seen to fail on the thing it forbids has proved
@@ -301,9 +311,9 @@ test to go red:
 python scripts/mutation-gate.py
 ```
 
-One hundred and thirty-nine controls are covered — 39 of the policy layer, 3
-properties of the canonical JSON profile, 8 of the strict UTC time parser, 36
-controls of the Change Capsule executor in Rust, and 53 of them in the Python
+One hundred and forty-eight controls are covered — 42 of the policy layer, 3
+properties of the canonical JSON profile, 8 of the strict UTC time parser, 38
+controls of the Change Capsule executor in Rust, and 57 of them in the Python
 reference model. A surviving mutation is a control that no test enforces, and
 the gate fails.
 
@@ -480,7 +490,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 108/108 Python tests passing · 135/135 Rust tests passing · 40/40 shared vectors agreed · 38/38 capsule vectors agreed by two implementations · 139/139 mutations killed · 2/2 state machines structurally valid · 32/32 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 114/114 Python tests passing · 141/141 Rust tests passing · 40/40 shared vectors agreed · 40/40 capsule vectors agreed by two implementations · 148/148 mutations killed · 2/2 state machines structurally valid · 32/32 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 
