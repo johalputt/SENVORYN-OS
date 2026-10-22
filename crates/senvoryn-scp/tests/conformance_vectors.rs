@@ -10,9 +10,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use senvoryn_canonical::{Value, parse};
 use senvoryn_scp::{
-    AuditState, Budget, Capability, ClockState, DecisionStatus, Deferral, OperationEntry,
-    OperationRegistry, PolicyContext, Provenance, ReasonCode, RecordDetails, Request,
-    ResolvedResource, RiskTier, SystemMode, attenuate, evaluate,
+    AuditState, Budget, Capability, ClockState, DecisionStatus, Deferral, Isolation,
+    OperationEntry, OperationRegistry, PolicyContext, Provenance, ReasonCode, RecordDetails,
+    Request, ResolvedResource, RiskTier, SystemMode, attenuate, evaluate,
 };
 
 const VECTORS_JSON: &str = include_str!("../../../conformance/vectors/vectors.json");
@@ -179,6 +179,7 @@ fn context_from(raw: &Value, registry: &OperationRegistry) -> PolicyContext {
         mode: SystemMode::parse(&string_field(raw, "mode"))
             .unwrap_or_else(|| panic!("bad mode in the vector file")),
         known_principals: string_set(raw, "known_principals"),
+        quarantined_principals: string_set(raw, "quarantined_principals"),
         resolved_resources: raw
             .get("resolved_resources")
             .and_then(Value::as_object)
@@ -287,6 +288,28 @@ fn every_case_matches_the_expected_decision() {
             (Some(expected), Some(Deferral::PolicyEpoch(epoch))) => {
                 let expected = u64_value(expected, &format!("{id}: waits_for_policy_epoch"));
                 assert_eq!(*epoch, expected, "{id} waits for the wrong policy epoch");
+            }
+        }
+
+        // A quarantine names the principal it holds, and nothing else does. The
+        // principal is the isolation's substance, so the two implementations
+        // have to agree about which principal it is.
+        let expected_principal = expected.get("quarantined_principal");
+        match (expected_principal, decision.isolation()) {
+            (None, None) => {}
+            (None, Some(isolation)) => panic!(
+                "{id} produced a quarantine holding {} that the case does not expect",
+                isolation.required_next_step()
+            ),
+            (Some(_), None) => panic!("{id} produced no quarantine"),
+            (Some(expected), Some(Isolation::Principal(principal))) => {
+                let expected = expected
+                    .as_str()
+                    .unwrap_or_else(|| {
+                        panic!("{id}: quarantined_principal is missing or not a string")
+                    })
+                    .to_owned();
+                assert_eq!(*principal, expected, "{id} holds the wrong principal");
             }
         }
     }
@@ -631,4 +654,46 @@ fn a_deferral_does_not_outlive_the_request() {
         "a deferral outlived the request it defers"
     );
     assert_eq!(decision.reason(), ReasonCode::REQUEST_NOT_FRESH);
+}
+
+#[test]
+fn a_quarantine_names_the_principal_it_holds() {
+    // A quarantine that names nobody is a penalty with no subject. The
+    // isolation names the principal, and the record publishes it as the next
+    // step the caller has to take — the isolation is lifted by a policy
+    // decision, and the record has to say which principal it is about.
+    let document = vectors();
+    let base_request = document.get("request").expect("the vector file has a base request");
+    let base_capability =
+        document.get("capability").expect("the vector file has a base capability");
+    let base_context = document.get("context").expect("the vector file has a base context");
+    let base_registry =
+        document.get("registry").and_then(Value::as_array).expect("the vector file has a registry");
+    let registry = operation_registry(base_registry, registry_epoch_of(&document));
+    let request = request_from(base_request);
+    let capability = capability_from(base_capability);
+    let mut context = context_from(base_context, &registry);
+    context.quarantined_principals = ["user:alice".to_owned()].into_iter().collect();
+
+    let decision = evaluate(&request, Some(&capability), &context);
+    assert_eq!(decision.status(), DecisionStatus::Quarantine);
+    assert_eq!(decision.reason(), ReasonCode::PRINCIPAL_QUARANTINED);
+    assert_eq!(decision.isolation(), Some(&Isolation::Principal("user:alice".to_owned())));
+    assert_eq!(decision.capability_id(), None);
+    assert!(!decision.grants_authority());
+
+    let record = decision.to_record(&RecordDetails {
+        decision_id: "decision:test:0004",
+        request_id: &request.request_id,
+        evaluated_at: "1970-01-01T00:00:00Z",
+        presented_resource_id: &request.resource_id,
+        permitted_payload_digest: request.payload_digest.as_deref(),
+        audit_ref: "audit:test:0004",
+        valid_until: None,
+    });
+    let next_step = record.get("required_next_step").and_then(Value::as_str);
+    assert!(
+        next_step.is_some_and(|step| step.contains("user:alice")),
+        "the record published no next step naming the principal the quarantine holds"
+    );
 }

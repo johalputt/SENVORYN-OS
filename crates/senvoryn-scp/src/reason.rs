@@ -38,6 +38,12 @@ impl ReasonCode {
     pub const WRONG_RECIPIENT: Self = Self("WRONG_RECIPIENT");
     /// The principal is not known to this node.
     pub const UNKNOWN_PRINCIPAL: Self = Self("UNKNOWN_PRINCIPAL");
+    /// The principal is known to this node and is held under quarantine.
+    ///
+    /// A quarantine is a state of the subject, not a punishment for an error:
+    /// the node still knows the principal and is holding it apart, and says
+    /// so, so that the subject can ask for the isolation to be lifted.
+    pub const PRINCIPAL_QUARANTINED: Self = Self("PRINCIPAL_QUARANTINED");
     /// The request has expired, or is not yet valid.
     pub const REQUEST_NOT_FRESH: Self = Self("REQUEST_NOT_FRESH");
     /// The nonce has been seen before, or has been revoked.
@@ -117,6 +123,7 @@ impl ReasonCode {
         Self::MALFORMED_OR_MISSING_IDENTITY,
         Self::WRONG_RECIPIENT,
         Self::UNKNOWN_PRINCIPAL,
+        Self::PRINCIPAL_QUARANTINED,
         Self::REQUEST_NOT_FRESH,
         Self::REPLAY_OR_REVOKED_NONCE,
         Self::RESOURCE_UNRESOLVABLE,

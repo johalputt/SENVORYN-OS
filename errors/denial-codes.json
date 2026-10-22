@@ -17,6 +17,11 @@
       "default": "DENY"
     },
     {
+      "code": "PRINCIPAL_QUARANTINED",
+      "class": "identity",
+      "default": "QUARANTINE"
+    },
+    {
       "code": "REQUEST_NOT_FRESH",
       "class": "freshness",
       "default": "DENY"

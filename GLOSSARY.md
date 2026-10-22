@@ -62,6 +62,10 @@ Terms marked **[INV]** are constitutional invariants from [Founding Constitution
 
 **Deferral** — A decision that postpones a request rather than refusing it, because the policy that will govern it does not exist yet. A deferral names the thing it waits for, grants no authority, and does not outlive the request it defers. Produced today for a request made under a policy epoch the node has not reached yet, provided the operation is non-destructive. See [ADR-022](decisions/ADR-022-a-future-policy-epoch-is-deferred.md).
 
+**Isolation** — The state a decision carries when it holds a subject apart: the principal this node holds under quarantine. A decision carries at most one isolation, and the isolation names the principal it is about. See [ADR-023](decisions/ADR-023-a-quarantined-principal-is-quarantined.md).
+
+**Quarantine** — A decision that holds a principal apart rather than refusing the request, because the node has isolated that subject by policy. A quarantine is settled at the identity gate, grants no authority, and is lifted by a policy decision rather than by a clock. It is not a generic penalty for other errors, and a principal the node has never heard of is refused as unknown. See [ADR-023](decisions/ADR-023-a-quarantined-principal-is-quarantined.md).
+
 **Denial Code** — A stable, machine-readable reason for a rejection, with a class and a default decision. See [`errors/denial-codes.json`](errors/denial-codes.json).
 
 **Direct Installer** — The application-like installation path on certified host configurations that avoids user-created boot media. Must not silently disable host security, bypass firmware requirements, or repartition unrelated storage.

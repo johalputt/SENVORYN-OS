@@ -121,6 +121,7 @@ def _context(raw, registry, registry_epoch):
         action_digest=raw.get("action_digest"),
         revoked_nonces=frozenset(raw.get("revoked_nonces", [])),
         revoked_capabilities=frozenset(raw.get("revoked_capabilities", [])),
+        quarantined_principals=frozenset(raw.get("quarantined_principals", [])),
         strong_approval_granted=raw.get("strong_approval_granted", False),
         satisfied_preconditions=frozenset(raw.get("satisfied_preconditions", [])),
     )
@@ -187,6 +188,26 @@ class ConformanceVectorTests(unittest.TestCase):
                         decision.deferral.policy_epoch,
                         expected_epoch,
                         f"{case['id']} waits for the wrong policy epoch",
+                    )
+                # A quarantine names the principal it holds, and nothing
+                # else does. The principal is the isolation's substance, so
+                # the two implementations have to agree about which
+                # principal it is.
+                expected_principal = case["expected"].get("quarantined_principal")
+                if expected_principal is None:
+                    self.assertIsNone(
+                        decision.isolation,
+                        f"{case['id']} produced a quarantine the case does not expect",
+                    )
+                else:
+                    self.assertIsNotNone(
+                        decision.isolation,
+                        f"{case['id']} produced no quarantine",
+                    )
+                    self.assertEqual(
+                        decision.isolation.principal,
+                        expected_principal,
+                        f"{case['id']} holds the wrong principal",
                     )
                 if case["expected"]["status"] != "PERMIT":
                     self.assertIsNone(

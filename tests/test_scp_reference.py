@@ -271,6 +271,46 @@ class SCPReferenceTests(unittest.TestCase):
         self.assertEqual(decision.status, Status.DENY, decision.reason)
         self.assertEqual(decision.reason, "REQUEST_NOT_FRESH")
 
+    def test_a_quarantined_principal_is_quarantined(self):
+        # A quarantined principal is known and held apart, and the node says
+        # so, so that the subject can ask for the isolation to be lifted. A
+        # capability does not override the isolation.
+        ctx = make_context(quarantined_principals=frozenset({"user:alice"}))
+        decision = evaluate(make_request(), make_capability(), ctx)
+        self.assertEqual(decision.status, Status.QUARANTINE, decision.reason)
+        self.assertEqual(decision.reason, "PRINCIPAL_QUARANTINED")
+        self.assertIsNotNone(decision.isolation)
+        self.assertEqual(decision.isolation.principal, "user:alice")
+        self.assertIsNone(decision.capability_id, "a quarantine scoped a capability")
+        self.assertFalse(decision.effect_performed)
+
+    def test_a_quarantine_names_the_principal_it_holds(self):
+        # A quarantine that names nobody is a penalty with no subject, and
+        # the record's next step has to say which principal it is about.
+        ctx = make_context(quarantined_principals=frozenset({"user:alice"}))
+        decision = evaluate(make_request(), make_capability(), ctx)
+        self.assertIn("user:alice", decision.isolation.required_next_step())
+
+    def test_a_quarantine_is_settled_before_the_request_is_judged(self):
+        # The isolation is a fact about the subject, and it is settled at the
+        # identity gate: a quarantined principal is told that it is
+        # quarantined, and not that its request was stale.
+        ctx = make_context(quarantined_principals=frozenset({"user:alice"}))
+        req = make_request(expires_at=20)
+        decision = evaluate(req, make_capability(), ctx)
+        self.assertEqual(decision.status, Status.QUARANTINE, decision.reason)
+        self.assertEqual(decision.reason, "PRINCIPAL_QUARANTINED")
+
+    def test_an_unknown_principal_is_not_quarantined(self):
+        # A quarantine is a state of a subject the node knows. A principal
+        # the node has never heard of is unknown, and quarantine is not what
+        # a node says about a stranger.
+        ctx = make_context(quarantined_principals=frozenset({"user:alice"}))
+        req = make_request(principal_id="user:mallory")
+        decision = evaluate(req, make_capability(), ctx)
+        self.assertEqual(decision.status, Status.DENY, decision.reason)
+        self.assertEqual(decision.reason, "UNKNOWN_PRINCIPAL")
+
     def test_capability_policy_epoch_mismatch_denied(self):
         cap = make_capability(policy_epoch=6)
         self.assertEqual(

@@ -475,6 +475,23 @@
       },
       "expected_state": "REJECTED",
       "expected_reason_contains": "granted no authority"
+    },
+    {
+      "id": "CC-042-quarantined-decision-authorises-nothing",
+      "control": "A decision that held the principal apart authorises nothing. A quarantine grants no partial execution authority, so a capsule under one is rejected before anything runs.",
+      "decision": {
+        "status": "QUARANTINE",
+        "digest": "matching",
+        "version": "matching",
+        "approvals": [
+          {
+            "type": "USER_CONFIRMATION",
+            "binds": "capsule"
+          }
+        ]
+      },
+      "expected_state": "REJECTED",
+      "expected_reason_contains": "granted no authority"
     }
   ]
 }

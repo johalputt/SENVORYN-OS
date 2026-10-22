@@ -11,13 +11,13 @@ Validation environment
 - Third-party Rust dependencies: 0
 
 Checks performed
-- Python contract tests: 119 passed, 0 failed.
-- Rust workspace tests: 143 passed, 0 failed.
-- Shared conformance vectors: 46 decision cases and 11 attenuation cases executed by the
+- Python contract tests: 124 passed, 0 failed.
+- Rust workspace tests: 144 passed, 0 failed.
+- Shared conformance vectors: 49 decision cases and 11 attenuation cases executed by the
   Python reference model and by the Rust implementation. Both suites agree on every
   decision status and every reason code. The two suites are the mechanism that keeps the
   prototype and the implementation from becoming two authorities on the same question.
-- Change Capsule vectors: 41 cases executed by the Rust implementation AND by the Python
+- Change Capsule vectors: 42 cases executed by the Rust implementation AND by the Python
   reference model, covering the registry's authority over risk and approval
   requirements, the digest binding of the decision and its approvals, the version the
   decision was made against, the status the decision carried, the plan the request named,
@@ -43,14 +43,14 @@ Checks performed
   quietly.
 - Change Capsule reference model: a second implementation of the capsule executor, written
   in Python from the contract rather than from the Rust. It is held to the same vector
-  file, and the two agree on all 41 cases. Writing it found three defects in the Rust
+  file, and the two agree on all 42 cases. Writing it found three defects in the Rust
   implementation that no test had caught: the registry's merge rule kept the more
   reversible of two conflicting rules, the timestamp parser refused every timestamp with
   fractional seconds, and the timestamp parser rolled a date that does not exist into the
   next month. All three are fixed and pinned by a test in each implementation.
-- Denial-code registry: 33 codes, unique, each with a class and a default status. Every
+- Denial-code registry: 34 codes, unique, each with a class and a default status. Every
   code an implementation can produce is in the registry, and that direction is checked by
-  a test on both sides. The other direction is checked too: 31 of the 33 codes are
+  a test on both sides. The other direction is checked too: 32 of the 34 codes are
   produced by a shared vector, and the two that are not are named by the test that checks
   it. UNSUPPORTED_CRITICAL_SCHEMA names the transport's refusal of a document whose
   schema this node does not support, which is a refusal and not a decision, because the
@@ -75,6 +75,28 @@ Checks performed
   before the deferral could be made. Thirteen controls are broken in turn by the mutation
   gate, seven in the Rust oracle and six in the Python reference model, so that neither
   implementation's version of the rule is the only one being tested.
+- A quarantined principal is quarantined, not merely denied. QUARANTINE was in the
+  specification, the schema, the decision-status enum and the capsule executor's refusal of
+  anything that grants no authority, and no rule produced it, so the capsule harness had to
+  refuse to write a decision under that name rather than write a denial and call it a
+  quarantine. A request from a principal this node holds under quarantine is now
+  quarantined with the reason code PRINCIPAL_QUARANTINED. The isolation is a state of the
+  subject and not a penalty for an error, so it is settled at the identity gate, before the
+  resource is resolved and before the capability is examined: a quarantined principal learns
+  that it is quarantined and nothing else, and the request's own freshness is not judged
+  either. A quarantined principal is still a known principal - it is held apart, not let go -
+  so the node can acknowledge it and say why, and the decision names the principal it holds,
+  which the record publishes as the next step: the isolation is lifted by a policy decision
+  and not by a clock. No other failure falls back to a quarantine, and a principal the node
+  has never heard of is still refused as unknown, which is why the check sits after the
+  known-principal check rather than before it. Three shared cases carry the rule, and each
+  condition of it has a case that only it can refuse: the quarantined principal, the
+  quarantined principal whose request has expired, and the principal the node does not know
+  even though the quarantine set names it. Thirteen controls are broken in turn by the
+  mutation gate, seven in the Rust oracle and six in the Python reference model, so that
+  neither implementation's version of the rule is the only one being tested. The capsule
+  vector CC-042 shows the executor refusing a quarantined decision like any other decision
+  that grants no authority.
 - The policy request form is closed: a document carrying a field the form does not define
   is refused, at the top level and inside the budget, because a field this node cannot
   account for may be a field a newer sender expects this node to enforce. The reader
@@ -125,8 +147,8 @@ Checks performed
   and is not production policy.
 - Change Capsule sample: validated against its schema; a precondition without an
   expected value is rejected by the schema and by the Rust reader.
-- Mutation gate: 161 controls broken in turn, each requiring a named test to go red
-  because of that break. 161 killed, 0 survived, 0 invalid. The gate runs tests in Rust
+- Mutation gate: 174 controls broken in turn, each requiring a named test to go red
+  because of that break. 174 killed, 0 survived, 0 invalid. The gate runs tests in Rust
   and in Python, and clears the Python bytecode cache before each run, because a cached
   bytecode file can shadow a mutated source.
 - Decision-record boundary: the policy layer writes the decision record and the capsule

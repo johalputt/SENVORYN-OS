@@ -7,7 +7,7 @@
 
 use crate::capability::{Capability, Provenance};
 use crate::context::{AuditState, ClockState, PolicyContext};
-use crate::decision::{Decision, Deferral};
+use crate::decision::{Decision, Deferral, Isolation};
 use crate::reason::ReasonCode;
 use crate::registry::{AuditClass, OperationEntry, Reversibility, RiskTier};
 use crate::request::Request;
@@ -50,6 +50,25 @@ pub fn evaluate(
     // Gate 4 — identity.
     if !context.known_principals.contains(&request.principal_id) {
         return Decision::deny(ReasonCode::UNKNOWN_PRINCIPAL, epoch);
+    }
+
+    // The identity gate, continued — the quarantine of a principal.
+    //
+    // A quarantined principal is *known*: it is held apart, not let go, and
+    // the node says so, so that the subject can ask for the isolation to be
+    // lifted. The check is here, beside the known-principal check, because
+    // both are facts about the subject — and here, before the resource is
+    // resolved and before the capability is examined, so that a quarantined
+    // principal learns that it is quarantined and nothing else.
+    //
+    // A quarantine is a state of the subject and not a penalty for an error:
+    // no other failure falls back to it. ADR-023.
+    if context.quarantined_principals.contains(&request.principal_id) {
+        return Decision::quarantine(
+            ReasonCode::PRINCIPAL_QUARANTINED,
+            Isolation::Principal(request.principal_id.clone()),
+            epoch,
+        );
     }
 
     // Gate 5 — freshness: nonce, replay cache, expiry.

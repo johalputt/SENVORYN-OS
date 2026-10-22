@@ -71,7 +71,7 @@ class ReasonCodeRegistryTests(unittest.TestCase):
         for code, entry in registry.items():
             if code in ("FRESH_ACTION_BOUND_APPROVAL_REQUIRED", "STRONG_APPROVAL_REQUIRED"):
                 continue
-            if code == "POLICY_EPOCH_NOT_YET_IN_FORCE":
+            if code in ("POLICY_EPOCH_NOT_YET_IN_FORCE", "PRINCIPAL_QUARANTINED"):
                 continue
             self.assertEqual(
                 entry["default"],
@@ -94,6 +94,24 @@ class ReasonCodeRegistryTests(unittest.TestCase):
             postponed,
             ["POLICY_EPOCH_NOT_YET_IN_FORCE"],
             "a code other than the deferral code postpones",
+        )
+
+    def test_the_quarantine_code_is_the_only_one_that_isolates(self):
+        # The one code that isolates a subject rather than refusing a
+        # request. A quarantine is a state of the principal, and a reader of
+        # the registry has to be told which code carries it — and that no
+        # other code does.
+        registry = _registry_codes()
+        self.assertEqual(
+            registry["PRINCIPAL_QUARANTINED"]["default"],
+            "QUARANTINE",
+            "PRINCIPAL_QUARANTINED should default to QUARANTINE",
+        )
+        isolating = [code for code, entry in registry.items() if entry["default"] == "QUARANTINE"]
+        self.assertEqual(
+            isolating,
+            ["PRINCIPAL_QUARANTINED"],
+            "a code other than the quarantine code isolates",
         )
 
 

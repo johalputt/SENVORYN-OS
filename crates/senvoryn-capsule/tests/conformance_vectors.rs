@@ -19,7 +19,7 @@ use senvoryn_capsule::{
     FaultPoint, State,
 };
 use senvoryn_scp::{
-    Decision, DecisionRecord, DecisionStatus, Deferral, OperationRegistry, ReasonCode,
+    Decision, DecisionRecord, DecisionStatus, Deferral, Isolation, OperationRegistry, ReasonCode,
     RecordDetails, ResolvedResource,
 };
 
@@ -238,13 +238,15 @@ fn build_decision_record(specification: Option<&Value>) -> DecisionRecord {
         DecisionStatus::Defer => {
             Decision::defer(ReasonCode::POLICY_EPOCH_NOT_YET_IN_FORCE, Deferral::PolicyEpoch(8), 7)
         }
-        // No gate produces a quarantine, so there is no decision to write.
-        // The harness refuses rather than writing a denial under this name:
-        // a case that asked for a quarantine and silently received a denial
-        // would prove nothing about either.
-        DecisionStatus::Quarantine => {
-            panic!("no decision produces a quarantine, so none can be written")
-        }
+        // A quarantine is a real status, and the record has to carry it. A
+        // harness that wrote a denial here would make a case about a
+        // quarantined decision pass for the wrong reason — the executor would
+        // refuse a DENY, and the case would say nothing about QUARANTINE.
+        DecisionStatus::Quarantine => Decision::quarantine(
+            ReasonCode::PRINCIPAL_QUARANTINED,
+            Isolation::Principal("user:alice".to_owned()),
+            7,
+        ),
     };
     let decision = match permitted_resource_version {
         Some(version) => decision.with_resolved(ResolvedResource {

@@ -60,6 +60,16 @@ fn the_registry_and_this_crate_agree_on_the_default_status() {
             ReasonCode::POLICY_EPOCH_NOT_YET_IN_FORCE => {
                 assert_eq!(default.as_str(), "DEFER", "{} should default to DEFER", code.as_str())
             }
+            // The one code that isolates a subject rather than refusing a
+            // request. A quarantine is a state of the principal, and a reader
+            // of the registry has to be told which code carries it — and
+            // that no other code does.
+            ReasonCode::PRINCIPAL_QUARANTINED => assert_eq!(
+                default.as_str(),
+                "QUARANTINE",
+                "{} should default to QUARANTINE",
+                code.as_str()
+            ),
             _ => assert_eq!(default.as_str(), "DENY", "{} should default to DENY", code.as_str()),
         }
     }

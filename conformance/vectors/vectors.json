@@ -220,6 +220,56 @@
       }
     },
     {
+      "id": "gate-04-a-quarantined-principal-is-quarantined",
+      "requirement": "SCP-001",
+      "gate": 4,
+      "context": {
+        "quarantined_principals": [
+          "user:alice"
+        ]
+      },
+      "expected": {
+        "status": "QUARANTINE",
+        "reason": "PRINCIPAL_QUARANTINED",
+        "quarantined_principal": "user:alice"
+      }
+    },
+    {
+      "id": "gate-04-a-quarantined-principal-is-quarantined-even-when-its-request-has-expired",
+      "requirement": "SCP-001",
+      "gate": 4,
+      "request": {
+        "expires_at": 900
+      },
+      "context": {
+        "quarantined_principals": [
+          "user:alice"
+        ]
+      },
+      "expected": {
+        "status": "QUARANTINE",
+        "reason": "PRINCIPAL_QUARANTINED",
+        "quarantined_principal": "user:alice"
+      }
+    },
+    {
+      "id": "gate-04-a-principal-the-node-does-not-know-is-not-quarantined",
+      "requirement": "SCP-001",
+      "gate": 4,
+      "request": {
+        "principal_id": "user:mallory"
+      },
+      "context": {
+        "quarantined_principals": [
+          "user:mallory"
+        ]
+      },
+      "expected": {
+        "status": "DENY",
+        "reason": "UNKNOWN_PRINCIPAL"
+      }
+    },
+    {
       "id": "SCP-002-missing-capability",
       "requirement": "SCP-002",
       "gate": 10,

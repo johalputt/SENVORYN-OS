@@ -153,7 +153,7 @@ SENVORYN-OS/
 ├── crates/                      # Rust workspace: canonical profile, SCP oracle, capsule executor, dev CLI
 ├── reference/                   # Python reference models: the SCP decision model and the capsule executor
 ├── tests/                       # 114 executable contract tests
-├── decisions/                   # ADR-001 … ADR-018
+├── decisions/                   # ADR-001 … ADR-023
 ├── evidence/                    # traceability matrix, validation report, claims ledger
 ├── scripts/                     # local verification helpers
 │
@@ -166,13 +166,13 @@ SENVORYN-OS/
 |---|---|---|
 | `schemas/` | JSON Schema Draft 2020-12 for principals, resources, requests, capabilities, decisions, approvals, intents, operations, Change Capsules, Origin Capsules, audit events, artifacts, updates, system states | 14 |
 | `state-machines/` | Change Capsule lifecycle + system-mode transition tables | 2 |
-| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` / `DEFER` defaults) | 33 codes |
+| `errors/` | Stable initial denial-code registry (`DENY` / `CHALLENGE` / `DEFER` / `QUARANTINE` defaults) | 34 codes |
 | `examples/` | Request envelope fixture; **unsigned** sample operation registry; sample Change Capsule; CLI fixtures | 6 |
-| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 46 cases + 11 attenuation cases |
-| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 41 cases |
+| `conformance/vectors/` | Conformance vectors executed by **both** the Rust and the Python implementation | 49 cases + 11 attenuation cases |
+| `conformance/capsule-vectors.json` | Change Capsule vectors — executed by **both** the Rust and the Python implementation | 42 cases |
 | `crates/` | Rust workspace — canonical JSON profile, SCP decision oracle, Change Capsule executor, development CLI | 4 crates, 0 third-party dependencies |
-| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 161 mutations |
-| `decisions/` | Architecture Decision Records with open questions | 22 ADRs |
+| `scripts/mutations.json` | The mutation set: one break per control, with the test that must catch it | 174 mutations |
+| `decisions/` | Architecture Decision Records with open questions | 23 ADRs |
 | `evidence/` | Requirement→test traceability matrix, local validation report, security claim ledger | — |
 
 ---
@@ -193,10 +193,10 @@ python -m venv .venv
 
 pip install -r requirements-dev.txt
 
-# Run the contract test suite (119 tests)
+# Run the contract test suite (124 tests)
 PYTHONPATH=reference python -m unittest discover -s tests -v
 
-# Run the Rust workspace (143 tests)
+# Run the Rust workspace (144 tests)
 cargo test --workspace
 
 # Prove every control has a test that fails when it is broken
@@ -206,7 +206,7 @@ python scripts/mutation-gate.py
 Expected tail of output:
 
 ```
-Ran 119 tests in 0.375s
+Ran 124 tests in 0.375s
 
 OK
 ```
@@ -430,7 +430,9 @@ Every privileged request passes **16 gates in a fixed order**. A rejection at an
 | `DEFER` | Non-destructive; waits on a dependency or policy window | No |
 | `QUARANTINE` | A defined suspicious principal/request is isolated by policy | No |
 
-`PERMIT` without a finite scope is invalid. `CHALLENGE` and `DEFER` grant no partial execution authority.
+`PERMIT` without a finite scope is invalid. `CHALLENGE`, `DEFER` and `QUARANTINE` grant no partial execution authority.
+
+`QUARANTINE` is produced by exactly one rule: a request from a **principal this node holds under quarantine**. The isolation is settled at the identity gate, before the resource is resolved and before the capability is examined, so a quarantined principal learns that it is quarantined and nothing else. A quarantined principal is still a *known* principal — it is held apart, not let go — so the decision names it, and the record publishes the next step: the isolation is lifted by a policy decision. A quarantine is **not** a generic penalty for other errors, and a principal the node has never heard of is refused as unknown, not as quarantined. See [ADR-023](decisions/ADR-023-a-quarantined-principal-is-quarantined.md).
 
 `DEFER` is produced by exactly one rule: a request made under a **policy epoch this node has not reached yet**, naming an operation the registry shows to be non-destructive. The deferral names the epoch it waits for, grants nothing, and does not outlive the request it defers. A **stale** epoch is a denial, not a postponement — that policy is gone and will not come back. See [ADR-022](decisions/ADR-022-a-future-policy-epoch-is-deferred.md).
 
@@ -441,6 +443,7 @@ Every privileged request passes **16 gates in a fixed order**. A rejection at an
 | Missing principal or capability | `DENY` |
 | Unknown/stale policy epoch for a privileged action | `DENY` or `CHALLENGE` — never a silent permit |
 | Request under a policy epoch this node has not reached yet | `DEFER` if the operation is non-destructive, otherwise `DENY` — the policy does not exist yet, so the answer is *not yet*, not *never* |
+| Request from a principal this node holds under quarantine | `QUARANTINE` — the isolation is the subject's state, not a penalty for the request |
 | Revoked or expired capability | `DENY` |
 | Unknown resource | `DENY` without dereferencing an untrusted path |
 | Resource whose canonical type contradicts the caller's claim | `DENY` — the claim is checked, not corrected |
@@ -493,7 +496,7 @@ The specification defines four conformance labels. **No system may advertise a h
 | **Profile-conformant** | Implementation passes the complete suite for one named hardware/software profile | ❌ Not reached |
 | **Release-assured** | Profile also has a reviewed threat model, independent security review, artifact provenance, recovery drills, published evidence | ❌ Not reached |
 
-**Current conformance summary:** 14/14 schemas valid · 119/119 Python tests passing · 143/143 Rust tests passing · 46/46 shared vectors agreed · 41/41 capsule vectors agreed by two implementations · 161/161 mutations killed · 2/2 state machines structurally valid · 33/33 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
+**Current conformance summary:** 14/14 schemas valid · 124/124 Python tests passing · 144/144 Rust tests passing · 49/49 shared vectors agreed · 42/42 capsule vectors agreed by two implementations · 174/174 mutations killed · 2/2 state machines structurally valid · 34/34 denial codes unique and cross-checked · **0** profile-conformant profiles · **0** independent reviews.
 
 ---
 

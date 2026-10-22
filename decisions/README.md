@@ -46,6 +46,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | [ADR-020](ADR-020-the-decision-names-the-version.md) | The decision names the version | Proposed | 2 |
 | [ADR-021](ADR-021-the-decision-record-is-the-authorization.md) | The decision record is the authorization | Proposed | 5 |
 | [ADR-022](ADR-022-a-future-policy-epoch-is-deferred.md) | A future policy epoch is deferred, not denied | Proposed | 4 |
+| [ADR-023](ADR-023-a-quarantined-principal-is-quarantined.md) | A quarantined principal is quarantined, not merely denied | Proposed | 4 |
 
 ---
 
@@ -75,6 +76,7 @@ Architecture Decision Records capture decisions that are **expensive to reverse*
 | **020** | The authorization names the version of the target the decision was made against, and the executor refuses a decision that names none or names another one. |
 | **021** | The decision record is the authorization: the executor reads the plan, the version and the status out of the record the policy layer wrote, and a decision that granted no authority authorises nothing. |
 | **022** | A request under a future policy epoch is deferred, not denied: only a non-destructive operation may be deferred, the deferral names the epoch it waits for, it grants nothing, and it does not outlive the request. |
+| **023** | A request from a principal the node holds under quarantine is quarantined, not merely denied: the isolation is settled at the identity gate, the quarantined principal is still a known principal, the quarantine names the principal it holds, and it grants nothing. |
 
 ---
 

@@ -68,6 +68,7 @@ ALL_REASON_CODES = frozenset(
         "MALFORMED_OR_MISSING_IDENTITY",
         "WRONG_RECIPIENT",
         "UNKNOWN_PRINCIPAL",
+        "PRINCIPAL_QUARANTINED",
         "REQUEST_NOT_FRESH",
         "REPLAY_OR_REVOKED_NONCE",
         "RESOURCE_UNRESOLVABLE",
@@ -258,6 +259,7 @@ class PolicyContext:
     action_digest: Optional[str] = None
     revoked_nonces: FrozenSet[str] = frozenset()
     revoked_capabilities: FrozenSet[str] = frozenset()
+    quarantined_principals: FrozenSet[str] = frozenset()
     strong_approval_granted: bool = False
     satisfied_preconditions: FrozenSet[str] = frozenset()
 
@@ -279,6 +281,30 @@ class Deferral:
 
 
 @dataclass(frozen=True)
+class Isolation:
+    """What a quarantined decision is holding apart.
+
+    A quarantine is a state of the subject rather than a state of the
+    request, so it names the subject: the decision says which principal is
+    held, and the record publishes that, so that the subject can ask for the
+    isolation to be lifted.
+
+    The type is named for the state rather than for the status, because the
+    status is ``QUARANTINE`` and a type and a function cannot both be called
+    ``quarantine`` in the same module.
+    """
+
+    principal: str
+
+    def required_next_step(self) -> str:
+        """The next step a caller must take, as the decision record publishes it."""
+        return (
+            f"the principal {self.principal} is quarantined; "
+            "a policy decision must lift the isolation"
+        )
+
+
+@dataclass(frozen=True)
 class Decision:
     """The result of evaluating one request."""
 
@@ -288,6 +314,7 @@ class Decision:
     policy_epoch: int = 0
     resolved: Optional[ResolvedResource] = None
     deferral: Optional[Deferral] = None
+    isolation: Optional[Isolation] = None
 
     @property
     def effect_performed(self) -> bool:
@@ -316,6 +343,16 @@ def _defer(reason: str, deferral: Deferral, policy_epoch: int = 0) -> Decision:
     capability scope stays empty.
     """
     return Decision(Status.DEFER, reason, None, policy_epoch, None, deferral)
+
+
+def _quarantine(reason: str, isolation: Isolation, policy_epoch: int = 0) -> Decision:
+    """A decision that holds the principal apart.
+
+    The isolation names the principal it holds, because a quarantine that
+    names nobody is a penalty with no subject. It grants no authority: the
+    capability scope stays empty.
+    """
+    return Decision(Status.QUARANTINE, reason, None, policy_epoch, None, None, isolation)
 
 
 def _risk_rank(tier: str) -> int:
@@ -432,6 +469,22 @@ def evaluate(req: Request, cap: Optional[Capability], ctx: PolicyContext) -> Dec
     # Gate 4 - identity.
     if req.principal_id not in ctx.known_principals:
         return _deny("UNKNOWN_PRINCIPAL", epoch)
+
+    # The identity gate, continued - the quarantine of a principal.
+    #
+    # A quarantined principal is *known*: it is held apart, not let go, and
+    # the node says so, so that the subject can ask for the isolation to be
+    # lifted. The check is here, beside the known-principal check, because
+    # both are facts about the subject - and here, before the resource is
+    # resolved and before the capability is examined, so that a quarantined
+    # principal learns that it is quarantined and nothing else.
+    #
+    # A quarantine is a state of the subject and not a penalty for an error:
+    # no other failure falls back to it. ADR-023.
+    if req.principal_id in ctx.quarantined_principals:
+        return _quarantine(
+            "PRINCIPAL_QUARANTINED", Isolation(req.principal_id), epoch
+        )
 
     # Gate 5 - freshness: nonce, replay cache, expiry.
     if req.nonce in ctx.revoked_nonces:

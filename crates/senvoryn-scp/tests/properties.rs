@@ -104,6 +104,7 @@ fn context(registry: OperationRegistry) -> PolicyContext {
         clock_state: senvoryn_scp::ClockState::Trusted,
         mode: SystemMode::Normal,
         known_principals: ["user:alice".to_owned()].into_iter().collect(),
+        quarantined_principals: Default::default(),
         resolved_resources: [(
             "file:report".to_owned(),
             ResolvedResource {

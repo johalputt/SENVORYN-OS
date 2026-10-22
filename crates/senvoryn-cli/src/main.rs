@@ -126,6 +126,7 @@ fn read_context(document: &Value) -> Result<PolicyContext, String> {
         mode: SystemMode::parse(&required_string(document, "mode")?)
             .ok_or_else(|| "the context names a system mode that does not exist".to_owned())?,
         known_principals: string_set(document, "known_principals"),
+        quarantined_principals: string_set(document, "quarantined_principals"),
         resolved_resources: read_resolved_resources(document)?,
         operations: read_registry(document)?,
         audit_state: AuditState::parse(&required_string(document, "audit_state")?)

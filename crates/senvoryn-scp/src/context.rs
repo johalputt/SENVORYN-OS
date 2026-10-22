@@ -145,6 +145,17 @@ pub struct PolicyContext {
     pub mode: SystemMode,
     /// The principals this node knows.
     pub known_principals: BTreeSet<String>,
+    /// The principals this node holds under quarantine.
+    ///
+    /// A quarantined principal is **known**: it is not removed from
+    /// `known_principals`, the way a revoked principal is. The difference is
+    /// the difference between letting a subject go and holding it apart, and
+    /// it is the reason the node can tell a quarantined principal that it is
+    /// quarantined.
+    ///
+    /// The set is the environment's, exactly as the revoked sets are: the
+    /// policy layer never decides for itself that a principal is suspicious.
+    pub quarantined_principals: BTreeSet<String>,
     /// The resources this node can resolve, and what each name resolves to.
     ///
     /// The key is the name a caller may use — which may be an alias — and

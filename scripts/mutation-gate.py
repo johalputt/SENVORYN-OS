@@ -45,6 +45,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,6 +55,31 @@ MANIFEST = ROOT / "scripts" / "mutations.json"
 def load_manifest():
     with open(MANIFEST, encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def write_bytes_with_retry(path: Path, data: bytes) -> None:
+    """Write `data` to `path`, retrying briefly if the file is momentarily locked.
+
+    A source file that is open elsewhere — a compiler reading it, an indexer
+    walking the tree, a virus scanner looking at it — can refuse a write on
+    Windows for a moment. The write is retried rather than allowed to fail,
+    because a failed write inside the restore path leaves the tree mutated,
+    and a mutated tree is a broken tree.
+    """
+    delay = 0.2
+    for attempt in range(5):
+        try:
+            path.write_bytes(data)
+            return
+        except OSError as error:
+            if attempt == 4:
+                raise
+            print(
+                f"    the write to {path.name} failed ({error}); retrying",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+            delay *= 2
 
 
 def apply_mutation(path: Path, find: str, replace: str) -> int:
@@ -69,7 +95,9 @@ def apply_mutation(path: Path, find: str, replace: str) -> int:
         raise SystemExit(
             f"the mutation did not apply: {path.relative_to(ROOT)} does not contain {find!r}"
         )
-    path.write_bytes(original.replace(find.encode("utf-8"), replace.encode("utf-8")))
+    write_bytes_with_retry(
+        path, original.replace(find.encode("utf-8"), replace.encode("utf-8"))
+    )
     return occurrences
 
 
@@ -137,6 +165,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("mutation", nargs="?", help="run only this mutation by id")
     parser.add_argument("--list", action="store_true", help="list the mutations and exit")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="check that every mutation still matches the tree, and exit",
+    )
     arguments = parser.parse_args()
 
     manifest = load_manifest()
@@ -176,10 +209,19 @@ def main() -> int:
         for identifier, file in dirty:
             print(f"  {identifier}: the text to mutate is not in {file}", file=sys.stderr)
         print(
-            "A previous run was probably interrupted. Restore the files and try again.",
+            "A previous run was probably interrupted, or a formatter moved the text "
+            "a mutation targets. Restore the files, or update the manifest, and try again.",
             file=sys.stderr,
         )
         return 1
+
+    if arguments.check:
+        # The check above is worth having on its own: a formatter can move the
+        # text a mutation targets, and the mutation then proves nothing
+        # without saying so. This answers that question in a second, where the
+        # whole gate takes half an hour.
+        print(f"OK: all {len(mutations)} mutation(s) still match the tree.")
+        return 0
 
     survivors = []
     invalid = []
@@ -193,14 +235,14 @@ def main() -> int:
         with open(path, "rb") as handle:
             original = handle.read()
         backup = path.with_suffix(path.suffix + ".mutation-backup")
-        backup.write_bytes(original)
+        write_bytes_with_retry(backup, original)
         print(f"[{identifier}] {mutation['control']}")
         try:
             occurrences = apply_mutation(path, mutation["find"], mutation["replace"])
             print(f"    mutated {mutation['file']} ({occurrences} occurrence(s))")
             code, output = run_test(mutation)
         finally:
-            path.write_bytes(original)
+            write_bytes_with_retry(path, original)
             backup.unlink(missing_ok=True)
 
         expected = mutation["expect_output_contains"]

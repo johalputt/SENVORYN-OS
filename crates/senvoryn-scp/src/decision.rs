@@ -98,6 +98,39 @@ impl Deferral {
     }
 }
 
+/// What a quarantined decision is holding apart.
+///
+/// A quarantine is a state of the subject rather than a state of the
+/// request, so it names the subject: the decision says which principal is
+/// held, and the record publishes that, so that the subject can ask for the
+/// isolation to be lifted.
+///
+/// The type is named for the state rather than for the status, because the
+/// status is `QUARANTINE` and a type and a method cannot both be called
+/// `quarantine` in the same impl block.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Isolation {
+    /// The principal is held under quarantine by this node.
+    Principal(String),
+}
+
+impl Isolation {
+    /// The next step a caller must take, as the decision record publishes it.
+    ///
+    /// The wording belongs to this implementation; the thing it names does
+    /// not. The principal is the isolation's substance and it is in the
+    /// decision itself, where a gate cannot disagree with it.
+    pub fn required_next_step(&self) -> String {
+        match self {
+            Self::Principal(principal) => {
+                format!(
+                    "the principal {principal} is quarantined; a policy decision must lift the isolation"
+                )
+            }
+        }
+    }
+}
+
 /// The result of evaluating one request.
 ///
 /// The decision grants nothing by itself. Effect separation is the sixteenth
@@ -111,6 +144,7 @@ pub struct Decision {
     policy_epoch: u64,
     resolved: Option<ResolvedResource>,
     deferral: Option<Deferral>,
+    isolation: Option<Isolation>,
 }
 
 impl Decision {
@@ -123,6 +157,7 @@ impl Decision {
             policy_epoch,
             resolved: None,
             deferral: None,
+            isolation: None,
         }
     }
 
@@ -135,6 +170,7 @@ impl Decision {
             policy_epoch,
             resolved: None,
             deferral: None,
+            isolation: None,
         }
     }
 
@@ -152,6 +188,25 @@ impl Decision {
             policy_epoch,
             resolved: None,
             deferral: Some(deferral),
+            isolation: None,
+        }
+    }
+
+    /// A decision that holds the principal apart.
+    ///
+    /// The isolation names the principal it holds, because a quarantine that
+    /// names nobody is a penalty with no subject. It grants no authority:
+    /// the capability scope stays empty, and `grants_authority` is false for
+    /// every status but `PERMIT`.
+    pub fn quarantine(reason: ReasonCode, isolation: Isolation, policy_epoch: u64) -> Self {
+        Self {
+            status: DecisionStatus::Quarantine,
+            reason,
+            capability_id: None,
+            policy_epoch,
+            resolved: None,
+            deferral: None,
+            isolation: Some(isolation),
         }
     }
 
@@ -164,6 +219,7 @@ impl Decision {
             policy_epoch,
             resolved: None,
             deferral: None,
+            isolation: None,
         }
     }
 
@@ -211,6 +267,14 @@ impl Decision {
         self.deferral.as_ref()
     }
 
+    /// What the decision holds apart, if it holds anything apart.
+    ///
+    /// `None` for every decision that is not a quarantine. It is not a
+    /// wildcard: a decision that holds nothing apart is not a quarantine.
+    pub fn isolation(&self) -> Option<&Isolation> {
+        self.isolation.as_ref()
+    }
+
     /// Whether the decision grants any authority.
     pub fn grants_authority(&self) -> bool {
         self.status.grants_authority() && self.capability_id.is_some()
@@ -229,9 +293,9 @@ impl Decision {
     /// the resource was resolved.
     ///
     /// The record's `required_next_step` comes from the decision itself, not
-    /// from the caller of this method. A deferral is the one status that
-    /// publishes a next step, and what it waits for is the deferral's own
-    /// substance — a value the caller could supply would be a value the
+    /// from the caller of this method. A deferral and a quarantine are the
+    /// two statuses that publish a next step, and what each waits for is its
+    /// own substance — a value the caller could supply would be a value the
     /// caller could disagree with, and ADR-021's rule applies to it as much
     /// as to the plan: the authority has to arrive as the thing the
     /// authority wrote.
@@ -289,9 +353,10 @@ impl Decision {
         );
         record.insert(
             "required_next_step".to_owned(),
-            match &self.deferral {
-                Some(deferral) => Value::from(deferral.required_next_step()),
-                None => Value::Null,
+            match (&self.deferral, &self.isolation) {
+                (Some(deferral), _) => Value::from(deferral.required_next_step()),
+                (None, Some(isolation)) => Value::from(isolation.required_next_step()),
+                (None, None) => Value::Null,
             },
         );
         Value::Object(record)
